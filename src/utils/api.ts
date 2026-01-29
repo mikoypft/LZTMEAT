@@ -1,19 +1,35 @@
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+// Configure API based on environment
+// Set to 'laravel' to use Laravel backend, or 'supabase' for Supabase
+const API_MODE = import.meta.env.VITE_API_MODE || 'laravel';
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-26f4e13f`;
+let API_BASE: string;
+
+if (API_MODE === 'laravel') {
+  API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+} else {
+  const { projectId, publicAnonKey } = await import('/utils/supabase/info');
+  API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-26f4e13f`;
+}
 
 // Helper function for API requests
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add authorization header based on API mode
+  if (API_MODE === 'supabase') {
+    const { publicAnonKey } = await import('/utils/supabase/info');
+    headers['Authorization'] = `Bearer ${publicAnonKey}`;
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicAnonKey}`,
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
