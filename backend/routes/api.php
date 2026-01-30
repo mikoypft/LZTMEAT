@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\HistoryController;
+use App\Http\Controllers\Api\StockAdjustmentController;
 
 // Handle CORS preflight requests
 Route::options('{any}', function () {
@@ -92,6 +93,12 @@ Route::get('/suppliers', [SupplierController::class, 'index']);
 Route::post('/suppliers', [SupplierController::class, 'store']);
 Route::put('/suppliers/{id}', [SupplierController::class, 'update']);
 Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
+
+// Stock Adjustments endpoints (Ingredient restocking records)
+Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index']);
+Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store']);
+Route::get('/stock-adjustments/summary', [StockAdjustmentController::class, 'summary']);
+Route::get('/stock-adjustments/ingredient/{ingredientId}', [StockAdjustmentController::class, 'ingredientHistory']);
 
 // History endpoints
 Route::get('/history', [HistoryController::class, 'index']);

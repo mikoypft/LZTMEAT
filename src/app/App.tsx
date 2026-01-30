@@ -760,7 +760,9 @@ export default function App() {
             {currentPage === "inventory" && (
               <InventoryPage key={inventoryKey} currentUser={currentUser} />
             )}
-            {currentPage === "ingredients" && <IngredientsInventoryPage />}
+            {currentPage === "ingredients" && (
+              <IngredientsInventoryPage currentUser={currentUser} />
+            )}
             {currentPage === "transfer" && <TransferPage />}
             {currentPage === "sales" && (
               <SalesDataTable

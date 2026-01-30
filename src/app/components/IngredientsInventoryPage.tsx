@@ -24,12 +24,28 @@ import {
   resetIngredients,
   getSuppliers,
   getIngredientCategories,
+  createStockAdjustment,
   type Supplier,
   type Category,
 } from "@/utils/api";
 import { toast } from "sonner";
 
-export function IngredientsInventoryPage() {
+interface UserData {
+  id: string;
+  username: string;
+  fullName?: string;
+  role: string;
+  storeId?: string;
+  storeName?: string;
+}
+
+interface IngredientsInventoryPageProps {
+  currentUser?: UserData | null;
+}
+
+export function IngredientsInventoryPage({
+  currentUser,
+}: IngredientsInventoryPageProps) {
   const context = useContext(IngredientsContext);
 
   // Safety check for context
@@ -117,6 +133,27 @@ export function IngredientsInventoryPage() {
     if (!selectedIngredient) return;
 
     try {
+      const ingredient = ingredients.find(
+        (i) => i.id === selectedIngredient.id,
+      );
+
+      if (!ingredient) {
+        toast.error("Ingredient not found");
+        return;
+      }
+
+      // Record the stock adjustment in the database
+      await createStockAdjustment({
+        ingredient_id: selectedIngredient.id,
+        type: adjustment.type,
+        quantity: adjustment.quantity,
+        reason: adjustment.reason || "Stock adjustment",
+        user_id: currentUser?.id,
+        user_name:
+          currentUser?.fullName || currentUser?.username || "Unknown User",
+      });
+
+      // Update local state
       await adjustStock(
         selectedIngredient.id,
         adjustment.quantity,
@@ -124,23 +161,16 @@ export function IngredientsInventoryPage() {
         adjustment.reason,
       );
 
-      const ingredient = ingredients.find(
-        (i) => i.id === selectedIngredient.id,
-      );
-      if (ingredient) {
-        const delta =
-          adjustment.type === "add"
-            ? adjustment.quantity
-            : -adjustment.quantity;
-        const newStock = Math.max(0, ingredient.stock + delta);
+      const delta =
+        adjustment.type === "add" ? adjustment.quantity : -adjustment.quantity;
+      const newStock = Math.max(0, ingredient.stock + delta);
 
-        await updateIngredient(selectedIngredient.id, {
-          stock: newStock,
-          lastUpdated: new Date().toISOString(),
-        });
+      await updateIngredient(selectedIngredient.id, {
+        stock: newStock,
+        lastUpdated: new Date().toISOString(),
+      });
 
-        toast.success("Stock adjusted successfully");
-      }
+      toast.success("Stock adjusted and recorded successfully");
 
       setShowAdjustmentModal(false);
       setSelectedIngredient(null);

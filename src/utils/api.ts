@@ -289,6 +289,136 @@ export interface Ingredient {
   expiryDate?: string | null;
 }
 
+// ==================== STOCK ADJUSTMENT API ====================
+
+export interface StockAdjustment {
+  id: number;
+  ingredient_id: number;
+  ingredient_name: string;
+  ingredient_code: string;
+  type: "add" | "remove";
+  quantity: number;
+  previous_stock: number;
+  new_stock: number;
+  unit: string;
+  reason: string | null;
+  user_id: number | null;
+  user_name: string | null;
+  ip_address: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StockAdjustmentInput {
+  ingredient_id: number;
+  type: "add" | "remove";
+  quantity: number;
+  reason?: string;
+  user_id?: number;
+  user_name?: string;
+}
+
+export async function createStockAdjustment(
+  adjustment: StockAdjustmentInput,
+): Promise<{
+  adjustment: StockAdjustment;
+  ingredient: { id: number; name: string; stock: number };
+}> {
+  const data = await apiRequest<{
+    success: boolean;
+    adjustment: StockAdjustment;
+    ingredient: { id: number; name: string; stock: number };
+  }>("/stock-adjustments", {
+    method: "POST",
+    body: JSON.stringify(adjustment),
+  });
+  return { adjustment: data.adjustment, ingredient: data.ingredient };
+}
+
+export async function getStockAdjustments(params?: {
+  ingredient_id?: number;
+  type?: "add" | "remove";
+  user_id?: number;
+  from_date?: string;
+  to_date?: string;
+  per_page?: number;
+}): Promise<{
+  adjustments: StockAdjustment[];
+  pagination: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+  };
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) queryParams.append(key, String(value));
+    });
+  }
+  const queryString = queryParams.toString();
+  const url = `/stock-adjustments${queryString ? `?${queryString}` : ""}`;
+
+  const data = await apiRequest<{
+    success: boolean;
+    adjustments: StockAdjustment[];
+    pagination: {
+      total: number;
+      per_page: number;
+      current_page: number;
+      last_page: number;
+    };
+  }>(url);
+  return { adjustments: data.adjustments, pagination: data.pagination };
+}
+
+export async function getIngredientAdjustmentHistory(
+  ingredientId: number,
+): Promise<StockAdjustment[]> {
+  const data = await apiRequest<{
+    success: boolean;
+    adjustments: StockAdjustment[];
+  }>(`/stock-adjustments/ingredient/${ingredientId}`);
+  return data.adjustments;
+}
+
+export async function getStockAdjustmentSummary(params?: {
+  from_date?: string;
+  to_date?: string;
+}): Promise<{
+  summary: {
+    total_additions: number;
+    total_removals: number;
+    total_adjustments: number;
+    net_change: number;
+  };
+  recent: StockAdjustment[];
+}> {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) queryParams.append(key, String(value));
+    });
+  }
+  const queryString = queryParams.toString();
+  const url = `/stock-adjustments/summary${queryString ? `?${queryString}` : ""}`;
+
+  const data = await apiRequest<{
+    success: boolean;
+    summary: {
+      total_additions: number;
+      total_removals: number;
+      total_adjustments: number;
+      net_change: number;
+    };
+    recent: StockAdjustment[];
+  }>(url);
+  return { summary: data.summary, recent: data.recent };
+}
+
+// ==================== INGREDIENTS API ====================
+
 export async function getIngredients(): Promise<Ingredient[]> {
   const data = await apiRequest<{ ingredients: Ingredient[] }>("/ingredients");
   return data.ingredients;
