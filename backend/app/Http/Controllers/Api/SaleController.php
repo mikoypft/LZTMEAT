@@ -42,27 +42,63 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'transactionId' => 'required|string|unique:sales',
-            'userId' => 'nullable|exists:users,id',
-            'storeId' => 'nullable|exists:stores,id',
-            'items' => 'required|json',
-            'total' => 'required|numeric',
-            'paymentMethod' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'transactionId' => 'required|string|unique:sales,transaction_id',
+                'userId' => 'nullable|exists:users,id',
+                'storeId' => 'nullable|exists:stores,id',
+                'items' => 'required',
+                'total' => 'required|numeric',
+                'paymentMethod' => 'required|string',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Sale validation error: ' . json_encode($request->all()));
+            throw $e;
+        }
+
+        // Ensure items is JSON string
+        $items = $request->items;
+        if (is_array($items)) {
+            $items = json_encode($items);
+        }
 
         $sale = Sale::create([
             'transaction_id' => $request->transactionId,
             'user_id' => $request->userId,
             'store_id' => $request->storeId,
             'customer' => $request->customer,
-            'items' => $request->items,
+            'items' => $items,
             'subtotal' => $request->subtotal ?? 0,
             'global_discount' => $request->globalDiscount ?? 0,
             'tax' => $request->tax ?? 0,
             'total' => $request->total,
             'payment_method' => $request->paymentMethod,
         ]);
+
+        // Deduct inventory for each item in the sale
+        // Use the location (store name) to find the correct inventory records
+        $location = $request->location;
+        
+        try {
+            $itemsArray = is_string($items) ? json_decode($items, true) : $items;
+            if (is_array($itemsArray) && $location) {
+                foreach ($itemsArray as $item) {
+                    $productId = $item['productId'] ?? null;
+                    $quantity = $item['quantity'] ?? 0;
+                    
+                    if ($productId && $quantity > 0) {
+                        $updated = \DB::table('inventory')
+                            ->where('product_id', $productId)
+                            ->where('location', $location)
+                            ->decrement('quantity', $quantity);
+                        
+                        \Log::info("Inventory deducted for product {$productId} at {$location}: {$quantity} units (rows affected: {$updated})");
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error updating inventory for sale ' . $sale->id . ': ' . $e->getMessage());
+        }
 
         return response()->json([
             'sale' => [

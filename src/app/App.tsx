@@ -63,6 +63,7 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -256,12 +257,15 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (confirm("Are you sure you want to logout?")) {
-      setCurrentUser(null);
-      setCurrentPage("dashboard");
-      setSidebarOpen(false);
-      clearSession();
-    }
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setCurrentUser(null);
+    setCurrentPage("dashboard");
+    setSidebarOpen(false);
+    setShowLogoutConfirm(false);
+    clearSession();
   };
 
   // Define menu items based on user role and permissions
@@ -588,6 +592,33 @@ export default function App() {
             <POSPage currentUser={currentUser} />
           </main>
         </div>
+
+        {/* Logout Confirmation Modal - POS View */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Logout</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to logout?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Toaster />
       </IngredientsProvider>
     );
@@ -781,6 +812,33 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Logout</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to logout?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toaster />
     </IngredientsProvider>
   );

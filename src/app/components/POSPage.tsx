@@ -765,27 +765,29 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                     <h3 className="font-medium text-sm flex-1">
                       {product.name}
                     </h3>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingProduct(product);
-                          setShowProductManager(true);
-                        }}
-                        className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProduct(product.id);
-                        }}
-                        className="p-1 hover:bg-destructive/10 text-destructive rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {currentUser?.role === "ADMIN" && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingProduct(product);
+                            setShowProductManager(true);
+                          }}
+                          className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProduct(product.id);
+                          }}
+                          className="p-1 hover:bg-destructive/10 text-destructive rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-2">
                     {product.category}

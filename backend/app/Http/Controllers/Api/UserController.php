@@ -17,8 +17,8 @@ class UserController extends Controller
             'employees' => $users->map(fn($u) => [
                 'id' => $u->id,
                 'fullName' => $u->full_name,
-                'mobile' => $u->email ?? '',
-                'address' => '',
+                'mobile' => $u->mobile ?? '',
+                'address' => $u->address ?? '',
                 'role' => $u->employee_role ?? $u->role,
                 'storeId' => $u->store_id,
                 'storeName' => $u->store?->name,
@@ -50,36 +50,73 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        // Map role from frontend format to database format
+        $roleMap = [
+            'Store' => 'STORE',
+            'Production' => 'PRODUCTION', 
+            'POS' => 'POS',
+            'Employee' => 'EMPLOYEE',
+        ];
+        
+        $role = $request->role;
+        if (isset($roleMap[$role])) {
+            $role = $roleMap[$role];
+        }
+        
+        // Merge mapped role back
+        $request->merge(['role' => $role]);
+        
         $request->validate([
             'name' => 'required|string',
-            'username' => 'required|string|unique:users',
-            'password' => 'required|string|min:6',
             'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
             'storeId' => 'nullable|exists:stores,id',
             'mobile' => 'nullable|string',
+            'address' => 'nullable|string',
             'email' => 'nullable|email',
-            'permissions' => 'nullable|json',
+            'permissions' => 'nullable',
             'canLogin' => 'nullable|boolean',
         ]);
 
+        // Auto-generate username from name if not provided
+        $username = $request->username;
+        if (!$username) {
+            $baseName = strtolower(str_replace(' ', '_', $request->name));
+            $username = $baseName;
+            $counter = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $baseName . '_' . $counter;
+                $counter++;
+            }
+        }
+        
+        // Auto-generate password if not provided
+        $password = $request->password;
+        $plainPassword = null;
+        if (!$password) {
+            $plainPassword = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = $plainPassword;
+        }
+
         $user = User::create([
             'full_name' => $request->name,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'employee_role' => $request->role === 'EMPLOYEE' ? 'Employee' : null,
+            'username' => $username,
+            'password' => Hash::make($password),
+            'role' => $role,
+            'employee_role' => $role === 'EMPLOYEE' ? 'Employee' : null,
             'store_id' => $request->storeId,
-            'email' => $request->email,
-            'permissions' => $request->permissions,
+            'mobile' => $request->mobile,
+            'address' => $request->address,
+            'permissions' => is_array($request->permissions) ? json_encode($request->permissions) : $request->permissions,
             'can_login' => $request->canLogin ?? true,
         ]);
 
-        return response()->json([
+        $response = [
             'employee' => [
                 'id' => $user->id,
                 'name' => $user->full_name,
-                'mobile' => $user->email ?? '',
-                'address' => '',
+                'fullName' => $user->full_name,
+                'mobile' => $request->mobile ?? '',
+                'address' => $request->address ?? '',
                 'role' => $user->employee_role ?? $user->role,
                 'storeId' => $user->store_id,
                 'storeName' => $user->store?->name,
@@ -87,7 +124,14 @@ class UserController extends Controller
                 'username' => $user->username,
                 'canLogin' => $user->can_login,
             ],
-        ], 201);
+        ];
+        
+        // Include generated password in response if auto-generated
+        if ($plainPassword) {
+            $response['employee']['password'] = $plainPassword;
+        }
+
+        return response()->json($response, 201);
     }
 
     public function update(Request $request, $id)

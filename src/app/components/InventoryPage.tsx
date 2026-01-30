@@ -693,7 +693,7 @@ export function InventoryPage({
           </button>
           <button
             onClick={loadInventoryData}
-            className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
+            className="hidden flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
             disabled={loading}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -701,7 +701,7 @@ export function InventoryPage({
           </button>
           <button
             onClick={handleDeleteAllProducts}
-            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+            className="hidden flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
             disabled={loading || currentUser?.role !== "ADMIN"}
             title={
               currentUser?.role !== "ADMIN"
