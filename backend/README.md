@@ -85,10 +85,12 @@ The API will be available at `http://localhost:8000/api`
 All endpoints are prefixed with `/api`
 
 ### Authentication
+
 - `POST /auth/login` - Login with username and password
 - `POST /auth/refresh` - Refresh user session
 
 ### Products
+
 - `GET /products` - Get all products
 - `POST /products` - Create new product
 - `PUT /products/{id}` - Update product
@@ -96,16 +98,19 @@ All endpoints are prefixed with `/api`
 - `DELETE /products/delete-all` - Delete all products
 
 ### Categories
+
 - `GET /categories` - Get all categories
 - `POST /categories` - Create category
 - `DELETE /categories/{id}` - Delete category
 
 ### Inventory
+
 - `GET /inventory` - Get all inventory (optional: ?location=xxx)
 - `POST /inventory` - Add inventory
 - `PUT /inventory/update` - Update inventory quantity
 
 ### Ingredients
+
 - `GET /ingredients` - Get all ingredients
 - `POST /ingredients` - Create ingredient
 - `PUT /ingredients/{id}` - Update ingredient
@@ -113,28 +118,33 @@ All endpoints are prefixed with `/api`
 - `POST /ingredients/reset` - Clear all ingredients
 
 ### Sales
+
 - `GET /sales` - Get sales (optional: ?startDate=xxx&endDate=xxx)
 - `POST /sales` - Create sale
 - `PUT /sales/{id}` - Update sale
 
 ### Production
+
 - `GET /production` - Get production records
 - `POST /production` - Create production record
 - `PATCH /production/{id}` - Update production status
 - `DELETE /production/{id}` - Delete production record
 
 ### Transfers
+
 - `GET /transfers` - Get all transfers
 - `POST /transfers` - Create transfer
 - `PUT /transfers/{id}` - Update transfer status
 
 ### Stores
+
 - `GET /stores` - Get all stores
 - `POST /stores` - Create store
 - `PUT /stores/{id}` - Update store
 - `DELETE /stores/{id}` - Delete store
 
 ### Users/Employees
+
 - `GET /employees` - Get all employees
 - `POST /employees` - Create employee
 - `GET /users/all` - Get all users (system + employees)
@@ -142,12 +152,14 @@ All endpoints are prefixed with `/api`
 - `DELETE /users/{id}` - Delete user
 
 ### Suppliers
+
 - `GET /suppliers` - Get all suppliers
 - `POST /suppliers` - Create supplier
 - `PUT /suppliers/{id}` - Update supplier
 - `DELETE /suppliers/{id}` - Delete supplier
 
 ### History
+
 - `GET /history` - Get all system history
 - `GET /history/pos` - Get POS history
 - `GET /history/inventory` - Get inventory history
@@ -161,7 +173,7 @@ Update the frontend `src/utils/api.ts` to point to your Laravel backend:
 Change the API_BASE from Supabase to:
 
 ```typescript
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = "http://localhost:8000/api";
 ```
 
 ## CORS Configuration
@@ -177,6 +189,7 @@ You can add a CORS middleware to `app/Http/Middleware/` if needed.
 ## Database Schema
 
 ### Users Table
+
 ```sql
 CREATE TABLE users (
   id INT PRIMARY KEY AUTO_INCREMENT,

@@ -1,8 +1,37 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Banknote, Smartphone, Edit, Save, X, Receipt, Percent, UserPlus, Store, RefreshCw } from 'lucide-react';
-import { getProducts, getInventory, createSale, getStores, addProduct, addInventory, getCategories, type Product as APIProduct, type InventoryRecord, type StoreLocation, type Category } from '@/utils/api';
-import { toast } from 'sonner';
-import type { UserData } from '@/app/components/LoginPage';
+import { useState, useEffect } from "react";
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  ShoppingCart,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Edit,
+  Save,
+  X,
+  Receipt,
+  Percent,
+  UserPlus,
+  Store,
+  RefreshCw,
+} from "lucide-react";
+import {
+  getProducts,
+  getInventory,
+  createSale,
+  getStores,
+  addProduct,
+  addInventory,
+  getCategories,
+  type Product as APIProduct,
+  type InventoryRecord,
+  type StoreLocation,
+  type Category,
+} from "@/utils/api";
+import { toast } from "sonner";
+import type { UserData } from "@/app/components/LoginPage";
 
 interface Product {
   id: string;
@@ -29,26 +58,110 @@ interface POSPageProps {
 }
 
 const MOCK_PRODUCTS: Product[] = [
-  { id: '1', name: 'Longanisa (Sweet)', price: 185.00, stock: 150, category: 'Sausages', sku: 'SAU-001' },
-  { id: '2', name: 'Longanisa (Spicy)', price: 185.00, stock: 120, category: 'Sausages', sku: 'SAU-002' },
-  { id: '3', name: 'Tocino (Pork)', price: 220.00, stock: 80, category: 'Cured Meats', sku: 'CUR-001' },
-  { id: '4', name: 'Tapa (Beef)', price: 280.00, stock: 65, category: 'Cured Meats', sku: 'CUR-002' },
-  { id: '5', name: 'Chorizo de Bilbao', price: 195.00, stock: 90, category: 'Sausages', sku: 'SAU-003' },
-  { id: '6', name: 'Shanghai (Spring Rolls)', price: 150.00, stock: 200, category: 'Ready-to-Cook', sku: 'RTC-001' },
-  { id: '7', name: 'Embutido (Meatloaf)', price: 210.00, stock: 75, category: 'Processed Meats', sku: 'PRO-001' },
-  { id: '8', name: 'Filipino Hotdog', price: 165.00, stock: 180, category: 'Sausages', sku: 'SAU-004' },
-  { id: '9', name: 'Ham (Sliced)', price: 245.00, stock: 55, category: 'Processed Meats', sku: 'PRO-002' },
-  { id: '10', name: 'Bacon (Smoked)', price: 275.00, stock: 70, category: 'Processed Meats', sku: 'PRO-003' },
-  { id: '11', name: 'Ground Pork', price: 180.00, stock: 110, category: 'Ground Meats', sku: 'GRD-001' },
-  { id: '12', name: 'Ground Beef', price: 240.00, stock: 95, category: 'Ground Meats', sku: 'GRD-002' },
+  {
+    id: "1",
+    name: "Longanisa (Sweet)",
+    price: 185.0,
+    stock: 150,
+    category: "Sausages",
+    sku: "SAU-001",
+  },
+  {
+    id: "2",
+    name: "Longanisa (Spicy)",
+    price: 185.0,
+    stock: 120,
+    category: "Sausages",
+    sku: "SAU-002",
+  },
+  {
+    id: "3",
+    name: "Tocino (Pork)",
+    price: 220.0,
+    stock: 80,
+    category: "Cured Meats",
+    sku: "CUR-001",
+  },
+  {
+    id: "4",
+    name: "Tapa (Beef)",
+    price: 280.0,
+    stock: 65,
+    category: "Cured Meats",
+    sku: "CUR-002",
+  },
+  {
+    id: "5",
+    name: "Chorizo de Bilbao",
+    price: 195.0,
+    stock: 90,
+    category: "Sausages",
+    sku: "SAU-003",
+  },
+  {
+    id: "6",
+    name: "Shanghai (Spring Rolls)",
+    price: 150.0,
+    stock: 200,
+    category: "Ready-to-Cook",
+    sku: "RTC-001",
+  },
+  {
+    id: "7",
+    name: "Embutido (Meatloaf)",
+    price: 210.0,
+    stock: 75,
+    category: "Processed Meats",
+    sku: "PRO-001",
+  },
+  {
+    id: "8",
+    name: "Filipino Hotdog",
+    price: 165.0,
+    stock: 180,
+    category: "Sausages",
+    sku: "SAU-004",
+  },
+  {
+    id: "9",
+    name: "Ham (Sliced)",
+    price: 245.0,
+    stock: 55,
+    category: "Processed Meats",
+    sku: "PRO-002",
+  },
+  {
+    id: "10",
+    name: "Bacon (Smoked)",
+    price: 275.0,
+    stock: 70,
+    category: "Processed Meats",
+    sku: "PRO-003",
+  },
+  {
+    id: "11",
+    name: "Ground Pork",
+    price: 180.0,
+    stock: 110,
+    category: "Ground Meats",
+    sku: "GRD-001",
+  },
+  {
+    id: "12",
+    name: "Ground Beef",
+    price: 240.0,
+    stock: 95,
+    category: "Ground Meats",
+    sku: "GRD-002",
+  },
 ];
 
 export function POSPage({ currentUser }: POSPageProps = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [showCheckout, setShowCheckout] = useState(false);
   const [showProductManager, setShowProductManager] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -57,22 +170,34 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [stores, setStores] = useState<StoreLocation[]>([]);
-  const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreLocation | null>(
+    null,
+  );
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<{
+    time: string;
+    transactionId: string;
+    items: any[];
+    subtotal: number;
+    globalDiscount: number;
+    tax: number;
+    total: number;
+  } | null>(null);
 
   // Determine if user can switch stores (only ADMIN can)
-  const canSwitchStores = currentUser?.role === 'ADMIN';
+  const canSwitchStores = currentUser?.role === "ADMIN";
   const userAssignedStoreId = currentUser?.storeId;
   const userAssignedStoreName = currentUser?.storeName;
 
   // Debug logging
-  console.log('=== POS Page - User Store Assignment ===');
-  console.log('Current User:', currentUser?.username);
-  console.log('User Role:', currentUser?.role);
-  console.log('User Assigned StoreId:', userAssignedStoreId);
-  console.log('User Assigned StoreName:', userAssignedStoreName);
-  console.log('Can Switch Stores:', canSwitchStores);
-  console.log('=======================================');
+  console.log("=== POS Page - User Store Assignment ===");
+  console.log("Current User:", currentUser?.username);
+  console.log("User Role:", currentUser?.role);
+  console.log("User Assigned StoreId:", userAssignedStoreId);
+  console.log("User Assigned StoreName:", userAssignedStoreName);
+  console.log("Can Switch Stores:", canSwitchStores);
+  console.log("=======================================");
 
   // Load products and inventory on mount
   useEffect(() => {
@@ -84,31 +209,37 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     try {
       const storeData = await getStores();
       setStores(storeData);
-      
+
       // If user has an assigned store, use that; otherwise default to first store
       let storeToSelect: StoreLocation | null = null;
-      
+
       if (userAssignedStoreId) {
         // Find user's assigned store
-        storeToSelect = storeData.find((s: StoreLocation) => s.id === userAssignedStoreId) || null;
+        storeToSelect =
+          storeData.find((s: StoreLocation) => s.id === userAssignedStoreId) ||
+          null;
         if (storeToSelect) {
-          toast.info(`Locked to your assigned store: ${storeToSelect.name}`, { duration: 3000 });
+          toast.info(`Locked to your assigned store: ${storeToSelect.name}`, {
+            duration: 3000,
+          });
         } else {
-          toast.error(`Your assigned store (${userAssignedStoreName}) was not found.`);
+          toast.error(
+            `Your assigned store (${userAssignedStoreName}) was not found.`,
+          );
         }
       } else {
         // Default to first store for admin or users without assigned store
         storeToSelect = storeData[0] || null;
       }
-      
+
       setSelectedStore(storeToSelect);
       // Now load products and inventory with the correct store
       if (storeToSelect) {
         await loadProductsAndInventory(storeToSelect.name);
       }
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores. Please refresh the page.');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores. Please refresh the page.");
     }
   };
 
@@ -116,21 +247,23 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     try {
       setLoading(true);
       const locationToUse = storeName || selectedStore?.name;
-      
+
       if (!locationToUse) {
-        toast.error('No store selected. Please select a store.');
+        toast.error("No store selected. Please select a store.");
         setLoading(false);
         return;
       }
 
       const [productsData, inventoryData] = await Promise.all([
         getProducts(),
-        getInventory(locationToUse)
+        getInventory(locationToUse),
       ]);
 
       // Combine products with inventory data
       const productsWithStock = productsData.map((product: APIProduct) => {
-        const inv = inventoryData.find((i: InventoryRecord) => i.productId === product.id);
+        const inv = inventoryData.find(
+          (i: InventoryRecord) => i.productId === product.id,
+        );
         return {
           id: product.id,
           name: product.name,
@@ -142,15 +275,17 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       });
 
       setProducts(productsWithStock);
-      
+
       // Show warning if current store has low or no inventory
-      const lowStockProducts = productsWithStock.filter(p => p.stock === 0);
+      const lowStockProducts = productsWithStock.filter((p) => p.stock === 0);
       if (lowStockProducts.length > 0) {
-        toast.warning(`${locationToUse} has ${lowStockProducts.length} product(s) out of stock.`);
+        toast.warning(
+          `${locationToUse} has ${lowStockProducts.length} product(s) out of stock.`,
+        );
       }
     } catch (error) {
-      console.error('Error loading products:', error);
-      toast.error('Failed to load products. Please refresh the page.');
+      console.error("Error loading products:", error);
+      toast.error("Failed to load products. Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -162,8 +297,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       setStores(storeData);
       setSelectedStore(storeData[0] || null); // Default to the first store
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores. Please refresh the page.');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores. Please refresh the page.");
     }
   };
 
@@ -172,8 +307,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       const categoryData = await getCategories();
       setCategories(categoryData);
     } catch (error) {
-      console.error('Error loading categories:', error);
-      toast.error('Failed to load categories. Please refresh the page.');
+      console.error("Error loading categories:", error);
+      toast.error("Failed to load categories. Please refresh the page.");
     }
   };
 
@@ -184,17 +319,19 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     }
   }, [selectedStore]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All" || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const addToCart = (product: Product) => {
     // Validate that we have a selected store
     if (!selectedStore) {
-      toast.error('Please select a store before adding items to cart');
+      toast.error("Please select a store before adding items to cart");
       return;
     }
 
@@ -204,15 +341,21 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       return;
     }
 
-    const existingItem = cart.find(item => item.id === product.id);
+    const existingItem = cart.find((item) => item.id === product.id);
     if (existingItem) {
       if (existingItem.quantity < product.stock) {
-        setCart(cart.map(item =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        ));
+        setCart(
+          cart.map((item) =>
+            item.id === product.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item,
+          ),
+        );
         toast.success(`Added ${product.name} to cart`);
       } else {
-        toast.warning(`Cannot add more. Only ${product.stock} available at ${selectedStore.name}`);
+        toast.warning(
+          `Cannot add more. Only ${product.stock} available at ${selectedStore.name}`,
+        );
       }
     } else {
       setCart([...cart, { ...product, quantity: 1, discount: 0 }]);
@@ -221,26 +364,30 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
-    setCart(cart.map(item => {
-      if (item.id === productId) {
-        const newQuantity = item.quantity + delta;
-        if (newQuantity <= 0) return item;
-        if (newQuantity > item.stock) return item;
-        return { ...item, quantity: newQuantity };
-      }
-      return item;
-    }));
+    setCart(
+      cart.map((item) => {
+        if (item.id === productId) {
+          const newQuantity = item.quantity + delta;
+          if (newQuantity <= 0) return item;
+          if (newQuantity > item.stock) return item;
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }),
+    );
   };
 
   const updateItemDiscount = (productId: string, discount: number) => {
     if (discount < 0 || discount > 100) return;
-    setCart(cart.map(item =>
-      item.id === productId ? { ...item, discount } : item
-    ));
+    setCart(
+      cart.map((item) =>
+        item.id === productId ? { ...item, discount } : item,
+      ),
+    );
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(cart.filter(item => item.id !== productId));
+    setCart(cart.filter((item) => item.id !== productId));
   };
 
   const clearCart = () => {
@@ -256,7 +403,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     return itemTotal - itemDiscount;
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+  const subtotal = cart.reduce(
+    (sum, item) => sum + calculateItemTotal(item),
+    0,
+  );
   const globalDiscountAmount = (subtotal * globalDiscount) / 100;
   const afterDiscount = subtotal - globalDiscountAmount;
   const tax = afterDiscount * 0.08; // 8% tax
@@ -265,43 +415,54 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const handleCheckout = async (method: string) => {
     // Validate store is selected
     if (!selectedStore) {
-      toast.error('No store selected. Cannot process checkout.');
+      toast.error("No store selected. Cannot process checkout.");
       return;
     }
 
     // Validate all cart items against current inventory
     const invalidItems: string[] = [];
-    cart.forEach(cartItem => {
-      const currentProduct = products.find(p => p.id === cartItem.id);
+    cart.forEach((cartItem) => {
+      const currentProduct = products.find((p) => p.id === cartItem.id);
       if (!currentProduct) {
         invalidItems.push(`${cartItem.name} (product no longer exists)`);
       } else if (currentProduct.stock < cartItem.quantity) {
-        invalidItems.push(`${cartItem.name} (only ${currentProduct.stock} available at ${selectedStore.name})`);
+        invalidItems.push(
+          `${cartItem.name} (only ${currentProduct.stock} available at ${selectedStore.name})`,
+        );
       }
     });
 
     if (invalidItems.length > 0) {
-      toast.error(`Cannot checkout. Issues with:\n${invalidItems.join('\n')}`);
+      toast.error(`Cannot checkout. Issues with:\n${invalidItems.join("\n")}`);
       // Reload inventory to sync
       await loadProductsAndInventory();
       return;
     }
 
     setCheckingOut(true);
+    const transactionId = Date.now().toString();
+    const now = new Date();
     const receipt = generateReceipt(method);
-    
+
     // Create sale record - backend will handle inventory deduction
     try {
       await createSale({
-        transactionId: Date.now().toString(),
-        date: new Date().toISOString(),
-        location: selectedStore?.name || 'Unknown Store',
-        storeId: selectedStore?.id || '',
-        cashier: currentUser?.fullName || currentUser?.username || 'Unknown User',
-        userId: currentUser?.id || '',
-        username: currentUser?.username || 'Unknown',
-        customer: customer ? { name: customer.name, phone: customer.phone, email: customer.email } : null,
-        items: cart.map(item => ({
+        transactionId: transactionId,
+        date: now.toISOString(),
+        location: selectedStore?.name || "Unknown Store",
+        storeId: selectedStore?.id || "",
+        cashier:
+          currentUser?.fullName || currentUser?.username || "Unknown User",
+        userId: currentUser?.id || "",
+        username: currentUser?.username || "Unknown",
+        customer: customer
+          ? {
+              name: customer.name,
+              phone: customer.phone,
+              email: customer.email,
+            }
+          : null,
+        items: cart.map((item) => ({
           productId: item.id,
           name: item.name,
           price: item.price,
@@ -314,24 +475,40 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         total: total,
         paymentMethod: method,
       });
-      
+
       toast.success(`Sale recorded successfully at ${selectedStore?.name}!`);
-      
-      // Show receipt in alert (in production, this would print or email)
-      alert(receipt);
-      
+
+      // Show receipt modal with sale data
+      setReceiptData({
+        time: now.toLocaleString(),
+        transactionId: transactionId,
+        items: cart.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          discount: item.discount,
+          total: calculateItemTotal(item),
+        })),
+        subtotal: subtotal,
+        globalDiscount: globalDiscount,
+        tax: tax,
+        total: total,
+      });
+      setShowReceiptModal(true);
+
       // Clear cart
       clearCart();
-      
+
       // Reload inventory from backend to get updated stock levels
-      toast.info('Updating inventory levels...');
+      toast.info("Updating inventory levels...");
       await loadProductsAndInventory();
-      
-      toast.success(`✅ Inventory updated! Stock levels refreshed at ${selectedStore?.name}`);
-      
+
+      toast.success(
+        `✅ Inventory updated! Stock levels refreshed at ${selectedStore?.name}`,
+      );
     } catch (error) {
-      console.error('Error creating sale:', error);
-      toast.error('Failed to record sale. Please try again.');
+      console.error("Error creating sale:", error);
+      toast.error("Failed to record sale. Please try again.");
     } finally {
       setCheckingOut(false);
     }
@@ -339,9 +516,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
 
   const generateReceipt = (paymentMethod: string): string => {
     const now = new Date();
-    let receipt = '========================================\n';
-    receipt += '       LZT MEAT PRODUCTS\n';
-    receipt += '========================================\n';
+    let receipt = "========================================\n";
+    receipt += "       LZT MEAT PRODUCTS\n";
+    receipt += "========================================\n";
     receipt += `Date: ${now.toLocaleDateString()}\n`;
     receipt += `Time: ${now.toLocaleTimeString()}\n`;
     receipt += `Transaction #: ${Date.now()}\n`;
@@ -349,9 +526,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       receipt += `Customer: ${customer.name}\n`;
       receipt += `Phone: ${customer.phone}\n`;
     }
-    receipt += '========================================\n\n';
-    
-    cart.forEach(item => {
+    receipt += "========================================\n\n";
+
+    cart.forEach((item) => {
       receipt += `${item.name}\n`;
       receipt += `  ${item.quantity} x ₱${item.price.toFixed(2)} = ₱${(item.price * item.quantity).toFixed(2)}\n`;
       if (item.discount > 0) {
@@ -359,27 +536,27 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       }
       receipt += `  Subtotal: ₱${calculateItemTotal(item).toFixed(2)}\n\n`;
     });
-    
-    receipt += '----------------------------------------\n';
+
+    receipt += "----------------------------------------\n";
     receipt += `Subtotal: ₱${subtotal.toFixed(2)}\n`;
     if (globalDiscount > 0) {
       receipt += `Global Discount (${globalDiscount}%): -₱${globalDiscountAmount.toFixed(2)}\n`;
     }
     receipt += `Tax (8%): ₱${tax.toFixed(2)}\n`;
-    receipt += '----------------------------------------\n';
+    receipt += "----------------------------------------\n";
     receipt += `TOTAL: ₱${total.toFixed(2)}\n`;
     receipt += `Payment Method: ${paymentMethod}\n`;
-    receipt += '========================================\n';
-    receipt += '     Thank you for your business!\n';
-    receipt += '========================================\n';
-    
+    receipt += "========================================\n";
+    receipt += "     Thank you for your business!\n";
+    receipt += "========================================\n";
+
     return receipt;
   };
 
   // Product Management Functions
   const handleSaveProduct = (product: Product) => {
     if (editingProduct) {
-      setProducts(products.map(p => p.id === product.id ? product : p));
+      setProducts(products.map((p) => (p.id === product.id ? product : p)));
     } else {
       setProducts([...products, { ...product, id: Date.now().toString() }]);
     }
@@ -388,8 +565,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   };
 
   const handleDeleteProduct = (productId: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(p => p.id !== productId));
+    if (confirm("Are you sure you want to delete this product?")) {
+      setProducts(products.filter((p) => p.id !== productId));
     }
   };
 
@@ -403,16 +580,16 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             <Store className="w-5 h-5 text-primary" />
             <label className="text-sm font-medium">Active Store:</label>
             <select
-              value={selectedStore?.id || ''}
+              value={selectedStore?.id || ""}
               onChange={(e) => {
-                const store = stores.find(s => s.id === e.target.value);
+                const store = stores.find((s) => s.id === e.target.value);
                 setSelectedStore(store || null);
                 setCart([]); // Clear cart when switching stores
               }}
               className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={!canSwitchStores}
             >
-              {stores.map(store => (
+              {stores.map((store) => (
                 <option key={store.id} value={store.id}>
                   {store.name} - {store.address}
                 </option>
@@ -428,10 +605,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           </div>
           {selectedStore && (
             <p className="text-xs text-muted-foreground mt-2 ml-8">
-              {canSwitchStores 
+              {canSwitchStores
                 ? `All transactions will be recorded at ${selectedStore.name}`
-                : `You are assigned to ${selectedStore.name}. All transactions will be recorded here.`
-              }
+                : `You are assigned to ${selectedStore.name}. All transactions will be recorded here.`}
             </p>
           )}
         </div>
@@ -454,7 +630,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           >
             <UserPlus className="w-4 h-4" />
             <span className="hidden sm:inline">
-              {customer ? customer.name : 'Add Customer'}
+              {customer ? customer.name : "Add Customer"}
             </span>
           </button>
           <button
@@ -463,7 +639,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
             title="Refresh inventory from database"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Sync Inventory</span>
           </button>
         </div>
@@ -479,22 +655,40 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               <input
                 type="text"
                 placeholder="Customer Name"
-                value={customer?.name || ''}
-                onChange={(e) => setCustomer({ name: e.target.value, phone: customer?.phone || '', email: customer?.email || '' })}
+                value={customer?.name || ""}
+                onChange={(e) =>
+                  setCustomer({
+                    name: e.target.value,
+                    phone: customer?.phone || "",
+                    email: customer?.email || "",
+                  })
+                }
                 className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="tel"
                 placeholder="Phone Number"
-                value={customer?.phone || ''}
-                onChange={(e) => setCustomer({ name: customer?.name || '', phone: e.target.value, email: customer?.email || '' })}
+                value={customer?.phone || ""}
+                onChange={(e) =>
+                  setCustomer({
+                    name: customer?.name || "",
+                    phone: e.target.value,
+                    email: customer?.email || "",
+                  })
+                }
                 className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="email"
                 placeholder="Email"
-                value={customer?.email || ''}
-                onChange={(e) => setCustomer({ name: customer?.name || '', phone: customer?.phone || '', email: e.target.value })}
+                value={customer?.email || ""}
+                onChange={(e) =>
+                  setCustomer({
+                    name: customer?.name || "",
+                    phone: customer?.phone || "",
+                    email: e.target.value,
+                  })
+                }
                 className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -530,26 +724,26 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          
+
           <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => setSelectedCategory('All')}
+              onClick={() => setSelectedCategory("All")}
               className={`px-4 py-2 rounded-lg transition-colors text-sm ${
-                selectedCategory === 'All'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background border border-border hover:bg-accent'
+                selectedCategory === "All"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background border border-border hover:bg-accent"
               }`}
             >
               All
             </button>
-            {categories.map(category => (
+            {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.name)}
                 className={`px-4 py-2 rounded-lg transition-colors text-sm ${
                   selectedCategory === category.name
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background border border-border hover:bg-accent'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background border border-border hover:bg-accent"
                 }`}
               >
                 {category.name}
@@ -561,14 +755,16 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         {/* Products Grid */}
         <div className="flex-1 overflow-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {filteredProducts.map(product => (
+            {filteredProducts.map((product) => (
               <div
                 key={product.id}
                 className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all group"
               >
                 <div className="flex flex-col h-full">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium text-sm flex-1">{product.name}</h3>
+                    <h3 className="font-medium text-sm flex-1">
+                      {product.name}
+                    </h3>
                     <div className="flex gap-1">
                       <button
                         onClick={(e) => {
@@ -594,11 +790,17 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                   <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-2">
                     {product.category}
                   </span>
-                  <p className="text-xs text-muted-foreground mb-3">SKU: {product.sku}</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    SKU: {product.sku}
+                  </p>
                   <div className="mt-auto flex justify-between items-end">
                     <div>
-                      <p className="text-xl text-primary">₱{product.price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Stock: {product.stock}</p>
+                      <p className="text-xl text-primary">
+                        ₱{product.price.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Stock: {product.stock}
+                      </p>
                     </div>
                     <button
                       onClick={() => addToCart(product)}
@@ -635,12 +837,14 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             </div>
           ) : (
             <div className="space-y-3">
-              {cart.map(item => (
+              {cart.map((item) => (
                 <div key={item.id} className="bg-muted/50 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground">₱{item.price.toFixed(2)} each</p>
+                      <p className="text-xs text-muted-foreground">
+                        ₱{item.price.toFixed(2)} each
+                      </p>
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
@@ -649,7 +853,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1 bg-background rounded-lg border border-border">
                       <button
@@ -659,7 +863,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-8 text-center text-sm">{item.quantity}</span>
+                      <span className="w-8 text-center text-sm">
+                        {item.quantity}
+                      </span>
                       <button
                         onClick={() => updateQuantity(item.id, 1)}
                         disabled={item.quantity >= item.stock}
@@ -668,7 +874,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                    
+
                     <div className="flex items-center gap-1 flex-1">
                       <Percent className="w-4 h-4 text-muted-foreground" />
                       <input
@@ -676,17 +882,24 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                         min="0"
                         max="100"
                         value={item.discount}
-                        onChange={(e) => updateItemDiscount(item.id, parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItemDiscount(
+                            item.id,
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
                         placeholder="0"
                         className="w-full px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                       <span className="text-xs">%</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Total:</span>
-                    <span className="text-primary font-medium">₱{calculateItemTotal(item).toFixed(2)}</span>
+                    <span className="text-primary font-medium">
+                      ₱{calculateItemTotal(item).toFixed(2)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -706,7 +919,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                 min="0"
                 max="100"
                 value={globalDiscount}
-                onChange={(e) => setGlobalDiscount(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setGlobalDiscount(parseFloat(e.target.value) || 0)
+                }
                 placeholder="0"
                 className="w-16 px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
@@ -730,7 +945,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               </div>
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-base">Total:</span>
-                <span className="text-xl text-primary">₱{total.toFixed(2)}</span>
+                <span className="text-xl text-primary">
+                  ₱{total.toFixed(2)}
+                </span>
               </div>
             </div>
 
@@ -752,23 +969,25 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm text-center mb-2">Select Payment Method</p>
+                <p className="text-sm text-center mb-2">
+                  Select Payment Method
+                </p>
                 <button
-                  onClick={() => handleCheckout('Cash')}
+                  onClick={() => handleCheckout("Cash")}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   <Banknote className="w-5 h-5" />
                   Cash
                 </button>
                 <button
-                  onClick={() => handleCheckout('Card')}
+                  onClick={() => handleCheckout("Card")}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   <CreditCard className="w-5 h-5" />
                   Card
                 </button>
                 <button
-                  onClick={() => handleCheckout('Mobile Payment')}
+                  onClick={() => handleCheckout("Mobile Payment")}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   <Smartphone className="w-5 h-5" />
@@ -797,6 +1016,116 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           }}
         />
       )}
+
+      {/* Receipt Modal */}
+      {showReceiptModal && receiptData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-primary mb-2">RECEIPT</h2>
+              <p className="text-sm text-muted-foreground">
+                Transaction Completed
+              </p>
+            </div>
+
+            <div className="border-t border-b border-border py-4 mb-6 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Date & Time:</span>
+                <span className="font-medium">{receiptData.time}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Transaction #:</span>
+                <span className="font-medium">{receiptData.transactionId}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Store:</span>
+                <span className="font-medium">
+                  {selectedStore?.name || "Main Store"}
+                </span>
+              </div>
+              {customer && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Customer:</span>
+                  <span className="font-medium">{customer.name}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <h3 className="font-semibold text-sm mb-3">Items</h3>
+              <div className="space-y-2">
+                {receiptData.items.map((item, idx) => (
+                  <div key={idx} className="text-sm">
+                    <div className="flex justify-between">
+                      <span>{item.name}</span>
+                      <span className="font-medium">
+                        ₱{item.total.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground pl-2">
+                      {item.quantity} x ₱{item.price.toFixed(2)}
+                      {item.discount > 0 && (
+                        <span className="ml-2 text-orange-600">
+                          -{item.discount}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-b border-border py-3 mb-6 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span>₱{receiptData.subtotal.toFixed(2)}</span>
+              </div>
+              {receiptData.globalDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Discount ({receiptData.globalDiscount}%):
+                  </span>
+                  <span className="text-orange-600">
+                    -₱
+                    {(
+                      (receiptData.subtotal * receiptData.globalDiscount) /
+                      100
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax (8%):</span>
+                <span>₱{receiptData.tax.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="bg-primary/10 rounded-lg p-4 mb-6">
+              <div className="flex justify-between items-baseline">
+                <span className="text-lg font-semibold text-foreground">
+                  Total:
+                </span>
+                <span className="text-3xl font-bold text-primary">
+                  ₱{receiptData.total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center mb-6">
+              <p className="text-sm text-muted-foreground font-medium">
+                Thank you for your business!
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowReceiptModal(false)}
+              className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+            >
+              Close Receipt
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -812,12 +1141,12 @@ function ProductManagerModal({
   onClose: () => void;
 }) {
   const [formData, setFormData] = useState({
-    name: product?.name || '',
-    sku: product?.sku || '',
-    category: product?.category || '',
-    unit: 'kg',
+    name: product?.name || "",
+    sku: product?.sku || "",
+    category: product?.category || "",
+    unit: "kg",
     price: product?.price || 0,
-    storeLocation: '',
+    storeLocation: "",
     initialQuantity: product?.stock || 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -834,11 +1163,11 @@ function ProductManagerModal({
       const categoriesData = await getCategories();
       setCategories(categoriesData);
       if (categoriesData.length > 0 && !formData.category) {
-        setFormData(prev => ({ ...prev, category: categoriesData[0].name }));
+        setFormData((prev) => ({ ...prev, category: categoriesData[0].name }));
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
-      toast.error('Failed to load categories');
+      console.error("Error loading categories:", error);
+      toast.error("Failed to load categories");
     }
   };
 
@@ -847,24 +1176,24 @@ function ProductManagerModal({
       const storesData = await getStores();
       setStores(storesData);
       if (storesData.length > 0 && !formData.storeLocation) {
-        setFormData(prev => ({ ...prev, storeLocation: storesData[0].name }));
+        setFormData((prev) => ({ ...prev, storeLocation: storesData[0].name }));
       }
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.sku || formData.price <= 0) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
     if (!product && !formData.storeLocation) {
-      toast.error('Please select a store location');
+      toast.error("Please select a store location");
       return;
     }
 
@@ -875,17 +1204,20 @@ function ProductManagerModal({
 
       if (product) {
         // Update existing product (edit mode)
-        toast.info('Edit functionality not yet implemented');
+        toast.info("Edit functionality not yet implemented");
         onClose();
       } else {
         // Add new product to database
         const existingProducts = await getProducts();
         const duplicateProduct = existingProducts.find(
-          (p: APIProduct) => p.name.toLowerCase() === formData.name.toLowerCase()
+          (p: APIProduct) =>
+            p.name.toLowerCase() === formData.name.toLowerCase(),
         );
 
         if (duplicateProduct) {
-          toast.error(`Product "${formData.name}" already exists in the database!`);
+          toast.error(
+            `Product "${formData.name}" already exists in the database!`,
+          );
           setIsSubmitting(false);
           return;
         }
@@ -899,17 +1231,23 @@ function ProductManagerModal({
         });
 
         // Create inventory record for the selected store with initial quantity
-        await addInventory(newProduct.id, formData.storeLocation, formData.initialQuantity);
+        await addInventory(
+          newProduct.id,
+          formData.storeLocation,
+          formData.initialQuantity,
+        );
 
-        toast.success(`Product added to ${formData.storeLocation} with ${formData.initialQuantity} ${formData.unit}`);
-        
+        toast.success(
+          `Product added to ${formData.storeLocation} with ${formData.initialQuantity} ${formData.unit}`,
+        );
+
         // Reload products
         window.location.reload();
         onClose();
       }
     } catch (error) {
-      console.error('Error saving product:', error);
-      toast.error('Failed to save product');
+      console.error("Error saving product:", error);
+      toast.error("Failed to save product");
     } finally {
       setIsSubmitting(false);
     }
@@ -919,7 +1257,7 @@ function ProductManagerModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2>{product ? 'Edit Product' : 'Add New Product'}</h2>
+          <h2>{product ? "Edit Product" : "Add New Product"}</h2>
           <button onClick={onClose} className="p-2 hover:bg-accent rounded">
             <X className="w-5 h-5" />
           </button>
@@ -931,7 +1269,9 @@ function ProductManagerModal({
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -942,7 +1282,9 @@ function ProductManagerModal({
             <input
               type="text"
               value={formData.sku}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, sku: e.target.value })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -953,7 +1295,9 @@ function ProductManagerModal({
             {categories.length > 0 ? (
               <select
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               >
@@ -975,7 +1319,9 @@ function ProductManagerModal({
             <label className="block text-sm mb-2">Unit</label>
             <select
               value={formData.unit}
-              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, unit: e.target.value })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="kg">kg</option>
@@ -993,7 +1339,12 @@ function ProductManagerModal({
               step="0.01"
               min="0"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  price: parseFloat(e.target.value) || 0,
+                })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -1006,7 +1357,12 @@ function ProductManagerModal({
                 {stores.length > 0 ? (
                   <select
                     value={formData.storeLocation}
-                    onChange={(e) => setFormData({ ...formData, storeLocation: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        storeLocation: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   >
@@ -1019,7 +1375,8 @@ function ProductManagerModal({
                   </select>
                 ) : (
                   <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                    No store locations available. Please create store locations first.
+                    No store locations available. Please create store locations
+                    first.
                   </div>
                 )}
               </div>
@@ -1031,7 +1388,12 @@ function ProductManagerModal({
                   min="0"
                   step="0.1"
                   value={formData.initialQuantity}
-                  onChange={(e) => setFormData({ ...formData, initialQuantity: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      initialQuantity: parseFloat(e.target.value) || 0,
+                    })
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
@@ -1054,7 +1416,11 @@ function ProductManagerModal({
               disabled={isSubmitting}
             >
               <Save className="w-4 h-4" />
-              {isSubmitting ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
+              {isSubmitting
+                ? "Saving..."
+                : product
+                  ? "Update Product"
+                  : "Add Product"}
             </button>
           </div>
         </form>

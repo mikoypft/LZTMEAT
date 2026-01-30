@@ -1,9 +1,48 @@
-import { useState, useEffect } from 'react';
-import { Package, Search, Filter, AlertTriangle, TrendingUp, Download, FileText, RefreshCw, Edit, X, Plus, Minus, Save, Trash2, Store } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getProducts, getInventory, updateInventoryQuantity, addProduct, addInventory, deleteAllProducts, deleteProduct, getStores, type Product as APIProduct, type InventoryRecord, type StoreLocation } from '@/utils/api';
-import { toast } from 'sonner';
-import { getCategories, type Category } from '@/utils/api';
+import { useState, useEffect } from "react";
+import {
+  Package,
+  Search,
+  Filter,
+  AlertTriangle,
+  TrendingUp,
+  Download,
+  FileText,
+  RefreshCw,
+  Edit,
+  X,
+  Plus,
+  Minus,
+  Save,
+  Trash2,
+  Store,
+  Lock,
+} from "lucide-react";
+import { UserData } from "@/app/components/LoginPage";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  getProducts,
+  getInventory,
+  updateInventoryQuantity,
+  addProduct,
+  addInventory,
+  deleteAllProducts,
+  deleteProduct,
+  getStores,
+  type Product as APIProduct,
+  type InventoryRecord,
+  type StoreLocation,
+} from "@/utils/api";
+import { toast } from "sonner";
+import { getCategories, type Category } from "@/utils/api";
 
 interface InventoryItem {
   id: string;
@@ -26,7 +65,7 @@ interface StockAdjustment {
   itemId: string;
   location: string;
   quantity: number;
-  type: 'add' | 'remove';
+  type: "add" | "remove";
   reason: string;
   date: string;
   performedBy: string;
@@ -34,192 +73,196 @@ interface StockAdjustment {
 
 const MOCK_INVENTORY: InventoryItem[] = [
   {
-    id: '1',
-    name: 'Longanisa (Sweet)',
-    sku: 'SAU-001',
-    category: 'Sausages',
+    id: "1",
+    name: "Longanisa (Sweet)",
+    sku: "SAU-001",
+    category: "Sausages",
     stockProduction: 450,
-    storeStocks: { 'Store 1': 150, 'Store 2': 120 },
+    storeStocks: { "Store 1": 150, "Store 2": 120 },
     totalStock: 815,
     minStockLevel: 100,
     reorderPoint: 200,
     reorderQuantity: 500,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 14:30',
-    price: 10.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 14:30",
+    price: 10.0,
   },
   {
-    id: '2',
-    name: 'Longanisa (Spicy)',
-    sku: 'SAU-002',
-    category: 'Sausages',
+    id: "2",
+    name: "Longanisa (Spicy)",
+    sku: "SAU-002",
+    category: "Sausages",
     stockProduction: 320,
-    storeStocks: { 'Store 1': 120, 'Store 2': 100 },
+    storeStocks: { "Store 1": 120, "Store 2": 100 },
     totalStock: 620,
     minStockLevel: 80,
     reorderPoint: 150,
     reorderQuantity: 400,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 14:15',
-    price: 12.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 14:15",
+    price: 12.0,
   },
   {
-    id: '3',
-    name: 'Tocino (Pork)',
-    sku: 'CUR-001',
-    category: 'Cured Meats',
+    id: "3",
+    name: "Tocino (Pork)",
+    sku: "CUR-001",
+    category: "Cured Meats",
     stockProduction: 280,
-    storeStocks: { 'Store 1': 80, 'Store 2': 65 },
+    storeStocks: { "Store 1": 80, "Store 2": 65 },
     totalStock: 470,
     minStockLevel: 70,
     reorderPoint: 130,
     reorderQuantity: 350,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 13:45',
-    price: 15.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 13:45",
+    price: 15.0,
   },
   {
-    id: '4',
-    name: 'Tapa (Beef)',
-    sku: 'CUR-002',
-    category: 'Cured Meats',
+    id: "4",
+    name: "Tapa (Beef)",
+    sku: "CUR-002",
+    category: "Cured Meats",
     stockProduction: 220,
-    storeStocks: { 'Store 1': 65, 'Store 2': 48 },
+    storeStocks: { "Store 1": 65, "Store 2": 48 },
     totalStock: 385,
     minStockLevel: 60,
     reorderPoint: 120,
     reorderQuantity: 300,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 12:30',
-    price: 20.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 12:30",
+    price: 20.0,
   },
   {
-    id: '5',
-    name: 'Chorizo de Bilbao',
-    sku: 'SAU-003',
-    category: 'Sausages',
+    id: "5",
+    name: "Chorizo de Bilbao",
+    sku: "SAU-003",
+    category: "Sausages",
     stockProduction: 350,
-    storeStocks: { 'Store 1': 90, 'Store 2': 75 },
+    storeStocks: { "Store 1": 90, "Store 2": 75 },
     totalStock: 600,
     minStockLevel: 80,
     reorderPoint: 150,
     reorderQuantity: 400,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 15:00',
-    price: 14.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 15:00",
+    price: 14.0,
   },
   {
-    id: '6',
-    name: 'Shanghai (Spring Rolls)',
-    sku: 'RTC-001',
-    category: 'Ready-to-Cook',
+    id: "6",
+    name: "Shanghai (Spring Rolls)",
+    sku: "RTC-001",
+    category: "Ready-to-Cook",
     stockProduction: 500,
-    storeStocks: { 'Store 1': 200, 'Store 2': 180 },
+    storeStocks: { "Store 1": 200, "Store 2": 180 },
     totalStock: 1045,
     minStockLevel: 150,
     reorderPoint: 300,
     reorderQuantity: 600,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 14:45',
-    price: 8.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 14:45",
+    price: 8.0,
   },
   {
-    id: '7',
-    name: 'Embutido (Meatloaf)',
-    sku: 'PRO-001',
-    category: 'Processed Meats',
+    id: "7",
+    name: "Embutido (Meatloaf)",
+    sku: "PRO-001",
+    category: "Processed Meats",
     stockProduction: 260,
-    storeStocks: { 'Store 1': 75, 'Store 2': 60 },
+    storeStocks: { "Store 1": 75, "Store 2": 60 },
     totalStock: 450,
     minStockLevel: 60,
     reorderPoint: 120,
     reorderQuantity: 300,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 13:15',
-    price: 18.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 13:15",
+    price: 18.0,
   },
   {
-    id: '8',
-    name: 'Filipino Hotdog',
-    sku: 'SAU-004',
-    category: 'Sausages',
+    id: "8",
+    name: "Filipino Hotdog",
+    sku: "SAU-004",
+    category: "Sausages",
     stockProduction: 420,
-    storeStocks: { 'Store 1': 180, 'Store 2': 145 },
+    storeStocks: { "Store 1": 180, "Store 2": 145 },
     totalStock: 900,
     minStockLevel: 120,
     reorderPoint: 250,
     reorderQuantity: 550,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 14:50',
-    price: 11.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 14:50",
+    price: 11.0,
   },
   {
-    id: '9',
-    name: 'Ham (Sliced)',
-    sku: 'PRO-002',
-    category: 'Processed Meats',
+    id: "9",
+    name: "Ham (Sliced)",
+    sku: "PRO-002",
+    category: "Processed Meats",
     stockProduction: 190,
-    storeStocks: { 'Store 1': 55, 'Store 2': 45 },
+    storeStocks: { "Store 1": 55, "Store 2": 45 },
     totalStock: 340,
     minStockLevel: 50,
     reorderPoint: 100,
     reorderQuantity: 250,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 13:30',
-    price: 25.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 13:30",
+    price: 25.0,
   },
   {
-    id: '10',
-    name: 'Bacon (Smoked)',
-    sku: 'PRO-003',
-    category: 'Processed Meats',
+    id: "10",
+    name: "Bacon (Smoked)",
+    sku: "PRO-003",
+    category: "Processed Meats",
     stockProduction: 230,
-    storeStocks: { 'Store 1': 70, 'Store 2': 55 },
+    storeStocks: { "Store 1": 70, "Store 2": 55 },
     totalStock: 420,
     minStockLevel: 60,
     reorderPoint: 120,
     reorderQuantity: 300,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 14:20',
-    price: 22.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 14:20",
+    price: 22.0,
   },
   {
-    id: '11',
-    name: 'Ground Pork',
-    sku: 'GRD-001',
-    category: 'Ground Meats',
+    id: "11",
+    name: "Ground Pork",
+    sku: "GRD-001",
+    category: "Ground Meats",
     stockProduction: 380,
-    storeStocks: { 'Store 1': 110, 'Store 2': 95 },
+    storeStocks: { "Store 1": 110, "Store 2": 95 },
     totalStock: 670,
     minStockLevel: 90,
     reorderPoint: 180,
     reorderQuantity: 450,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 15:10',
-    price: 16.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 15:10",
+    price: 16.0,
   },
   {
-    id: '12',
-    name: 'Ground Beef',
-    sku: 'GRD-002',
-    category: 'Ground Meats',
+    id: "12",
+    name: "Ground Beef",
+    sku: "GRD-002",
+    category: "Ground Meats",
     stockProduction: 320,
-    storeStocks: { 'Store 1': 95, 'Store 2': 80 },
+    storeStocks: { "Store 1": 95, "Store 2": 80 },
     totalStock: 570,
     minStockLevel: 80,
     reorderPoint: 160,
     reorderQuantity: 400,
-    unit: 'KG',
-    lastUpdated: '2026-01-13 15:05',
-    price: 17.00
+    unit: "KG",
+    lastUpdated: "2026-01-13 15:05",
+    price: 17.0,
   },
 ];
 
-export function InventoryPage() {
+export function InventoryPage({
+  currentUser,
+}: {
+  currentUser: UserData | null;
+}) {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -229,6 +272,13 @@ export function InventoryPage() {
   const [showEncodeProductModal, setShowEncodeProductModal] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [showDeleteProductModal, setShowDeleteProductModal] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
+  const [deleteProductName, setDeleteProductName] = useState("");
 
   // Load inventory data from database
   useEffect(() => {
@@ -243,22 +293,24 @@ export function InventoryPage() {
       const [productsData, inventoryData, storesData] = await Promise.all([
         getProducts(),
         getInventory(),
-        getStores()
+        getStores(),
       ]);
 
       // Combine products with inventory data across all locations
       const inventoryItems = productsData.map((product: APIProduct) => {
-        const productionInv = inventoryData.find((i: InventoryRecord) => 
-          i.productId === product.id && i.location === 'Production Facility'
+        const productionInv = inventoryData.find(
+          (i: InventoryRecord) =>
+            i.productId === product.id && i.location === "Production Facility",
         );
-        
+
         // Build store stocks dynamically
         const storeStocks: { [storeName: string]: number } = {};
         let totalStoreStock = 0;
-        
+
         storesData.forEach((store: StoreLocation) => {
-          const storeInv = inventoryData.find((i: InventoryRecord) => 
-            i.productId === product.id && i.location === store.name
+          const storeInv = inventoryData.find(
+            (i: InventoryRecord) =>
+              i.productId === product.id && i.location === store.name,
           );
           const quantity = storeInv?.quantity || 0;
           storeStocks[store.name] = quantity;
@@ -279,52 +331,88 @@ export function InventoryPage() {
           minStockLevel: 50,
           reorderPoint: 100,
           reorderQuantity: 200,
-          unit: product.unit || 'kg',
+          unit: product.unit || "kg",
           lastUpdated: productionInv?.lastUpdated || new Date().toISOString(),
-          price: product.price
+          price: product.price,
         };
       });
 
       setInventory(inventoryItems);
     } catch (error) {
-      console.error('Error loading inventory:', error);
-      toast.error('Failed to load inventory data');
+      console.error("Error loading inventory:", error);
+      toast.error("Failed to load inventory data");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteAllProducts = async () => {
-    if (!confirm('Are you sure you want to delete ALL products from the database? This action cannot be undone!')) {
-      return;
-    }
+    setShowDeleteAllModal(true);
+  };
+
+  const handleConfirmDeleteAllProducts = async () => {
+    setDeleteError("");
+    setDeleteLoading(true);
 
     try {
-      setLoading(true);
+      // Verify password by making API call
+      const response = await fetch(
+        "http://localhost:8000/api/verify-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: currentUser?.id,
+            password: deletePassword,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        setDeleteError("Invalid password. Please try again.");
+        setDeleteLoading(false);
+        return;
+      }
+
+      // Password verified, proceed with deletion
       await deleteAllProducts();
-      toast.success('All products deleted successfully');
+      toast.success("All products deleted successfully");
+      setShowDeleteAllModal(false);
+      setDeletePassword("");
       await loadInventoryData();
     } catch (error) {
-      console.error('Error deleting all products:', error);
-      toast.error('Failed to delete all products');
+      console.error("Error deleting all products:", error);
+      setDeleteError("Failed to delete products. Please try again.");
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product from the database? This action cannot be undone!')) {
-      return;
-    }
+  const handleDeleteProduct = async (
+    productId: string,
+    productName: string,
+  ) => {
+    setDeleteProductId(productId);
+    setDeleteProductName(productName);
+    setShowDeleteProductModal(true);
+  };
+
+  const handleConfirmDeleteProduct = async () => {
+    if (!deleteProductId) return;
 
     try {
       setLoading(true);
-      await deleteProduct(productId);
-      toast.success('Product deleted successfully');
+      await deleteProduct(deleteProductId);
+      toast.success("Product deleted successfully");
+      setShowDeleteProductModal(false);
+      setDeleteProductId(null);
+      setDeleteProductName("");
       await loadInventoryData();
     } catch (error) {
-      console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
+      console.error("Error deleting product:", error);
+      toast.error("Failed to delete product");
     } finally {
       setLoading(false);
     }
@@ -335,8 +423,8 @@ export function InventoryPage() {
       const categoriesData = await getCategories();
       setCategories(categoriesData);
     } catch (error) {
-      console.error('Error loading categories:', error);
-      toast.error('Failed to load categories');
+      console.error("Error loading categories:", error);
+      toast.error("Failed to load categories");
     }
   };
 
@@ -345,35 +433,42 @@ export function InventoryPage() {
       const storesData = await getStores();
       setStoreLocations(storesData);
     } catch (error) {
-      console.error('Error loading store locations:', error);
-      toast.error('Failed to load store locations');
+      console.error("Error loading store locations:", error);
+      toast.error("Failed to load store locations");
     }
   };
 
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = 
+  const filteredInventory = inventory.filter((item) => {
+    const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesLowStock = !lowStockOnly || item.totalStock < item.minStockLevel;
+    const matchesCategory =
+      selectedCategory === "All" || item.category === selectedCategory;
+    const matchesLowStock =
+      !lowStockOnly || item.totalStock < item.minStockLevel;
     return matchesSearch && matchesCategory && matchesLowStock;
   });
 
-  const lowStockItems = inventory.filter(item => item.totalStock < item.minStockLevel);
-  const reorderItems = inventory.filter(item => item.totalStock <= item.reorderPoint);
+  const lowStockItems = inventory.filter(
+    (item) => item.totalStock < item.minStockLevel,
+  );
+  const reorderItems = inventory.filter(
+    (item) => item.totalStock <= item.reorderPoint,
+  );
   const totalValue = inventory.reduce((sum, item) => sum + item.totalStock, 0);
 
-  const stockByLocation = inventory.map(item => {
+  const stockByLocation = inventory.map((item) => {
     const chartData: any = {
-      name: item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name,
+      name:
+        item.name.length > 15 ? item.name.substring(0, 15) + "..." : item.name,
       Production: item.stockProduction,
     };
-    
+
     // Add each store's stock dynamically
-    storeLocations.forEach(store => {
+    storeLocations.forEach((store) => {
       chartData[store.name] = item.storeStocks[store.name] || 0;
     });
-    
+
     return chartData;
   });
 
@@ -387,7 +482,9 @@ export function InventoryPage() {
 
     // Check if production has enough stock
     if (selectedItem.stockProduction < adjustment.quantity) {
-      toast.error(`Not enough stock in Production! Available: ${selectedItem.stockProduction} ${selectedItem.unit}`);
+      toast.error(
+        `Not enough stock in Production! Available: ${selectedItem.stockProduction} ${selectedItem.unit}`,
+      );
       return;
     }
 
@@ -395,27 +492,30 @@ export function InventoryPage() {
       // Update production facility (deduct)
       await updateInventoryQuantity(
         selectedItem.id,
-        'Production Facility',
-        selectedItem.stockProduction - adjustment.quantity
+        "Production Facility",
+        selectedItem.stockProduction - adjustment.quantity,
       );
 
       // Update store (add)
-      const currentStoreStock = selectedItem.storeStocks[adjustment.storeName] || 0;
+      const currentStoreStock =
+        selectedItem.storeStocks[adjustment.storeName] || 0;
       await updateInventoryQuantity(
         selectedItem.id,
         adjustment.storeName,
-        currentStoreStock + adjustment.quantity
+        currentStoreStock + adjustment.quantity,
       );
 
-      toast.success(`Transferred ${adjustment.quantity} ${selectedItem.unit} from Production to ${adjustment.storeName}`);
+      toast.success(
+        `Transferred ${adjustment.quantity} ${selectedItem.unit} from Production to ${adjustment.storeName}`,
+      );
 
       // Reload inventory to reflect changes
       await loadInventoryData();
       setShowAdjustmentModal(false);
       setSelectedItem(null);
     } catch (error) {
-      console.error('Error adjusting stock:', error);
-      toast.error('Failed to adjust stock');
+      console.error("Error adjusting stock:", error);
+      toast.error("Failed to adjust stock");
     }
   };
 
@@ -423,17 +523,21 @@ export function InventoryPage() {
   const handleUpdateItem = (updatedItem: InventoryItem) => {
     // Calculate total stock dynamically from all stores
     let totalStoreStock = 0;
-    Object.values(updatedItem.storeStocks).forEach(stock => {
+    Object.values(updatedItem.storeStocks).forEach((stock) => {
       totalStoreStock += stock;
     });
 
-    setInventory(inventory.map(item =>
-      item.id === updatedItem.id ? {
-        ...updatedItem,
-        totalStock: updatedItem.stockProduction + totalStoreStock,
-        lastUpdated: new Date().toLocaleString()
-      } : item
-    ));
+    setInventory(
+      inventory.map((item) =>
+        item.id === updatedItem.id
+          ? {
+              ...updatedItem,
+              totalStock: updatedItem.stockProduction + totalStoreStock,
+              lastUpdated: new Date().toLocaleString(),
+            }
+          : item,
+      ),
+    );
     setShowAddProductModal(false);
     setSelectedItem(null);
   };
@@ -441,11 +545,24 @@ export function InventoryPage() {
   // Export to CSV
   const exportToCSV = () => {
     // Build dynamic headers with all store names
-    const storeHeaders = storeLocations.map(store => store.name);
-    const headers = ['SKU', 'Product Name', 'Category', 'Production', ...storeHeaders, 'Total Stock', 'Min Level', 'Reorder Point', 'Unit', 'Last Updated'];
-    
-    const rows = inventory.map(item => {
-      const storeValues = storeLocations.map(store => item.storeStocks[store.name] || 0);
+    const storeHeaders = storeLocations.map((store) => store.name);
+    const headers = [
+      "SKU",
+      "Product Name",
+      "Category",
+      "Production",
+      ...storeHeaders,
+      "Total Stock",
+      "Min Level",
+      "Reorder Point",
+      "Unit",
+      "Last Updated",
+    ];
+
+    const rows = inventory.map((item) => {
+      const storeValues = storeLocations.map(
+        (store) => item.storeStocks[store.name] || 0,
+      );
       return [
         item.sku,
         item.name,
@@ -456,36 +573,24 @@ export function InventoryPage() {
         item.minStockLevel,
         item.reorderPoint,
         item.unit,
-        item.lastUpdated
+        item.lastUpdated,
       ];
     });
 
-    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `inventory-report-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
   };
 
   // Generate Reorder Report
   const generateReorderReport = () => {
-    let report = '=== REORDER REPORT ===\n';
-    report += `Generated: ${new Date().toLocaleString()}\n\n`;
-    report += `Items requiring reorder: ${reorderItems.length}\n\n`;
-    
-    reorderItems.forEach(item => {
-      report += `─────────────────────────────────\n`;
-      report += `Product: ${item.name}\n`;
-      report += `SKU: ${item.sku}\n`;
-      report += `Current Stock: ${item.totalStock} ${item.unit}\n`;
-      report += `Reorder Point: ${item.reorderPoint} ${item.unit}\n`;
-      report += `Recommended Order: ${item.reorderQuantity} ${item.unit}\n`;
-      report += `Status: ${item.totalStock < item.minStockLevel ? 'CRITICAL' : 'LOW'}\n\n`;
-    });
-
-    alert(report);
+    setShowReorderReport(true);
   };
 
   return (
@@ -499,8 +604,12 @@ export function InventoryPage() {
                 <Package className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-primary mb-1">{inventory.length}</p>
-            <p className="text-xs lg:text-sm text-muted-foreground">Total Products</p>
+            <p className="text-2xl lg:text-3xl text-primary mb-1">
+              {inventory.length}
+            </p>
+            <p className="text-xs lg:text-sm text-muted-foreground">
+              Total Products
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
@@ -509,8 +618,12 @@ export function InventoryPage() {
                 <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-green-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-green-600 mb-1">{totalValue.toLocaleString()}</p>
-            <p className="text-xs lg:text-sm text-muted-foreground">Total Stock Units</p>
+            <p className="text-2xl lg:text-3xl text-green-600 mb-1">
+              {totalValue.toLocaleString()}
+            </p>
+            <p className="text-xs lg:text-sm text-muted-foreground">
+              Total Stock Units
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
@@ -519,8 +632,12 @@ export function InventoryPage() {
                 <AlertTriangle className="w-5 h-5 lg:w-6 lg:h-6 text-red-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-red-600 mb-1">{lowStockItems.length}</p>
-            <p className="text-xs lg:text-sm text-muted-foreground">Low Stock Alerts</p>
+            <p className="text-2xl lg:text-3xl text-red-600 mb-1">
+              {lowStockItems.length}
+            </p>
+            <p className="text-xs lg:text-sm text-muted-foreground">
+              Low Stock Alerts
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
@@ -529,8 +646,12 @@ export function InventoryPage() {
                 <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 text-orange-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-orange-600 mb-1">{reorderItems.length}</p>
-            <p className="text-xs lg:text-sm text-muted-foreground">Need Reorder</p>
+            <p className="text-2xl lg:text-3xl text-orange-600 mb-1">
+              {reorderItems.length}
+            </p>
+            <p className="text-xs lg:text-sm text-muted-foreground">
+              Need Reorder
+            </p>
           </div>
         </div>
 
@@ -562,22 +683,27 @@ export function InventoryPage() {
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm"
           >
             <RefreshCw className="w-4 h-4" />
-            {showReorderReport ? 'Hide' : 'Show'} Reorder List
+            {showReorderReport ? "Hide" : "Show"} Reorder List
           </button>
           <button
             onClick={loadInventoryData}
             className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
             disabled={loading}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
           <button
             onClick={handleDeleteAllProducts}
             className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-            disabled={loading}
+            disabled={loading || currentUser?.role !== "ADMIN"}
+            title={
+              currentUser?.role !== "ADMIN"
+                ? "Only admins can delete all products"
+                : ""
+            }
           >
-            <Trash2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <Trash2 className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Delete All Products
           </button>
         </div>
@@ -590,29 +716,39 @@ export function InventoryPage() {
               <h3 className="text-orange-900">Items Requiring Reorder</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {reorderItems.map(item => (
+              {reorderItems.map((item) => (
                 <div key={item.id} className="bg-background rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {item.sku}
+                      </p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      item.totalStock < item.minStockLevel 
-                        ? 'bg-red-100 text-red-700' 
-                        : 'bg-orange-100 text-orange-700'
-                    }`}>
-                      {item.totalStock < item.minStockLevel ? 'CRITICAL' : 'LOW'}
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        item.totalStock < item.minStockLevel
+                          ? "bg-red-100 text-red-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}
+                    >
+                      {item.totalStock < item.minStockLevel
+                        ? "CRITICAL"
+                        : "LOW"}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <p className="text-muted-foreground">Current:</p>
-                      <p className="text-orange-600 font-medium">{item.totalStock} {item.unit}</p>
+                      <p className="text-orange-600 font-medium">
+                        {item.totalStock} {item.unit}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Reorder:</p>
-                      <p className="text-green-600 font-medium">{item.reorderQuantity} {item.unit}</p>
+                      <p className="text-green-600 font-medium">
+                        {item.reorderQuantity} {item.unit}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -628,7 +764,12 @@ export function InventoryPage() {
             <ResponsiveContainer width="100%" height={300} minWidth={300}>
               <BarChart data={stockByLocation}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -702,11 +843,14 @@ export function InventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInventory.map(item => {
+                {filteredInventory.map((item) => {
                   const isLowStock = item.totalStock < item.minStockLevel;
                   const needsReorder = item.totalStock <= item.reorderPoint;
                   return (
-                    <tr key={item.id} className="border-b border-border hover:bg-muted/50">
+                    <tr
+                      key={item.id}
+                      className="border-b border-border hover:bg-muted/50"
+                    >
                       <td className="py-3 px-4 text-sm">{item.sku}</td>
                       <td className="py-3 px-4 text-sm">{item.name}</td>
                       <td className="py-3 px-4">
@@ -714,9 +858,14 @@ export function InventoryPage() {
                           {item.category}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right text-sm">{item.stockProduction}</td>
+                      <td className="py-3 px-4 text-right text-sm">
+                        {item.stockProduction}
+                      </td>
                       {storeLocations.map((store) => (
-                        <td key={store.id} className="py-3 px-4 text-right text-sm">
+                        <td
+                          key={store.id}
+                          className="py-3 px-4 text-right text-sm"
+                        >
                           {item.storeStocks[store.name] || 0}
                         </td>
                       ))}
@@ -730,7 +879,9 @@ export function InventoryPage() {
                             Critical
                           </span>
                         ) : needsReorder ? (
-                          <span className="text-orange-600 text-xs">Reorder</span>
+                          <span className="text-orange-600 text-xs">
+                            Reorder
+                          </span>
                         ) : (
                           <span className="text-green-600 text-xs">Normal</span>
                         )}
@@ -758,7 +909,9 @@ export function InventoryPage() {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteProduct(item.id)}
+                            onClick={() =>
+                              handleDeleteProduct(item.id, item.name)
+                            }
                             className="p-1.5 hover:bg-red-600 rounded"
                             title="Delete Product"
                           >
@@ -782,15 +935,24 @@ export function InventoryPage() {
               <h3 className="text-red-900">Critical Low Stock Alerts</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {lowStockItems.map(item => (
-                <div key={item.id} className="flex items-center justify-between bg-background rounded p-3">
+              {lowStockItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between bg-background rounded p-3"
+                >
                   <div>
                     <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
+                    <p className="text-xs text-muted-foreground">
+                      SKU: {item.sku}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-red-600 font-medium">{item.totalStock} {item.unit}</p>
-                    <p className="text-xs text-muted-foreground">Min: {item.minStockLevel}</p>
+                    <p className="text-red-600 font-medium">
+                      {item.totalStock} {item.unit}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Min: {item.minStockLevel}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -830,6 +992,277 @@ export function InventoryPage() {
           onAddProduct={loadInventoryData}
         />
       )}
+
+      {/* Delete All Products Modal */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  Delete All Products
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-800 font-medium mb-2">⚠️ Warning</p>
+              <p className="text-red-700 text-sm">
+                You are about to permanently delete ALL products from the
+                database. This includes all product data, inventory records, and
+                related information.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  Admin Password
+                </div>
+              </label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => {
+                  setDeletePassword(e.target.value);
+                  setDeleteError("");
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && deletePassword && !deleteLoading) {
+                    handleConfirmDeleteAllProducts();
+                  }
+                }}
+                placeholder="Enter your admin password"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-foreground placeholder-muted-foreground"
+                disabled={deleteLoading}
+                autoFocus
+              />
+              {deleteError && (
+                <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {deleteError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteAllModal(false);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteAllProducts}
+                disabled={deleteLoading || !deletePassword}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {deleteLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete All Products
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Product Modal */}
+      {showDeleteProductModal && deleteProductId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  Delete Product
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-800 font-medium mb-2">⚠️ Warning</p>
+              <p className="text-red-700 text-sm">
+                You are about to permanently delete{" "}
+                <span className="font-semibold">"{deleteProductName}"</span>{" "}
+                from the database. This includes all related inventory records.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteProductModal(false);
+                  setDeleteProductId(null);
+                  setDeleteProductName("");
+                }}
+                disabled={loading}
+                className="flex-1 px-4 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteProduct}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Product
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reorder Report Modal */}
+      {showReorderReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="w-6 h-6 text-primary" />
+                <h2 className="text-xl font-bold">Reorder Report</h2>
+              </div>
+              <button
+                onClick={() => setShowReorderReport(false)}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Report Header */}
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Generated</p>
+              <p className="font-semibold">{new Date().toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Items requiring reorder:{" "}
+                <span className="font-bold text-primary">
+                  {reorderItems.length}
+                </span>
+              </p>
+            </div>
+
+            {/* Report Items */}
+            {reorderItems.length > 0 ? (
+              <div className="space-y-3">
+                {reorderItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`p-4 border rounded-lg ${
+                      item.totalStock < item.minStockLevel
+                        ? "bg-red-50 border-red-300"
+                        : "bg-orange-50 border-orange-300"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-base">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          SKU: {item.sku}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-bold px-2 py-1 rounded ${
+                          item.totalStock < item.minStockLevel
+                            ? "bg-red-600 text-white"
+                            : "bg-orange-600 text-white"
+                        }`}
+                      >
+                        {item.totalStock < item.minStockLevel
+                          ? "CRITICAL"
+                          : "LOW"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Current Stock</p>
+                        <p className="font-semibold">
+                          {item.totalStock} {item.unit}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Reorder Point</p>
+                        <p className="font-semibold">
+                          {item.reorderPoint} {item.unit}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Min Level</p>
+                        <p className="font-semibold">
+                          {item.minStockLevel} {item.unit}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">
+                          Recommended Order
+                        </p>
+                        <p className="font-semibold">
+                          {item.reorderQuantity} {item.unit}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <TrendingUp className="w-12 h-12 text-green-600 mx-auto mb-2 opacity-50" />
+                <p className="text-muted-foreground">
+                  No items require reordering
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  All stock levels are healthy
+                </p>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowReorderReport(false)}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -844,9 +1277,9 @@ function StockAdjustmentModal({
   onAdjust: (adjustment: any) => void;
   onClose: () => void;
 }) {
-  const [storeName, setStoreName] = useState('');
+  const [storeName, setStoreName] = useState("");
   const [quantity, setQuantity] = useState(0);
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState("");
   const [stores, setStores] = useState<StoreLocation[]>([]);
 
   useEffect(() => {
@@ -861,15 +1294,15 @@ function StockAdjustmentModal({
         setStoreName(storesData[0].name);
       }
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores");
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (quantity <= 0 || !reason || !storeName) {
-      toast.error('Please enter quantity, store, and reason');
+      toast.error("Please enter quantity, store, and reason");
       return;
     }
     onAdjust({ storeName, quantity, reason });
@@ -889,13 +1322,19 @@ function StockAdjustmentModal({
         <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Available in Production</p>
-              <p className="text-xl font-bold text-primary">{item.stockProduction} {item.unit}</p>
+              <p className="text-sm text-muted-foreground">
+                Available in Production
+              </p>
+              <p className="text-xl font-bold text-primary">
+                {item.stockProduction} {item.unit}
+              </p>
             </div>
             <Package className="w-8 h-8 text-orange-600" />
           </div>
           {item.stockProduction === 0 && (
-            <p className="text-xs text-red-600 mt-2">⚠️ No stock available in production!</p>
+            <p className="text-xs text-red-600 mt-2">
+              ⚠️ No stock available in production!
+            </p>
           )}
         </div>
 
@@ -912,7 +1351,8 @@ function StockAdjustmentModal({
                 <option value="">Select Store</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.name}>
-                    {store.name} (Current: {item.storeStocks[store.name] || 0} {item.unit})
+                    {store.name} (Current: {item.storeStocks[store.name] || 0}{" "}
+                    {item.unit})
                   </option>
                 ))}
               </select>
@@ -924,7 +1364,9 @@ function StockAdjustmentModal({
           </div>
 
           <div>
-            <label className="block text-sm mb-2">Quantity to Transfer ({item.unit}) *</label>
+            <label className="block text-sm mb-2">
+              Quantity to Transfer ({item.unit}) *
+            </label>
             <input
               type="number"
               min="0"
@@ -965,7 +1407,9 @@ function StockAdjustmentModal({
             <button
               type="submit"
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-              disabled={quantity > item.stockProduction || item.stockProduction === 0}
+              disabled={
+                quantity > item.stockProduction || item.stockProduction === 0
+              }
             >
               <RefreshCw className="w-4 h-4" />
               Transfer Stock
@@ -1011,7 +1455,9 @@ function EditItemModal({
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1021,7 +1467,9 @@ function EditItemModal({
               <input
                 type="text"
                 value={formData.sku}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, sku: e.target.value })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1034,7 +1482,12 @@ function EditItemModal({
               <input
                 type="number"
                 value={formData.minStockLevel}
-                onChange={(e) => setFormData({ ...formData, minStockLevel: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    minStockLevel: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -1043,7 +1496,12 @@ function EditItemModal({
               <input
                 type="number"
                 value={formData.reorderPoint}
-                onChange={(e) => setFormData({ ...formData, reorderPoint: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    reorderPoint: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -1054,7 +1512,12 @@ function EditItemModal({
             <input
               type="number"
               value={formData.reorderQuantity}
-              onChange={(e) => setFormData({ ...formData, reorderQuantity: parseFloat(e.target.value) || 0 })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  reorderQuantity: parseFloat(e.target.value) || 0,
+                })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -1090,11 +1553,11 @@ function EncodeProductModal({
   onAddProduct: () => void;
 }) {
   const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    unit: 'kg',
+    name: "",
+    category: "",
+    unit: "kg",
     price: 0,
-    storeLocation: '',
+    storeLocation: "",
     initialQuantity: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1111,11 +1574,11 @@ function EncodeProductModal({
       const categoriesData = await getCategories();
       setCategories(categoriesData);
       if (categoriesData.length > 0 && !formData.category) {
-        setFormData(prev => ({ ...prev, category: categoriesData[0].name }));
+        setFormData((prev) => ({ ...prev, category: categoriesData[0].name }));
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
-      toast.error('Failed to load categories');
+      console.error("Error loading categories:", error);
+      toast.error("Failed to load categories");
     }
   };
 
@@ -1124,34 +1587,36 @@ function EncodeProductModal({
       const storesData = await getStores();
       setStoreLocations(storesData);
       if (storesData.length > 0 && !formData.storeLocation) {
-        setFormData(prev => ({ ...prev, storeLocation: storesData[0].name }));
+        setFormData((prev) => ({ ...prev, storeLocation: storesData[0].name }));
       }
     } catch (error) {
-      console.error('Error loading store locations:', error);
-      toast.error('Failed to load store locations');
+      console.error("Error loading store locations:", error);
+      toast.error("Failed to load store locations");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isSubmitting) return;
-    
+
     try {
       setIsSubmitting(true);
-      
+
       // Check if product name already exists
       const existingProducts = await getProducts();
       const duplicateProduct = existingProducts.find(
-        (p: APIProduct) => p.name.toLowerCase() === formData.name.toLowerCase()
+        (p: APIProduct) => p.name.toLowerCase() === formData.name.toLowerCase(),
       );
-      
+
       if (duplicateProduct) {
-        toast.error(`Product "${formData.name}" already exists in the database!`);
+        toast.error(
+          `Product "${formData.name}" already exists in the database!`,
+        );
         setIsSubmitting(false);
         return;
       }
-      
+
       const newProduct = await addProduct({
         name: formData.name,
         category: formData.category,
@@ -1159,16 +1624,22 @@ function EncodeProductModal({
         price: formData.price,
         image: null,
       });
-      
+
       // Create inventory record for the selected store with initial quantity
-      await addInventory(newProduct.id, formData.storeLocation, formData.initialQuantity);
-      
-      toast.success(`Product added to ${formData.storeLocation} with ${formData.initialQuantity} ${formData.unit}`);
+      await addInventory(
+        newProduct.id,
+        formData.storeLocation,
+        formData.initialQuantity,
+      );
+
+      toast.success(
+        `Product added to ${formData.storeLocation} with ${formData.initialQuantity} ${formData.unit}`,
+      );
       onAddProduct();
       onClose();
     } catch (error) {
-      console.error('Error encoding product:', error);
-      toast.error('Failed to encode product');
+      console.error("Error encoding product:", error);
+      toast.error("Failed to encode product");
     } finally {
       setIsSubmitting(false);
     }
@@ -1190,11 +1661,15 @@ function EncodeProductModal({
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
-            <p className="text-xs text-muted-foreground mt-1">SKU will be automatically generated based on category</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              SKU will be automatically generated based on category
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1203,7 +1678,9 @@ function EncodeProductModal({
               {categories.length > 0 ? (
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 >
@@ -1224,7 +1701,9 @@ function EncodeProductModal({
               <label className="block text-sm mb-2">Unit</label>
               <select
                 value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, unit: e.target.value })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="kg">kg</option>
@@ -1242,7 +1721,12 @@ function EncodeProductModal({
               type="number"
               step="0.01"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  price: parseFloat(e.target.value) || 0,
+                })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -1254,7 +1738,9 @@ function EncodeProductModal({
               {storeLocations.length > 0 ? (
                 <select
                   value={formData.storeLocation}
-                  onChange={(e) => setFormData({ ...formData, storeLocation: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, storeLocation: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 >
@@ -1267,7 +1753,8 @@ function EncodeProductModal({
                 </select>
               ) : (
                 <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                  No store locations available. Please create store locations first.
+                  No store locations available. Please create store locations
+                  first.
                 </div>
               )}
             </div>
@@ -1278,7 +1765,12 @@ function EncodeProductModal({
                 min="0"
                 step="0.1"
                 value={formData.initialQuantity}
-                onChange={(e) => setFormData({ ...formData, initialQuantity: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    initialQuantity: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1300,7 +1792,7 @@ function EncodeProductModal({
               disabled={isSubmitting}
             >
               <Save className="w-4 h-4" />
-              {isSubmitting ? 'Encoding...' : 'Encode Product'}
+              {isSubmitting ? "Encoding..." : "Encode Product"}
             </button>
           </div>
         </form>

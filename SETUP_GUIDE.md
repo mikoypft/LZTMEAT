@@ -112,6 +112,7 @@ php artisan migrate
 ```
 
 This creates:
+
 - `users` - User accounts (Admin, Store Manager, Production, POS, Employee)
 - `stores` - Store locations
 - `categories` - Product categories
@@ -142,16 +143,19 @@ php artisan db:seed
 ## API Endpoints
 
 ### Base URL
+
 - **Laravel**: `http://localhost:8000/api`
 - **Supabase**: `https://{project-id}.supabase.co/functions/v1/...`
 
 ### Authentication
+
 ```
 POST /auth/login
 POST /auth/refresh
 ```
 
 ### Resources
+
 - `/products` - Product management
 - `/categories` - Product categories
 - `/inventory` - Stock management
@@ -199,17 +203,20 @@ API_BASE_URL=http://localhost:8000
 ## Development Workflow
 
 ### Terminal 1: Backend
+
 ```bash
 cd backend
 php artisan serve
 ```
 
 ### Terminal 2: Frontend
+
 ```bash
 npm run dev
 ```
 
 ### Terminal 3 (Optional): Database
+
 ```bash
 # Monitor database or run artisan commands
 cd backend
@@ -251,14 +258,18 @@ tail -f storage/logs/laravel.log
 ## Switching Between Backends
 
 ### To use Laravel:
+
 Edit `.env.local`:
+
 ```env
 VITE_API_MODE=laravel
 VITE_API_BASE=http://localhost:8000/api
 ```
 
 ### To use Supabase:
+
 Edit `.env.local`:
+
 ```env
 VITE_API_MODE=supabase
 ```
@@ -268,13 +279,17 @@ Then restart the frontend dev server.
 ## Troubleshooting
 
 ### CORS Errors
+
 If you see CORS errors, check `.env` in backend:
+
 ```env
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
 ### Database Connection Error
+
 Check `.env` in backend:
+
 ```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -284,7 +299,9 @@ DB_PASSWORD=
 ```
 
 ### 404 on API Requests
+
 Ensure Laravel is running:
+
 ```bash
 php artisan serve
 ```
@@ -294,11 +311,13 @@ Should show: `Laravel development server started on http://127.0.0.1:8000`
 ### Port Already in Use
 
 **For Laravel (port 8000):**
+
 ```bash
 php artisan serve --port=8001
 ```
 
 **For Vite (port 5173):**
+
 ```bash
 npm run dev -- --port 5174
 ```
@@ -320,6 +339,7 @@ npm run dev -- --port 5174
 ---
 
 **Technology Stack:**
+
 - Frontend: React 18 + TypeScript + Tailwind CSS + Vite
 - Backend: Laravel 11 + PHP 8.1
 - Database: MySQL 8.0+

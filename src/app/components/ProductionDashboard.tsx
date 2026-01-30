@@ -1,19 +1,40 @@
-import { useState, useEffect, useContext } from 'react';
-import { Factory, TrendingUp, Package, Clock, Save, Plus, ChefHat, X, Trash2 } from 'lucide-react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { IngredientsContext } from '@/app/context/IngredientsContext';
-import { 
-  getProducts, 
-  getProductionRecords, 
-  createProductionRecord, 
+import { useState, useEffect, useContext } from "react";
+import {
+  Factory,
+  TrendingUp,
+  Package,
+  Clock,
+  Save,
+  Plus,
+  ChefHat,
+  X,
+  Trash2,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { IngredientsContext } from "@/app/context/IngredientsContext";
+import {
+  getProducts,
+  getProductionRecords,
+  createProductionRecord,
   updateProductionRecordStatus,
   deleteProductionRecord,
   getEmployees,
-  type Product as APIProduct, 
+  type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
-  type Employee
-} from '@/utils/api';
-import { toast } from 'sonner';
+  type Employee,
+} from "@/utils/api";
+import { toast } from "sonner";
 
 interface ProductionEntry {
   id: string;
@@ -22,7 +43,7 @@ interface ProductionEntry {
   date: string;
   time: string;
   batchNumber: string;
-  status: 'in-progress' | 'completed' | 'quality-check';
+  status: "in-progress" | "completed" | "quality-check";
   ingredientsUsed: Array<{
     code: string;
     name: string;
@@ -32,66 +53,75 @@ interface ProductionEntry {
 }
 
 const MOCK_PRODUCTION_DATA: ProductionEntry[] = [
-  { 
-    id: '1', 
-    productName: 'Longanisa (Sweet)', 
-    weightKg: 125.5, 
-    date: '2026-01-13', 
-    time: '08:00', 
-    batchNumber: 'B001', 
-    status: 'completed',
-    ingredientsUsed: []
+  {
+    id: "1",
+    productName: "Longanisa (Sweet)",
+    weightKg: 125.5,
+    date: "2026-01-13",
+    time: "08:00",
+    batchNumber: "B001",
+    status: "completed",
+    ingredientsUsed: [],
   },
-  { 
-    id: '2', 
-    productName: 'Tocino (Pork)', 
-    weightKg: 85.3, 
-    date: '2026-01-13', 
-    time: '09:30', 
-    batchNumber: 'B002', 
-    status: 'completed',
-    ingredientsUsed: []
+  {
+    id: "2",
+    productName: "Tocino (Pork)",
+    weightKg: 85.3,
+    date: "2026-01-13",
+    time: "09:30",
+    batchNumber: "B002",
+    status: "completed",
+    ingredientsUsed: [],
   },
-  { 
-    id: '3', 
-    productName: 'Shanghai (Spring Rolls)', 
-    weightKg: 95.0, 
-    date: '2026-01-13', 
-    time: '10:15', 
-    batchNumber: 'B003', 
-    status: 'in-progress',
-    ingredientsUsed: []
+  {
+    id: "3",
+    productName: "Shanghai (Spring Rolls)",
+    weightKg: 95.0,
+    date: "2026-01-13",
+    time: "10:15",
+    batchNumber: "B003",
+    status: "in-progress",
+    ingredientsUsed: [],
   },
-  { 
-    id: '4', 
-    productName: 'Chorizo de Bilbao', 
-    weightKg: 72.0, 
-    date: '2026-01-13', 
-    time: '11:45', 
-    batchNumber: 'B004', 
-    status: 'completed',
-    ingredientsUsed: []
+  {
+    id: "4",
+    productName: "Chorizo de Bilbao",
+    weightKg: 72.0,
+    date: "2026-01-13",
+    time: "11:45",
+    batchNumber: "B004",
+    status: "completed",
+    ingredientsUsed: [],
   },
 ];
 
 const DAILY_PRODUCTION_CHART = [
-  { day: 'Mon', weight: 420 },
-  { day: 'Tue', weight: 380 },
-  { day: 'Wed', weight: 450 },
-  { day: 'Thu', weight: 520 },
-  { day: 'Fri', weight: 480 },
-  { day: 'Sat', weight: 350 },
-  { day: 'Sun', weight: 280 },
+  { day: "Mon", weight: 420 },
+  { day: "Tue", weight: 380 },
+  { day: "Wed", weight: 450 },
+  { day: "Thu", weight: 520 },
+  { day: "Fri", weight: 480 },
+  { day: "Sat", weight: 350 },
+  { day: "Sun", weight: 280 },
 ];
 
 const PRODUCT_DISTRIBUTION = [
-  { name: 'Coffee Beans', value: 35 },
-  { name: 'Tea', value: 25 },
-  { name: 'Bakery', value: 20 },
-  { name: 'Dairy', value: 20 },
+  { name: "Coffee Beans", value: 35 },
+  { name: "Tea", value: 25 },
+  { name: "Bakery", value: 20 },
+  { name: "Dairy", value: 20 },
 ];
 
-const COLORS = ['#dc2626', '#ef4444', '#f87171', '#fca5a5', '#fb923c', '#fbbf24', '#a3e635', '#4ade80'];
+const COLORS = [
+  "#dc2626",
+  "#ef4444",
+  "#f87171",
+  "#fca5a5",
+  "#fb923c",
+  "#fbbf24",
+  "#a3e635",
+  "#4ade80",
+];
 
 interface IngredientInput {
   code: string;
@@ -100,7 +130,7 @@ interface IngredientInput {
 
 export function ProductionDashboard() {
   const context = useContext(IngredientsContext);
-  
+
   // Safety check - shouldn't be needed but helps with hot reload issues
   if (!context) {
     return (
@@ -109,18 +139,20 @@ export function ProductionDashboard() {
       </div>
     );
   }
-  
+
   const { ingredients, deductIngredient } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProduction, setNewProduction] = useState({
-    productName: '',
-    productId: '',
-    weightKg: '',
-    batchNumber: '',
-    employeeName: '',
+    productName: "",
+    productId: "",
+    weightKg: "",
+    batchNumber: "",
+    employeeName: "",
   });
-  const [selectedIngredients, setSelectedIngredients] = useState<IngredientInput[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<
+    IngredientInput[]
+  >([]);
   const [products, setProducts] = useState<APIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -137,20 +169,21 @@ export function ProductionDashboard() {
     if (showAddForm && productions.length > 0) {
       // Find the highest batch number
       const batchNumbers = productions
-        .map(p => {
+        .map((p) => {
           const match = p.batchNumber.match(/^B(\d+)$/);
           return match ? parseInt(match[1], 10) : 0;
         })
-        .filter(num => !isNaN(num));
-      
-      const maxBatchNum = batchNumbers.length > 0 ? Math.max(...batchNumbers) : 0;
+        .filter((num) => !isNaN(num));
+
+      const maxBatchNum =
+        batchNumbers.length > 0 ? Math.max(...batchNumbers) : 0;
       const nextBatchNum = maxBatchNum + 1;
-      const nextBatchNumber = `B${String(nextBatchNum).padStart(3, '0')}`;
-      
-      setNewProduction(prev => ({ ...prev, batchNumber: nextBatchNumber }));
+      const nextBatchNumber = `B${String(nextBatchNum).padStart(3, "0")}`;
+
+      setNewProduction((prev) => ({ ...prev, batchNumber: nextBatchNumber }));
     } else if (showAddForm && productions.length === 0) {
       // First production record
-      setNewProduction(prev => ({ ...prev, batchNumber: 'B001' }));
+      setNewProduction((prev) => ({ ...prev, batchNumber: "B001" }));
     }
   }, [showAddForm, productions]);
 
@@ -160,8 +193,8 @@ export function ProductionDashboard() {
       const productsData = await getProducts();
       setProducts(productsData);
     } catch (error) {
-      console.error('Error loading products:', error);
-      toast.error('Failed to load products from inventory');
+      console.error("Error loading products:", error);
+      toast.error("Failed to load products from inventory");
     } finally {
       setLoading(false);
     }
@@ -171,28 +204,31 @@ export function ProductionDashboard() {
     try {
       const records = await getProductionRecords();
       // Transform API records to local format
-      const transformedRecords: ProductionEntry[] = records.map((record: any) => {
-        const date = new Date(record.timestamp);
-        return {
-          id: record.id,
-          productName: record.productName,
-          weightKg: record.quantity,
-          date: date.toISOString().split('T')[0],
-          time: date.toTimeString().split(' ')[0].substring(0, 5),
-          batchNumber: record.batchNumber,
-          status: record.status || 'completed',
-          ingredientsUsed: record.ingredientsUsed?.map((ing: any) => ({
-            code: ing.ingredientId,
-            name: ing.ingredientName,
-            quantity: ing.quantity,
-            unit: 'kg'
-          })) || []
-        };
-      });
+      const transformedRecords: ProductionEntry[] = records.map(
+        (record: any) => {
+          const date = new Date(record.timestamp);
+          return {
+            id: record.id,
+            productName: record.productName,
+            weightKg: record.quantity,
+            date: date.toISOString().split("T")[0],
+            time: date.toTimeString().split(" ")[0].substring(0, 5),
+            batchNumber: record.batchNumber,
+            status: record.status || "completed",
+            ingredientsUsed:
+              record.ingredientsUsed?.map((ing: any) => ({
+                code: ing.ingredientId,
+                name: ing.ingredientName,
+                quantity: ing.quantity,
+                unit: "kg",
+              })) || [],
+          };
+        },
+      );
       setProductions(transformedRecords);
     } catch (error) {
-      console.error('Error loading production records:', error);
-      toast.error('Failed to load production history');
+      console.error("Error loading production records:", error);
+      toast.error("Failed to load production history");
     }
   };
 
@@ -201,40 +237,44 @@ export function ProductionDashboard() {
       const employeesData = await getEmployees();
       setEmployees(employeesData);
     } catch (error) {
-      console.error('Error loading employees:', error);
-      toast.error('Failed to load employees');
+      console.error("Error loading employees:", error);
+      toast.error("Failed to load employees");
     }
   };
 
   // Calculate today's date
-  const today = new Date().toISOString().split('T')[0];
-  
+  const today = new Date().toISOString().split("T")[0];
+
   // Calculate total produced today (only today's production)
   const totalProducedToday = productions
-    .filter(p => p.date === today)
+    .filter((p) => p.date === today)
     .reduce((sum, p) => sum + p.weightKg, 0);
-  const inProgressCount = productions.filter(p => p.status === 'in-progress').length;
-  const completedCount = productions.filter(p => p.status === 'completed').length;
+  const inProgressCount = productions.filter(
+    (p) => p.status === "in-progress",
+  ).length;
+  const completedCount = productions.filter(
+    (p) => p.status === "completed",
+  ).length;
 
   // Calculate weekly production data (last 7 days)
   const getWeeklyProductionData = () => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const today = new Date();
     const weekData = [];
 
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = date.toISOString().split("T")[0];
       const dayName = days[date.getDay()];
 
       const dayProduction = productions
-        .filter(p => p.date === dateStr)
+        .filter((p) => p.date === dateStr)
         .reduce((sum, p) => sum + p.weightKg, 0);
 
       weekData.push({
         day: dayName,
-        weight: Math.round(dayProduction * 10) / 10 // Round to 1 decimal
+        weight: Math.round(dayProduction * 10) / 10, // Round to 1 decimal
       });
     }
 
@@ -244,31 +284,31 @@ export function ProductionDashboard() {
   // Calculate vs last week percentage
   const calculateVsLastWeek = () => {
     const today = new Date();
-    
+
     // Calculate this week's production (last 7 days)
     let thisWeekTotal = 0;
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
+      const dateStr = date.toISOString().split("T")[0];
+
       thisWeekTotal += productions
-        .filter(p => p.date === dateStr)
+        .filter((p) => p.date === dateStr)
         .reduce((sum, p) => sum + p.weightKg, 0);
     }
-    
+
     // Calculate last week's production (days 7-13 ago)
     let lastWeekTotal = 0;
     for (let i = 7; i < 14; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
+      const dateStr = date.toISOString().split("T")[0];
+
       lastWeekTotal += productions
-        .filter(p => p.date === dateStr)
+        .filter((p) => p.date === dateStr)
         .reduce((sum, p) => sum + p.weightKg, 0);
     }
-    
+
     // Calculate percentage change
     if (lastWeekTotal === 0) {
       // If last week had no production
@@ -277,20 +317,21 @@ export function ProductionDashboard() {
       }
       return { value: 0, isPositive: true }; // No change
     }
-    
-    const percentChange = ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100;
+
+    const percentChange =
+      ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100;
     return {
       value: Math.round(percentChange * 10) / 10, // Round to 1 decimal
-      isPositive: percentChange >= 0
+      isPositive: percentChange >= 0,
     };
   };
 
   // Calculate product distribution data
   const getProductDistribution = () => {
     const productTotals: { [key: string]: number } = {};
-    
+
     // Sum up production quantities by product
-    productions.forEach(prod => {
+    productions.forEach((prod) => {
       if (productTotals[prod.productName]) {
         productTotals[prod.productName] += prod.weightKg;
       } else {
@@ -299,17 +340,20 @@ export function ProductionDashboard() {
     });
 
     // Calculate total
-    const total = Object.values(productTotals).reduce((sum, val) => sum + val, 0);
+    const total = Object.values(productTotals).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
 
     // Convert to percentages and format for chart
     if (total === 0) {
-      return [{ name: 'No Production Data', value: 100 }];
+      return [{ name: "No Production Data", value: 100 }];
     }
 
     return Object.entries(productTotals)
       .map(([name, value]) => ({
         name,
-        value: Math.round((value / total) * 100 * 10) / 10 // Round to 1 decimal
+        value: Math.round((value / total) * 100 * 10) / 10, // Round to 1 decimal
       }))
       .sort((a, b) => b.value - a.value) // Sort by value descending
       .slice(0, 8); // Show top 8 products
@@ -320,39 +364,52 @@ export function ProductionDashboard() {
   const vsLastWeek = calculateVsLastWeek();
 
   const addIngredientRow = () => {
-    setSelectedIngredients([...selectedIngredients, { code: '', quantity: '' }]);
+    setSelectedIngredients([
+      ...selectedIngredients,
+      { code: "", quantity: "" },
+    ]);
   };
 
   const removeIngredientRow = (index: number) => {
     setSelectedIngredients(selectedIngredients.filter((_, i) => i !== index));
   };
 
-  const updateIngredient = (index: number, field: 'code' | 'quantity', value: string) => {
+  const updateIngredient = (
+    index: number,
+    field: "code" | "quantity",
+    value: string,
+  ) => {
     const updated = [...selectedIngredients];
     updated[index] = { ...updated[index], [field]: value };
     setSelectedIngredients(updated);
   };
 
   const handleAddProduction = async () => {
-    if (!newProduction.productName || !newProduction.weightKg || !newProduction.batchNumber) {
-      toast.error('Please fill in all production fields');
+    if (
+      !newProduction.productName ||
+      !newProduction.weightKg ||
+      !newProduction.batchNumber
+    ) {
+      toast.error("Please fill in all production fields");
       return;
     }
 
     if (!newProduction.productId) {
-      toast.error('Please select a product from inventory');
+      toast.error("Please select a product from inventory");
       return;
     }
 
     if (!newProduction.employeeName) {
-      toast.error('Please select an employee');
+      toast.error("Please select an employee");
       return;
     }
 
     // Validate ingredients
-    const validIngredients = selectedIngredients.filter(ing => ing.code && ing.quantity);
+    const validIngredients = selectedIngredients.filter(
+      (ing) => ing.code && ing.quantity,
+    );
     if (validIngredients.length === 0) {
-      toast.error('Please add at least one ingredient');
+      toast.error("Please add at least one ingredient");
       return;
     }
 
@@ -364,7 +421,7 @@ export function ProductionDashboard() {
     }> = [];
 
     for (const ing of validIngredients) {
-      const ingredient = ingredients.find(i => i.code === ing.code);
+      const ingredient = ingredients.find((i) => i.code === ing.code);
       if (!ingredient) {
         toast.error(`Ingredient ${ing.code} not found`);
         return;
@@ -377,7 +434,9 @@ export function ProductionDashboard() {
       }
 
       if (ingredient.stock < qty) {
-        toast.error(`Insufficient stock for ${ingredient.name}. Available: ${ingredient.stock} ${ingredient.unit}`);
+        toast.error(
+          `Insufficient stock for ${ingredient.name}. Available: ${ingredient.stock} ${ingredient.unit}`,
+        );
         return;
       }
 
@@ -390,20 +449,20 @@ export function ProductionDashboard() {
 
     try {
       const producedWeight = parseFloat(newProduction.weightKg);
-      
+
       // Create production record in database (this will automatically update inventory and deduct ingredients)
       const record = await createProductionRecord({
         productId: newProduction.productId,
         productName: newProduction.productName,
         quantity: producedWeight,
         batchNumber: newProduction.batchNumber,
-        operator: 'Current User',
-        ingredientsUsed: ingredientsUsedAPI
+        operator: "Current User",
+        ingredientsUsed: ingredientsUsedAPI,
       });
 
       // Also deduct ingredients from local state
       for (const ing of validIngredients) {
-        const ingredient = ingredients.find(i => i.code === ing.code);
+        const ingredient = ingredients.find((i) => i.code === ing.code);
         if (ingredient) {
           const qty = parseFloat(ing.quantity);
           await deductIngredient(ing.code, qty);
@@ -413,50 +472,72 @@ export function ProductionDashboard() {
       // Reload production records to get updated list
       await loadProductionRecords();
 
-      setNewProduction({ productName: '', productId: '', weightKg: '', batchNumber: '', employeeName: '' });
+      setNewProduction({
+        productName: "",
+        productId: "",
+        weightKg: "",
+        batchNumber: "",
+        employeeName: "",
+      });
       setSelectedIngredients([]);
       setShowAddForm(false);
-      
-      toast.success(`Production added! ${producedWeight} kg of ${newProduction.productName} added to Production Facility inventory.`);
+
+      toast.success(
+        `Production added! ${producedWeight} kg of ${newProduction.productName} added to Production Facility inventory.`,
+      );
     } catch (error) {
-      console.error('Error adding production:', error);
-      toast.error('Failed to add production to database');
+      console.error("Error adding production:", error);
+      toast.error("Failed to add production to database");
     }
   };
 
-  const updateStatus = async (id: string, status: ProductionEntry['status']) => {
+  const updateStatus = async (
+    id: string,
+    status: ProductionEntry["status"],
+  ) => {
     try {
       // Update in database
       await updateProductionRecordStatus(id, status);
-      
+
       // Update local state
-      setProductions(productions.map(p => p.id === id ? { ...p, status } : p));
-      
-      toast.success('Production status updated');
+      setProductions(
+        productions.map((p) => (p.id === id ? { ...p, status } : p)),
+      );
+
+      toast.success("Production status updated");
     } catch (error) {
-      console.error('Error updating production status:', error);
-      toast.error('Failed to update status');
+      console.error("Error updating production status:", error);
+      toast.error("Failed to update status");
     }
   };
 
   const deleteProduction = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this production record? This action cannot be undone.')) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this production record? This action cannot be undone.",
+      )
+    ) {
       return;
     }
-    
-    console.log('Frontend: Attempting to delete production with ID:', id, 'Type:', typeof id);
-    
+
+    console.log(
+      "Frontend: Attempting to delete production with ID:",
+      id,
+      "Type:",
+      typeof id,
+    );
+
     try {
       // Delete in database
       await deleteProductionRecord(id);
-      
+
       // Update local state
-      setProductions(productions.filter(p => p.id !== id));
-      
-      toast.success('Production record deleted');
+      setProductions(productions.filter((p) => p.id !== id));
+
+      toast.success("Production record deleted");
     } catch (error) {
-      console.error('Error deleting production record:', error);
-      toast.error('Failed to delete record');
+      console.error("Error deleting production record:", error);
+      toast.error("Failed to delete record");
     }
   };
 
@@ -471,8 +552,12 @@ export function ProductionDashboard() {
                 <Package className="w-6 h-6 text-primary" />
               </div>
             </div>
-            <p className="text-3xl text-primary mb-1">{totalProducedToday.toFixed(1)} KG</p>
-            <p className="text-sm text-muted-foreground">Total Produced Today</p>
+            <p className="text-3xl text-primary mb-1">
+              {totalProducedToday.toFixed(1)} KG
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Total Produced Today
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border">
@@ -501,7 +586,10 @@ export function ProductionDashboard() {
                 <TrendingUp className="w-6 h-6 text-primary" />
               </div>
             </div>
-            <p className="text-3xl text-primary mb-1">{vsLastWeek.isPositive ? '+' : ''}{vsLastWeek.value}%</p>
+            <p className="text-3xl text-primary mb-1">
+              {vsLastWeek.isPositive ? "+" : ""}
+              {vsLastWeek.value}%
+            </p>
             <p className="text-sm text-muted-foreground">vs Last Week</p>
           </div>
         </div>
@@ -538,7 +626,10 @@ export function ProductionDashboard() {
                   dataKey="value"
                 >
                   {productDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -572,14 +663,20 @@ export function ProductionDashboard() {
                   <select
                     value={newProduction.productId}
                     onChange={(e) => {
-                      const product = products.find(p => p.id === e.target.value);
-                      setNewProduction({ ...newProduction, productId: e.target.value, productName: product?.name || '' });
+                      const product = products.find(
+                        (p) => p.id === e.target.value,
+                      );
+                      setNewProduction({
+                        ...newProduction,
+                        productId: e.target.value,
+                        productName: product?.name || "",
+                      });
                     }}
                     placeholder="Enter product name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Product</option>
-                    {products.map(product => (
+                    {products.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.name}
                       </option>
@@ -592,7 +689,12 @@ export function ProductionDashboard() {
                     type="number"
                     step="0.1"
                     value={newProduction.weightKg}
-                    onChange={(e) => setNewProduction({ ...newProduction, weightKg: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduction({
+                        ...newProduction,
+                        weightKg: e.target.value,
+                      })
+                    }
                     placeholder="0.0"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -605,23 +707,35 @@ export function ProductionDashboard() {
                   <label className="block text-sm mb-2">Employee Name *</label>
                   <select
                     value={newProduction.employeeName}
-                    onChange={(e) => setNewProduction({ ...newProduction, employeeName: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduction({
+                        ...newProduction,
+                        employeeName: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Employee</option>
-                    {employees.map(employee => (
-                      <option key={employee.id} value={employee.name}>
-                        {employee.name}
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.fullName}>
+                        {employee.fullName}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm mb-2">Batch Number (Auto-generated)</label>
+                  <label className="block text-sm mb-2">
+                    Batch Number (Auto-generated)
+                  </label>
                   <input
                     type="text"
                     value={newProduction.batchNumber}
-                    onChange={(e) => setNewProduction({ ...newProduction, batchNumber: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduction({
+                        ...newProduction,
+                        batchNumber: e.target.value,
+                      })
+                    }
                     placeholder="B001"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100"
                     readOnly
@@ -647,7 +761,8 @@ export function ProductionDashboard() {
 
                 {selectedIngredients.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Click "Add Ingredient" to add ingredients for this production
+                    Click "Add Ingredient" to add ingredients for this
+                    production
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -656,13 +771,19 @@ export function ProductionDashboard() {
                         <div className="flex-1">
                           <select
                             value={ing.code}
-                            onChange={(e) => updateIngredient(index, 'code', e.target.value)}
+                            onChange={(e) =>
+                              updateIngredient(index, "code", e.target.value)
+                            }
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           >
                             <option value="">Select Ingredient</option>
-                            {ingredients.map(ingredient => (
-                              <option key={ingredient.code} value={ingredient.code}>
-                                {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                            {ingredients.map((ingredient) => (
+                              <option
+                                key={ingredient.code}
+                                value={ingredient.code}
+                              >
+                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                {ingredient.stock}
                               </option>
                             ))}
                           </select>
@@ -672,7 +793,13 @@ export function ProductionDashboard() {
                             type="number"
                             step="0.1"
                             value={ing.quantity}
-                            onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+                            onChange={(e) =>
+                              updateIngredient(
+                                index,
+                                "quantity",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Qty"
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           />
@@ -720,11 +847,16 @@ export function ProductionDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {productions.map(production => (
-                    <tr key={production.id} className="border-b border-border hover:bg-muted/50">
+                  {productions.map((production) => (
+                    <tr
+                      key={production.id}
+                      className="border-b border-border hover:bg-muted/50"
+                    >
                       <td className="py-3 px-4">{production.batchNumber}</td>
                       <td className="py-3 px-4">{production.productName}</td>
-                      <td className="py-3 px-4 text-primary">{production.weightKg.toFixed(1)} KG</td>
+                      <td className="py-3 px-4 text-primary">
+                        {production.weightKg.toFixed(1)} KG
+                      </td>
                       <td className="py-3 px-4">
                         {production.ingredientsUsed.length > 0 ? (
                           <div className="text-xs">
@@ -735,27 +867,39 @@ export function ProductionDashboard() {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">No ingredients recorded</span>
+                          <span className="text-xs text-muted-foreground">
+                            No ingredients recorded
+                          </span>
                         )}
                       </td>
                       <td className="py-3 px-4">{production.date}</td>
                       <td className="py-3 px-4">{production.time}</td>
                       <td className="py-3 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs ${
-                          production.status === 'completed' 
-                            ? 'bg-green-100 text-green-700'
-                            : production.status === 'in-progress'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {production.status === 'in-progress' ? 'In Progress' : 
-                           production.status === 'completed' ? 'Completed' : 'Quality Check'}
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs ${
+                            production.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : production.status === "in-progress"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {production.status === "in-progress"
+                            ? "In Progress"
+                            : production.status === "completed"
+                              ? "Completed"
+                              : "Quality Check"}
                         </span>
                       </td>
                       <td className="py-3 px-4">
                         <select
                           value={production.status}
-                          onChange={(e) => updateStatus(production.id, e.target.value as ProductionEntry['status'])}
+                          onChange={(e) =>
+                            updateStatus(
+                              production.id,
+                              e.target.value as ProductionEntry["status"],
+                            )
+                          }
                           className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                           <option value="in-progress">In Progress</option>

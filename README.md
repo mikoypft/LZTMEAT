@@ -1,4 +1,3 @@
-
 # LZT Meat Management System
 
 A comprehensive inventory and management system for LZT Meat with React frontend and Laravel backend.
@@ -20,6 +19,7 @@ LZT Meat is a modern POS and inventory management system designed for meat distr
 ## Technology Stack
 
 ### Frontend
+
 - **React** 18.3.1 with TypeScript
 - **Tailwind CSS** 4.1.12 for styling
 - **Vite** 6.3.5 for fast development
@@ -27,6 +27,7 @@ LZT Meat is a modern POS and inventory management system designed for meat distr
 - **Recharts** for data visualization
 
 ### Backend
+
 - **Laravel** 11 with PHP 8.1
 - **MySQL** 8.0+ database
 - **Eloquent ORM** for database management
@@ -84,23 +85,27 @@ php artisan serve
 ## Features
 
 ### ✅ Authentication & Authorization
+
 - User login with roles (Admin, Store, Production, POS, Employee)
 - Session management with auto-refresh
 - Role-based access control (RBAC)
 
 ### ✅ Store Management
+
 - Multiple store locations
 - Store-specific inventory tracking
 - Location-based sales
 - Inter-store transfers
 
 ### ✅ Inventory Management
+
 - Real-time stock tracking
 - Multi-location inventory
 - Automatic stock updates
 - Inventory history
 
 ### ✅ POS System
+
 - Fast transaction processing
 - Multiple payment methods
 - Customer tracking
@@ -108,12 +113,14 @@ php artisan serve
 - Discount and tax calculations
 
 ### ✅ Product Management
+
 - Product catalog with categories
 - Pricing management
 - Product images
 - Stock levels
 
 ### ✅ Ingredients Management
+
 - Supplier tracking
 - Stock level monitoring
 - Reorder points
@@ -121,18 +128,21 @@ php artisan serve
 - Cost per unit
 
 ### ✅ Production
+
 - Batch creation and tracking
 - Ingredient usage tracking
 - Production history
 - Quality control logs
 
 ### ✅ Sales Analytics
+
 - Sales reports by date range
 - Store performance metrics
 - Payment method analysis
 - Discount tracking
 
 ### ✅ Audit & Compliance
+
 - Complete action history
 - User activity logs
 - System audit trail
@@ -222,6 +232,7 @@ See `backend/database/migrations/` for complete schema definitions.
 ## API Endpoints
 
 ### Base URL
+
 `http://localhost:8000/api`
 
 ### Main Endpoints
@@ -260,6 +271,7 @@ Full API documentation in `backend/README.md`
 ## Development Commands
 
 ### Frontend
+
 ```bash
 npm install          # Install dependencies
 npm run dev         # Start dev server
@@ -268,6 +280,7 @@ npm run preview     # Preview production build
 ```
 
 ### Backend
+
 ```bash
 composer install                # Install dependencies
 php artisan serve              # Start server
@@ -297,13 +310,17 @@ git merge feature/backend
 ## Troubleshooting
 
 ### CORS Error
+
 Update `backend/.env`:
+
 ```env
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
 ### Database Connection Error
+
 Check credentials in `backend/.env`:
+
 ```env
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -313,6 +330,7 @@ DB_PASSWORD=
 ```
 
 ### Port Already in Use
+
 ```bash
 # Use different port for Laravel
 php artisan serve --port=8001
@@ -324,12 +342,14 @@ npm run dev -- --port 5174
 ## Deployment
 
 ### Frontend (Vercel, Netlify, etc.)
+
 ```bash
 npm run build
 # Deploy the dist/ folder
 ```
 
 ### Backend (Heroku, DigitalOcean, etc.)
+
 ```bash
 git push heroku main
 php artisan migrate
@@ -360,4 +380,3 @@ MIT License - See LICENSE file for details
 - **Repository**: https://github.com/mikoypft/LZTMEAT.git
 - **Current Version**: 0.0.1
 - **Last Updated**: January 29, 2026
-  

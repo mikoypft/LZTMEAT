@@ -9,6 +9,7 @@ This project has been configured with a complete **Laravel backend** using **MyS
 ### 1. Backend Structure (`backend/` directory)
 
 #### Controllers (API Endpoints)
+
 - `AuthController` - Login and session management
 - `ProductController` - Product CRUD operations
 - `CategoryController` - Category management
@@ -23,6 +24,7 @@ This project has been configured with a complete **Laravel backend** using **MyS
 - `HistoryController` - Activity logs
 
 #### Models (Database Entities)
+
 - `User` - User accounts
 - `Store` - Store locations
 - `Category` - Product categories
@@ -37,6 +39,7 @@ This project has been configured with a complete **Laravel backend** using **MyS
 - `SystemHistory` - Audit logs
 
 #### Database Migrations
+
 - User authentication table
 - Store and product tables
 - Production, sales, and transfer tables
@@ -93,6 +96,7 @@ npm run dev
 ## Database Configuration
 
 **MySQL Connection Details** (in `backend/.env`):
+
 ```
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -102,6 +106,7 @@ DB_PASSWORD=
 ```
 
 **Tables Created**:
+
 - users
 - stores
 - categories
@@ -118,11 +123,13 @@ DB_PASSWORD=
 ## API Architecture
 
 ### RESTful Endpoints
+
 All endpoints follow REST conventions with JSON responses.
 
 **Base URL**: `http://localhost:8000/api`
 
 **Examples**:
+
 - `GET /api/products` - Get all products
 - `POST /api/products` - Create product
 - `PUT /api/products/{id}` - Update product
@@ -133,38 +140,45 @@ All endpoints follow REST conventions with JSON responses.
 ## Features
 
 ✅ **Authentication**
+
 - Username/password login
 - Session management
 - User roles (Admin, Store, Production, POS, Employee)
 
 ✅ **Product Management**
+
 - Categories
 - Products with pricing
 - Inventory tracking by location
 
 ✅ **Ingredients**
+
 - Supplier management
 - Stock tracking
 - Expiry date management
 - Reorder points
 
 ✅ **Sales**
+
 - Transaction recording
 - Payment methods
 - Customer information
 - Discount and tax calculations
 
 ✅ **Production**
+
 - Batch tracking
 - Ingredient usage
 - Production records
 
 ✅ **Operations**
+
 - Inter-store transfers
 - Multi-store support
 - Employee assignments
 
 ✅ **Audit**
+
 - System history tracking
 - Activity logs
 - Entity change tracking
@@ -174,6 +188,7 @@ All endpoints follow REST conventions with JSON responses.
 The frontend can work with **both** Supabase and Laravel:
 
 **To use Laravel** (default):
+
 ```env
 # .env.local
 VITE_API_MODE=laravel
@@ -181,6 +196,7 @@ VITE_API_BASE=http://localhost:8000/api
 ```
 
 **To use Supabase**:
+
 ```env
 # .env.local
 VITE_API_MODE=supabase
@@ -189,18 +205,21 @@ VITE_API_MODE=supabase
 ## Technology Stack
 
 **Frontend**:
+
 - React 18.3.1
 - TypeScript
 - Tailwind CSS
 - Vite
 
 **Backend**:
+
 - Laravel 11
 - PHP 8.1
 - MySQL 8.0+
 - Eloquent ORM
 
 **API**:
+
 - RESTful architecture
 - JSON request/response
 - CORS configured
