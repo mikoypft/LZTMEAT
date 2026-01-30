@@ -103,7 +103,8 @@ export function IngredientsInventoryPage() {
   );
   const totalItems = ingredients.length;
   const totalValue = ingredients.reduce(
-    (sum, item) => sum + item.stock * item.costPerUnit,
+    (sum, item) =>
+      sum + (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0),
     0,
   );
 
@@ -215,8 +216,8 @@ export function IngredientsInventoryPage() {
       item.category,
       item.stock,
       item.unit,
-      item.costPerUnit.toFixed(2),
-      (item.stock * item.costPerUnit).toFixed(2),
+      Number(item.costPerUnit || 0).toFixed(2),
+      (Number(item.stock || 0) * Number(item.costPerUnit || 0)).toFixed(2),
       item.supplier,
       item.expiryDate || "N/A",
     ]);
@@ -258,7 +259,7 @@ export function IngredientsInventoryPage() {
               </div>
             </div>
             <p className="text-2xl lg:text-3xl text-green-600 mb-1">
-              ₱{totalValue.toFixed(2)}
+              ₱{Number(totalValue || 0).toFixed(2)}
             </p>
             <p className="text-xs lg:text-sm text-muted-foreground">
               Inventory Value
@@ -427,7 +428,8 @@ export function IngredientsInventoryPage() {
                 {filteredIngredients.map((item) => {
                   const isLowStock = item.stock < item.minStockLevel;
                   const needsReorder = item.stock <= item.reorderPoint;
-                  const totalValue = item.stock * item.costPerUnit;
+                  const totalValue =
+                    (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
 
                   return (
                     <tr
@@ -454,7 +456,7 @@ export function IngredientsInventoryPage() {
                         {item.stock} {item.unit}
                       </td>
                       <td className="py-3 px-4 text-right text-sm">
-                        ₱{totalValue.toFixed(2)}
+                        ₱{Number(totalValue || 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-4">
                         {isLowStock ? (
@@ -513,7 +515,8 @@ export function IngredientsInventoryPage() {
           {filteredIngredients.map((item) => {
             const isLowStock = item.stock < item.minStockLevel;
             const needsReorder = item.stock <= item.reorderPoint;
-            const totalValue = item.stock * item.costPerUnit;
+            const totalValue =
+              (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
 
             return (
               <div
@@ -563,7 +566,7 @@ export function IngredientsInventoryPage() {
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Total Value</p>
                     <p className="text-lg font-bold text-green-600">
-                      ₱{totalValue.toFixed(2)}
+                      ₱{Number(totalValue || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -610,11 +613,13 @@ export function IngredientsInventoryPage() {
                 (item) => item.category === category,
               );
               const categoryValue = categoryItems.reduce(
-                (sum, item) => sum + item.stock * item.costPerUnit,
+                (sum, item) =>
+                  sum +
+                  (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0),
                 0,
               );
               const categoryStock = categoryItems.reduce(
-                (sum, item) => sum + item.stock,
+                (sum, item) => sum + (Number(item.stock) || 0),
                 0,
               );
 
@@ -636,13 +641,13 @@ export function IngredientsInventoryPage() {
                         Total Stock:
                       </span>
                       <span className="font-medium">
-                        {categoryStock.toFixed(0)}
+                        {Number(categoryStock || 0).toFixed(0)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Value:</span>
                       <span className="text-primary font-medium">
-                        ₱{categoryValue.toFixed(2)}
+                        ₱{Number(categoryValue || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>

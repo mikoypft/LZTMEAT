@@ -14,6 +14,15 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\HistoryController;
 
+// Handle CORS preflight requests
+Route::options('{any}', function () {
+    return response()->json([], 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        ->header('Access-Control-Max-Age', '3600');
+})->where('any', '.*');
+
 // Auth endpoints
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/refresh', [AuthController::class, 'refresh']);
@@ -29,6 +38,11 @@ Route::delete('/products/delete-all', [ProductController::class, 'deleteAll']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store']);
 Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+// Ingredient Categories endpoints
+Route::get('/ingredient-categories', [CategoryController::class, 'ingredientCategories']);
+Route::post('/ingredient-categories', [CategoryController::class, 'storeIngredientCategory']);
+Route::delete('/ingredient-categories/{id}', [CategoryController::class, 'destroyIngredientCategory']);
 
 // Inventory endpoints
 Route::get('/inventory', [InventoryController::class, 'index']);
@@ -51,6 +65,7 @@ Route::put('/sales/{id}', [SaleController::class, 'update']);
 Route::get('/production', [ProductionController::class, 'index']);
 Route::post('/production', [ProductionController::class, 'store']);
 Route::patch('/production/{id}', [ProductionController::class, 'updateStatus']);
+Route::put('/production/{id}', [ProductionController::class, 'updateStatus']);
 Route::delete('/production/{id}', [ProductionController::class, 'destroy']);
 
 // Transfers endpoints

@@ -285,6 +285,12 @@ export function InventoryPage({
     loadInventoryData();
     loadCategories();
     loadStoreLocations();
+
+    // Auto-refresh inventory every 1 second for real-time updates
+    const interval = setInterval(() => {
+      loadInventoryData();
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadInventoryData = async () => {

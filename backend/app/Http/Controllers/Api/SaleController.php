@@ -22,7 +22,7 @@ class SaleController extends Controller
             'sales' => $sales->map(fn($s) => [
                 'id' => $s->id,
                 'transactionId' => $s->transaction_id,
-                'date' => $s->created_at->toDateString(),
+                'date' => $s->created_at?->toDateString() ?? date('Y-m-d'),
                 'location' => $s->store?->name,
                 'storeId' => $s->store_id,
                 'cashier' => $s->user?->full_name,
@@ -35,7 +35,7 @@ class SaleController extends Controller
                 'tax' => $s->tax,
                 'total' => $s->total,
                 'paymentMethod' => $s->payment_method,
-                'timestamp' => $s->created_at->toIso8601String(),
+                'timestamp' => $s->created_at?->toIso8601String() ?? now()->toIso8601String(),
             ]),
         ]);
     }

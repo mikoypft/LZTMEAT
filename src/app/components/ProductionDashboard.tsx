@@ -246,9 +246,10 @@ export function ProductionDashboard() {
   const today = new Date().toISOString().split("T")[0];
 
   // Calculate total produced today (only today's production)
-  const totalProducedToday = productions
-    .filter((p) => p.date === today)
-    .reduce((sum, p) => sum + p.weightKg, 0);
+  const totalProducedToday =
+    productions
+      .filter((p) => p.date === today)
+      .reduce((sum, p) => sum + (Number(p.weightKg) || 0), 0) || 0;
   const inProgressCount = productions.filter(
     (p) => p.status === "in-progress",
   ).length;
@@ -385,12 +386,18 @@ export function ProductionDashboard() {
   };
 
   const handleAddProduction = async () => {
-    if (
-      !newProduction.productName ||
-      !newProduction.weightKg ||
-      !newProduction.batchNumber
-    ) {
-      toast.error("Please fill in all production fields");
+    if (!newProduction.productName || newProduction.productName.trim() === "") {
+      toast.error("Please select a product name");
+      return;
+    }
+
+    if (!newProduction.weightKg || parseFloat(newProduction.weightKg) <= 0) {
+      toast.error("Please enter a valid weight (KG)");
+      return;
+    }
+
+    if (!newProduction.batchNumber || newProduction.batchNumber.trim() === "") {
+      toast.error("Please ensure batch number is generated");
       return;
     }
 
@@ -399,7 +406,10 @@ export function ProductionDashboard() {
       return;
     }
 
-    if (!newProduction.employeeName) {
+    if (
+      !newProduction.employeeName ||
+      newProduction.employeeName.trim() === ""
+    ) {
       toast.error("Please select an employee");
       return;
     }
@@ -451,14 +461,18 @@ export function ProductionDashboard() {
       const producedWeight = parseFloat(newProduction.weightKg);
 
       // Create production record in database (this will automatically update inventory and deduct ingredients)
-      const record = await createProductionRecord({
+      const productionPayload = {
         productId: newProduction.productId,
         productName: newProduction.productName,
         quantity: producedWeight,
         batchNumber: newProduction.batchNumber,
         operator: "Current User",
         ingredientsUsed: ingredientsUsedAPI,
-      });
+      };
+
+      console.log("Creating production with payload:", productionPayload);
+
+      const record = await createProductionRecord(productionPayload);
 
       // Also deduct ingredients from local state
       for (const ing of validIngredients) {
@@ -496,15 +510,26 @@ export function ProductionDashboard() {
     status: ProductionEntry["status"],
   ) => {
     try {
+      console.log("Updating status:", { id, status });
       // Update in database
-      await updateProductionRecordStatus(id, status);
+      const result = await updateProductionRecordStatus(id, status);
+      console.log("Update result:", result);
 
       // Update local state
       setProductions(
         productions.map((p) => (p.id === id ? { ...p, status } : p)),
       );
 
-      toast.success("Production status updated");
+      // Show appropriate message based on status
+      if (status === "completed") {
+        const productName = result.productName || "Product";
+        const quantity = result.quantity || 0;
+        toast.success(
+          `Production completed! ${quantity} ${productName} added to Production Facility inventory.`,
+        );
+      } else {
+        toast.success("Production status updated");
+      }
     } catch (error) {
       console.error("Error updating production status:", error);
       toast.error("Failed to update status");
@@ -553,7 +578,7 @@ export function ProductionDashboard() {
               </div>
             </div>
             <p className="text-3xl text-primary mb-1">
-              {totalProducedToday.toFixed(1)} KG
+              {(totalProducedToday || 0).toFixed(1)} KG
             </p>
             <p className="text-sm text-muted-foreground">
               Total Produced Today
@@ -663,21 +688,21 @@ export function ProductionDashboard() {
                   <select
                     value={newProduction.productId}
                     onChange={(e) => {
+                      const selectedId = e.target.value;
                       const product = products.find(
-                        (p) => p.id === e.target.value,
+                        (p) => String(p.id) === selectedId,
                       );
                       setNewProduction({
                         ...newProduction,
-                        productId: e.target.value,
+                        productId: selectedId,
                         productName: product?.name || "",
                       });
                     }}
-                    placeholder="Enter product name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Product</option>
                     {products.map((product) => (
-                      <option key={product.id} value={product.id}>
+                      <option key={product.id} value={String(product.id)}>
                         {product.name}
                       </option>
                     ))}
@@ -855,7 +880,7 @@ export function ProductionDashboard() {
                       <td className="py-3 px-4">{production.batchNumber}</td>
                       <td className="py-3 px-4">{production.productName}</td>
                       <td className="py-3 px-4 text-primary">
-                        {production.weightKg.toFixed(1)} KG
+                        {(Number(production.weightKg) || 0).toFixed(1)} KG
                       </td>
                       <td className="py-3 px-4">
                         {production.ingredientsUsed.length > 0 ? (

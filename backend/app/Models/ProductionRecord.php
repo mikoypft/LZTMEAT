@@ -18,6 +18,7 @@ class ProductionRecord extends Model
         'quantity',
         'batch_number',
         'operator',
+        'status',
     ];
 
     public function product(): BelongsTo

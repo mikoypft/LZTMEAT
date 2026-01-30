@@ -62,6 +62,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [inventoryKey, setInventoryKey] = useState(0);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -526,6 +527,11 @@ export default function App() {
       return;
     }
 
+    // Increment inventory key when navigating to inventory to force fresh data load
+    if (page === "inventory") {
+      setInventoryKey((prev) => prev + 1);
+    }
+
     setCurrentPage(page);
     setSidebarOpen(false);
   };
@@ -752,7 +758,7 @@ export default function App() {
             {currentPage === "pos" && <POSPage currentUser={currentUser} />}
             {currentPage === "production" && <ProductionDashboard />}
             {currentPage === "inventory" && (
-              <InventoryPage currentUser={currentUser} />
+              <InventoryPage key={inventoryKey} currentUser={currentUser} />
             )}
             {currentPage === "ingredients" && <IngredientsInventoryPage />}
             {currentPage === "transfer" && <TransferPage />}

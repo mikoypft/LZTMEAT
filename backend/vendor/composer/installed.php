@@ -3,7 +3,7 @@
         'name' => 'lztmeat/backend',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '4cb7e2fcf33b5b71da8f6ba77cb819e6a68992cd',
+        'reference' => '7805fd2ab9aa680471838f47024323753e47f732',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -496,7 +496,7 @@
         'lztmeat/backend' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '4cb7e2fcf33b5b71da8f6ba77cb819e6a68992cd',
+            'reference' => '7805fd2ab9aa680471838f47024323753e47f732',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -267,7 +267,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         return {
           id: product.id,
           name: product.name,
-          price: product.price,
+          price: Number(product.price) || 0,
           stock: inv?.quantity || 0,
           category: product.category,
           sku: `SKU-${product.id}`,

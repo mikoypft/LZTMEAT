@@ -99,6 +99,7 @@ return new class extends Migration
             $table->integer('quantity');
             $table->string('batch_number')->unique();
             $table->string('operator');
+            $table->enum('status', ['in-progress', 'completed', 'quality-check'])->default('in-progress');
             $table->timestamps();
         });
 

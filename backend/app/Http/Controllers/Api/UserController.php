@@ -16,7 +16,7 @@ class UserController extends Controller
         return response()->json([
             'employees' => $users->map(fn($u) => [
                 'id' => $u->id,
-                'name' => $u->full_name,
+                'fullName' => $u->full_name,
                 'mobile' => $u->email ?? '',
                 'address' => '',
                 'role' => $u->employee_role ?? $u->role,

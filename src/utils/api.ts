@@ -33,14 +33,32 @@ async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const text = await response.text();
+    // Try to parse as JSON, otherwise use as error message
+    let errorData: any = {};
+    try {
+      // Strip HTML content from response and extract JSON
+      const jsonMatch = text.match(/{[\s\S]*}/);
+      if (jsonMatch) {
+        errorData = JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
     const errorMessage =
       errorData.error || `API request failed: ${response.statusText}`;
     console.error(`API Error [${endpoint}]:`, errorMessage, errorData);
     throw new Error(errorMessage);
   }
 
-  return response.json();
+  const text = await response.text();
+  // Strip HTML content from response and extract JSON
+  const jsonMatch = text.match(/{[\s\S]*}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  throw new Error(`Invalid response format from ${endpoint}`);
 }
 
 // ==================== AUTH API ====================
@@ -412,6 +430,7 @@ export async function getProductionRecords(): Promise<ProductionRecord[]> {
 export async function createProductionRecord(
   record: Omit<ProductionRecord, "id" | "timestamp">,
 ): Promise<ProductionRecord> {
+  console.log("API: Creating production record with:", record);
   const data = await apiRequest<{ record: ProductionRecord }>("/production", {
     method: "POST",
     body: JSON.stringify(record),
@@ -423,13 +442,15 @@ export async function updateProductionRecordStatus(
   id: string,
   status: string,
 ): Promise<ProductionRecord> {
+  console.log("API: Updating production status:", { id, status });
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}`,
     {
-      method: "PATCH",
+      method: "PUT",
       body: JSON.stringify({ status }),
     },
   );
+  console.log("API: Update response:", data);
   return data.record;
 }
 
