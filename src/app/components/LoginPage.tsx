@@ -39,6 +39,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
+  
+  // Only show demo credentials in development (localhost), not on Plesk deployment
+  const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const showDemoCredentials = isDevelopment;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,70 +213,74 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </button>
           </form>
 
-          {/* Demo Credentials Toggle */}
-          <button
-            onClick={() => setShowCredentials(!showCredentials)}
-            className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showCredentials ? "Hide" : "Show"} demo credentials
-          </button>
+          {/* Demo Credentials Toggle - Only show in development */}
+          {showDemoCredentials && (
+            <>
+              <button
+                onClick={() => setShowCredentials(!showCredentials)}
+                className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showCredentials ? "Hide" : "Show"} demo credentials
+              </button>
 
-          {showCredentials && (
-            <div className="mt-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Demo Credentials:
-              </p>
-              <div className="p-4 bg-muted/50 rounded-lg text-xs space-y-2">
-                <div className="space-y-1">
-                  <p>
-                    Admin:{" "}
-                    <code className="bg-background px-2 py-1 rounded">
-                      admin / admin123
-                    </code>
+              {showCredentials && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Demo Credentials:
                   </p>
-                  <p>
-                    Store:{" "}
-                    <code className="bg-background px-2 py-1 rounded">
-                      store_manager / store123
-                    </code>
+                  <div className="p-4 bg-muted/50 rounded-lg text-xs space-y-2">
+                    <div className="space-y-1">
+                      <p>
+                        Admin:{" "}
+                        <code className="bg-background px-2 py-1 rounded">
+                          admin / admin123
+                        </code>
+                      </p>
+                      <p>
+                        Store:{" "}
+                        <code className="bg-background px-2 py-1 rounded">
+                          store_manager / store123
+                        </code>
+                      </p>
+                      <p>
+                        Production:{" "}
+                        <code className="bg-background px-2 py-1 rounded">
+                          production / prod123
+                        </code>
+                      </p>
+                      <p>
+                        POS:{" "}
+                        <code className="bg-background px-2 py-1 rounded">
+                          mark_sioson / 123456
+                        </code>
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-medium text-muted-foreground mb-2 pt-2">
+                    Quick Login:
                   </p>
-                  <p>
-                    Production:{" "}
-                    <code className="bg-background px-2 py-1 rounded">
-                      production / prod123
-                    </code>
-                  </p>
-                  <p>
-                    POS:{" "}
-                    <code className="bg-background px-2 py-1 rounded">
-                      mark_sioson / 123456
-                    </code>
-                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => quickLogin("ADMIN")}
+                      disabled={loading}
+                      className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                    >
+                      Login as Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => quickLogin("POS")}
+                      disabled={loading}
+                      className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                    >
+                      Login as POS
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <p className="text-xs font-medium text-muted-foreground mb-2 pt-2">
-                Quick Login:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => quickLogin("ADMIN")}
-                  disabled={loading}
-                  className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  Login as Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickLogin("POS")}
-                  disabled={loading}
-                  className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  Login as POS
-                </button>
-              </div>
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

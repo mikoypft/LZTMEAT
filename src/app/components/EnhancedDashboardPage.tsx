@@ -97,7 +97,7 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
       ]);
 
       // Calculate comprehensive metrics
-      const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+      const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
       const totalOrders = sales.length;
       const totalProduction = productionRecords.reduce((sum, record) => sum + record.quantity, 0);
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -245,13 +245,15 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
     const categoryMap = new Map<string, number>();
     
     sales.forEach(sale => {
-      sale.items.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-          const current = categoryMap.get(product.category) || 0;
-          categoryMap.set(product.category, current + (item.quantity * item.price));
-        }
-      });
+      if (sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach(item => {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            const current = categoryMap.get(product.category) || 0;
+            categoryMap.set(product.category, current + (item.quantity * item.price));
+          }
+        });
+      }
     });
 
     return Array.from(categoryMap.entries()).map(([name, value], index) => ({
@@ -265,13 +267,15 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
     const productMap = new Map<string, { sold: number; revenue: number }>();
 
     sales.forEach(sale => {
-      sale.items.forEach(item => {
-        const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
-        productMap.set(item.productId, {
-          sold: current.sold + item.quantity,
-          revenue: current.revenue + (item.quantity * item.price)
+      if (sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach(item => {
+          const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
+          productMap.set(item.productId, {
+            sold: current.sold + item.quantity,
+            revenue: current.revenue + (item.quantity * item.price)
+          });
         });
-      });
+      }
     });
 
     const topProductsData = Array.from(productMap.entries())
@@ -518,7 +522,7 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Total Revenue"
-            value={`₱${metrics.totalRevenue.toLocaleString()}`}
+            value={`₱${(Math.round((Number(metrics.totalRevenue) || 0) * 100) / 100).toFixed(2)}`}
             change={`+${metrics.revenueGrowth}%`}
             trend="up"
             icon={DollarSign}
@@ -967,9 +971,9 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex flex-col">
-                          <span className="font-medium">{sale.items.length} items</span>
+                          <span className="font-medium">{sale.items && Array.isArray(sale.items) ? sale.items.length : 0} items</span>
                           <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                            {sale.items.map(item => item.name).join(', ')}
+                            {sale.items && Array.isArray(sale.items) ? sale.items.map(item => item.name).join(', ') : 'N/A'}
                           </span>
                         </div>
                       </td>

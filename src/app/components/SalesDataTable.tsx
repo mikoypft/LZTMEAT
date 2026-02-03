@@ -395,10 +395,10 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
       sale.store,
       sale.customer,
       sale.items,
-      sale.subtotal.toFixed(2),
-      sale.discount.toFixed(2),
-      sale.tax.toFixed(2),
-      sale.total.toFixed(2),
+      (Number(sale.subtotal) || 0).toFixed(2),
+      (Number(sale.discount) || 0).toFixed(2),
+      (Number(sale.tax) || 0).toFixed(2),
+      (Number(sale.total) || 0).toFixed(2),
       sale.paymentMethod,
       sale.cashier,
       sale.status
@@ -473,16 +473,16 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
     receipt += '(See transaction details for item breakdown)\n\n';
     
     receipt += '----------------------------------------\n';
-    receipt += `Subtotal: ₱${sale.subtotal.toFixed(2)}\n`;
-    if (sale.discount > 0) {
-      receipt += `Discount: -₱${sale.discount.toFixed(2)}\n`;
+    receipt += `Subtotal: ₱${(Number(sale.subtotal) || 0).toFixed(2)}\n`;
+    if (Number(sale.discount || 0) > 0) {
+      receipt += `Discount: -₱${(Number(sale.discount) || 0).toFixed(2)}\n`;
     }
-    if (sale.reseco && sale.reseco > 0) {
-      receipt += `Reseco: -₱${sale.reseco.toFixed(2)}\n`;
+    if (sale.reseco && Number(sale.reseco) > 0) {
+      receipt += `Reseco: -₱${(Number(sale.reseco) || 0).toFixed(2)}\n`;
     }
-    receipt += `Tax (8%): ₱${sale.tax.toFixed(2)}\n`;
+    receipt += `Tax (8%): ₱${(Number(sale.tax) || 0).toFixed(2)}\n`;
     receipt += '----------------------------------------\n';
-    receipt += `TOTAL: ₱${sale.total.toFixed(2)}\n`;
+    receipt += `TOTAL: ₱${(Number(sale.total) || 0).toFixed(2)}\n`;
     receipt += '========================================\n';
     receipt += `Payment Method: ${sale.paymentMethod}\n`;
     receipt += '========================================\n\n';
@@ -598,7 +598,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-green-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-green-600 mb-1">₱{totalSales.toFixed(2)}</p>
+            <p className="text-2xl lg:text-3xl text-green-600 mb-1">₱{(Number(totalSales) || 0).toFixed(2)}</p>
             <p className="text-xs lg:text-sm text-muted-foreground">Total Sales</p>
           </div>
 
@@ -618,7 +618,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-purple-600 mb-1">₱{avgTransactionValue.toFixed(2)}</p>
+            <p className="text-2xl lg:text-3xl text-purple-600 mb-1">₱{(Number(avgTransactionValue) || 0).toFixed(2)}</p>
             <p className="text-xs lg:text-sm text-muted-foreground">Avg Transaction</p>
           </div>
 
@@ -628,7 +628,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-orange-600" />
               </div>
             </div>
-            <p className="text-2xl lg:text-3xl text-orange-600 mb-1">₱{totalDiscount.toFixed(2)}</p>
+            <p className="text-2xl lg:text-3xl text-orange-600 mb-1">₱{(Number(totalDiscount) || 0).toFixed(2)}</p>
           </div>
         </div>
 
@@ -759,12 +759,12 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                     <td className="py-3 px-4 text-right text-sm">{sale.items}</td>
                     <td className="py-3 px-4 text-right text-sm">
                       <div>
-                        <p className="text-primary font-medium">₱{sale.total.toFixed(2)}</p>
-                        {sale.discount > 0 && (
-                          <p className="text-xs text-green-600">Disc: -₱{sale.discount.toFixed(2)}</p>
+                        <p className="text-primary font-medium">₱{(Number(sale.total) || 0).toFixed(2)}</p>
+                        {Number(sale.discount || 0) > 0 && (
+                          <p className="text-xs text-green-600">Disc: -₱{(Number(sale.discount) || 0).toFixed(2)}</p>
                         )}
-                        {sale.reseco && sale.reseco > 0 && (
-                          <p className="text-xs text-orange-600">Reseco: -₱{sale.reseco.toFixed(2)}</p>
+                        {sale.reseco && Number(sale.reseco) > 0 && (
+                          <p className="text-xs text-orange-600">Reseco: -₱{(Number(sale.reseco) || 0).toFixed(2)}</p>
                         )}
                       </div>
                     </td>
@@ -869,21 +869,21 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Items ({selectedSale.items})</span>
-                    <span>₱{selectedSale.subtotal.toFixed(2)}</span>
+                    <span>₱{(Number(selectedSale.subtotal) || 0).toFixed(2)}</span>
                   </div>
-                  {selectedSale.discount > 0 && (
+                  {Number(selectedSale.discount || 0) > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount</span>
-                      <span>-₱{selectedSale.discount.toFixed(2)}</span>
+                      <span>-₱{(Number(selectedSale.discount) || 0).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax (8%)</span>
-                    <span>₱{selectedSale.tax.toFixed(2)}</span>
+                    <span>₱{(Number(selectedSale.tax) || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-border">
                     <span className="font-medium">Total</span>
-                    <span className="text-xl text-primary font-medium">₱{selectedSale.total.toFixed(2)}</span>
+                    <span className="text-xl text-primary font-medium">₱{(Number(selectedSale.total) || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between pt-2">
                     <span className="text-muted-foreground">Payment Method</span>
@@ -941,7 +941,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Original Total</span>
-                    <span>₱{(editingSale.originalTotal || editingSale.total).toFixed(2)}</span>
+                    <span>₱{(Number(editingSale.originalTotal || editingSale.total) || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -966,7 +966,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 <div className="flex justify-between items-center">
                   <span className="font-medium">New Total</span>
                   <span className="text-2xl text-primary font-medium">
-                    ₱{Math.max(0, (editingSale.originalTotal || editingSale.total) - parseFloat(resecoAmount || '0')).toFixed(2)}
+                    ₱{(Math.max(0, (Number(editingSale.originalTotal || editingSale.total) || 0) - parseFloat(resecoAmount || '0'))).toFixed(2)}
                   </span>
                 </div>
                 {parseFloat(resecoAmount || '0') > 0 && (

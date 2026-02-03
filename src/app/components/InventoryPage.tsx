@@ -42,7 +42,7 @@ import {
   type StoreLocation,
 } from "@/utils/api";
 import { toast } from "sonner";
-import { getCategories, type Category } from "@/utils/api";
+import { getCategories, type Category, API_BASE_URL } from "@/utils/api";
 
 interface InventoryItem {
   id: string;
@@ -363,7 +363,7 @@ export function InventoryPage({
     try {
       // Verify password by making API call
       const response = await fetch(
-        "http://localhost:8000/api/verify-password",
+        `${API_BASE_URL}/verify-password`,
         {
           method: "POST",
           headers: {

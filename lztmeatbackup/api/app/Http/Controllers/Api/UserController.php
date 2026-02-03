@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+class UserController extends Controller
+{
+    public function index()
+    {
+        $users = User::with('store')->get();
+
+        return response()->json([
+            'employees' => $users->map(fn($u) => [
+                'id' => $u->id,
+                'fullName' => $u->full_name,
+                'mobile' => $u->mobile ?? '',
+                'address' => $u->address ?? '',
+                'role' => $u->employee_role ?? $u->role,
+                'storeId' => $u->store_id,
+                'storeName' => $u->store?->name,
+                'permissions' => $u->permissions,
+                'username' => $u->username,
+                'canLogin' => $u->can_login,
+            ]),
+        ]);
+    }
+
+    public function allUsers()
+    {
+        $users = User::with('store')->get();
+
+        return response()->json([
+            'users' => $users->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->full_name,
+                'username' => $u->username,
+                'role' => $u->role,
+                'employeeRole' => $u->employee_role,
+                'storeId' => $u->store_id,
+                'storeName' => $u->store?->name,
+                'canLogin' => $u->can_login,
+                'userType' => $u->role === 'EMPLOYEE' ? 'employee' : 'system',
+            ]),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            // Map role from frontend format to database format
+            $roleMap = [
+                'Store' => 'STORE',
+                'Production' => 'PRODUCTION', 
+                'POS' => 'POS',
+                'Employee' => 'EMPLOYEE',
+            ];
+            
+            $role = $request->role;
+            if (isset($roleMap[$role])) {
+                $role = $roleMap[$role];
+            }
+            
+            // Merge mapped role back
+            $request->merge(['role' => $role]);
+            
+            $validated = $request->validate([
+                'name' => 'required|string',
+                'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
+                'storeId' => 'nullable|exists:stores,id',
+                'mobile' => 'nullable|string',
+                'address' => 'nullable|string',
+                'email' => 'nullable|email',
+                'permissions' => 'nullable',
+                'canLogin' => 'nullable|boolean',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
+        // Auto-generate username from name if not provided
+        $username = $request->username;
+        if (!$username) {
+            $baseName = strtolower(str_replace(' ', '_', $request->name));
+            $username = $baseName;
+            $counter = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $baseName . '_' . $counter;
+                $counter++;
+            }
+        }
+        
+        // Auto-generate password if not provided
+        $password = $request->password;
+        $plainPassword = null;
+        if (!$password) {
+            $plainPassword = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = $plainPassword;
+        }
+
+        try {
+            $user = User::create([
+                'full_name' => $request->name,
+                'username' => $username,
+                'password' => \Hash::make($password),
+                'role' => $role,
+                'employee_role' => $role === 'EMPLOYEE' ? 'Employee' : null,
+                'store_id' => $request->storeId,
+                'mobile' => $request->mobile,
+                'address' => $request->address,
+                'permissions' => is_array($request->permissions) ? json_encode($request->permissions) : $request->permissions,
+                'can_login' => $request->canLogin ?? true,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error creating user: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to create employee',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        $response = [
+            'employee' => [
+                'id' => $user->id,
+                'name' => $user->full_name,
+                'fullName' => $user->full_name,
+                'mobile' => $request->mobile ?? '',
+                'address' => $request->address ?? '',
+                'role' => $user->employee_role ?? $user->role,
+                'storeId' => $user->store_id,
+                'storeName' => $user->store?->name,
+                'permissions' => $user->permissions,
+                'username' => $user->username,
+                'canLogin' => $user->can_login,
+            ],
+        ];
+        
+        // Include generated password in response if auto-generated
+        if ($plainPassword) {
+            $response['employee']['password'] = $plainPassword;
+        }
+
+        return response()->json($response, 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $updateData = [];
+        if ($request->has('name')) $updateData['full_name'] = $request->name;
+        if ($request->has('password')) $updateData['password'] = Hash::make($request->password);
+        if ($request->has('storeId')) $updateData['store_id'] = $request->storeId;
+        if ($request->has('email')) $updateData['email'] = $request->email;
+        if ($request->has('permissions')) $updateData['permissions'] = $request->permissions;
+        if ($request->has('canLogin')) $updateData['can_login'] = $request->canLogin;
+
+        $user->update($updateData);
+
+        return response()->json([
+            'employee' => [
+                'id' => $user->id,
+                'name' => $user->full_name,
+                'mobile' => $user->email ?? '',
+                'address' => '',
+                'role' => $user->employee_role ?? $user->role,
+                'storeId' => $user->store_id,
+                'storeName' => $user->store?->name,
+                'permissions' => $user->permissions,
+                'username' => $user->username,
+                'canLogin' => $user->can_login,
+            ],
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        User::findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+}

@@ -2,14 +2,11 @@
 // Set to 'laravel' to use Laravel backend, or 'supabase' for Supabase
 const API_MODE = import.meta.env.VITE_API_MODE || "laravel";
 
-let API_BASE: string;
+// For local dev use localhost:8000, for production use /api
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
-if (API_MODE === "laravel") {
-  API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
-} else {
-  const { projectId, publicAnonKey } = await import("/utils/supabase/info");
-  API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-26f4e13f`;
-}
+// Export API_BASE_URL for components that need it
+export const API_BASE_URL = API_BASE;
 
 // Helper function for API requests
 async function apiRequest<T>(

@@ -59,7 +59,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
       ]);
 
       // Calculate total revenue and orders
-      const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+      const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
       const totalOrders = sales.length;
 
       // Calculate total production
@@ -169,13 +169,15 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
     const categoryMap = new Map<string, number>();
     
     sales.forEach(sale => {
-      sale.items.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-          const current = categoryMap.get(product.category) || 0;
-          categoryMap.set(product.category, current + (item.quantity * item.price));
-        }
-      });
+      if (sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach(item => {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            const current = categoryMap.get(product.category) || 0;
+            categoryMap.set(product.category, current + (item.quantity * item.price));
+          }
+        });
+      }
     });
 
     const entries = Array.from(categoryMap.entries());
@@ -192,13 +194,15 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
     const productMap = new Map<string, { sold: number; revenue: number }>();
 
     sales.forEach(sale => {
-      sale.items.forEach(item => {
-        const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
-        productMap.set(item.productId, {
-          sold: current.sold + item.quantity,
-          revenue: current.revenue + (item.quantity * item.price)
+      if (sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach(item => {
+          const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
+          productMap.set(item.productId, {
+            sold: current.sold + item.quantity,
+            revenue: current.revenue + (item.quantity * item.price)
+          });
         });
-      });
+      }
     });
 
     const topProductsData = Array.from(productMap.entries())
@@ -314,7 +318,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         return [
           {
             title: 'Total Revenue',
-            value: `₱${dashboardData.totalRevenue.toLocaleString()}`,
+            value: `₱${(Math.round((Number(dashboardData.totalRevenue) || 0) * 100) / 100).toFixed(2)}`,
             change: '+12.5%',
             trend: 'up',
             icon: DollarSign,
@@ -353,7 +357,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         return [
           {
             title: 'Store Sales',
-            value: `₱${(dashboardData.totalRevenue * 0.4).toLocaleString()}`,
+            value: `₱${(Math.round((Number(dashboardData.totalRevenue) || 0) * 0.4 * 100) / 100).toFixed(2)}`,
             change: '+15.3%',
             trend: 'up',
             icon: DollarSign,
