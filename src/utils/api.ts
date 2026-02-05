@@ -16,11 +16,11 @@ async function apiRequest<T>(
   const baseHeaders: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  
+
   const headers: Record<string, string> = {
     ...baseHeaders,
   };
-  
+
   if (options.headers) {
     const optionHeaders = options.headers as Record<string, string>;
     Object.assign(headers, optionHeaders);
