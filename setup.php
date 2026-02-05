@@ -48,9 +48,21 @@ $envFile = $backendPath . '/.env';
 if (file_exists($envFile)) {
     $envContent = file_get_contents($envFile);
     if (strpos($envContent, 'APP_KEY=base64:') === false) {
-        $appKey = 'base64:' . base64_encode(random_bytes(32));
-        $envContent = preg_replace('/APP_KEY=.*/', 'APP_KEY=' . $appKey, $envContent);
-        if (file_put_contents($envFile, $envContent)) {
+        $appKey = 'base64:' . bin2hex(random_bytes(32));
+        // Replace APP_KEY line carefully
+        $lines = explode("\n", $envContent);
+        $newLines = [];
+        $found = false;
+        foreach ($lines as $line) {
+            if (strpos($line, 'APP_KEY=') === 0) {
+                $newLines[] = 'APP_KEY=' . $appKey;
+                $found = true;
+            } else {
+                $newLines[] = $line;
+            }
+        }
+        $newContent = implode("\n", $newLines);
+        if (file_put_contents($envFile, $newContent)) {
             $output[] = "✓ Generated APP_KEY";
         } else {
             $errors[] = "✗ Cannot write to .env file - check permissions";
@@ -99,9 +111,13 @@ if (file_exists($backendPath . '/vendor/laravel/framework/src/Illuminate/Foundat
 
 // 8. Check database config
 if (file_exists($envFile)) {
-    $env = parse_ini_file($envFile);
-    if (!empty($env['DB_DATABASE']) && !empty($env['DB_USERNAME'])) {
-        $output[] = "✓ Database configured: DB=" . $env['DB_DATABASE'];
+    $envContent = file_get_contents($envFile);
+    $hasDb = preg_match('/DB_DATABASE\s*=\s*\w+/', $envContent);
+    $hasUser = preg_match('/DB_USERNAME\s*=\s*\w+/', $envContent);
+    if ($hasDb && $hasUser) {
+        if (preg_match('/DB_DATABASE\s*=\s*(\w+)/', $envContent, $m)) {
+            $output[] = "✓ Database configured: DB=" . $m[1];
+        }
     } else {
         $errors[] = "⚠ Database credentials not fully configured - check .env file";
     }
