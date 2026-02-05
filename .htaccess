@@ -1,25 +1,19 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-
-    # Skip real files
+    
+    # Let real files pass through unchanged
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
-
-    # Skip real directories  
+    
+    # Let real directories pass through unchanged
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
-
-    # Skip backend, setup, debug - don't rewrite these
-    RewriteRule ^(backend|setup\.php|debug\.php) - [L]
-
-    # SPA: Route all other requests to dist/index.html
-    RewriteCond %{REQUEST_URI} !^/dist/
-    RewriteRule ^(.*)$ /dist/index.html [PT,L]
 </IfModule>
 
 AddType application/javascript js
 AddType text/css css
+
 
 
 
