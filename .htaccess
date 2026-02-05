@@ -1,9 +1,12 @@
-# Passenger handles all routing via app.js
-# This file is only for static file MIME types
+# Minimal .htaccess - MIME types only
+# All routing handled by index.php and setup.php
 
 AddType application/javascript js
 AddType text/css css
 AddType image/svg+xml svg
+AddType font/woff woff
+AddType font/woff2 woff2
+
 
 
 
