@@ -2,7 +2,20 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$checks = ['success' => [], 'errors' => []];
+$checks = ['success' => [], 'errors' => [], 'actions' => []];
+
+// ===== AUTO-SETUP: Copy .env.production to .env =====
+$envProd = __DIR__ . '/backend/.env.production';
+$envFile = __DIR__ . '/backend/.env';
+
+if (file_exists($envProd)) {
+    // Always copy .env.production to .env to ensure production settings
+    if (copy($envProd, $envFile)) {
+        $checks['actions'][] = "✓ Copied .env.production → .env (production settings active)";
+    } else {
+        $checks['errors'][] = "✗ Could not copy .env.production to .env - check permissions";
+    }
+}
 
 // ===== PATHS =====
 $paths = [
@@ -109,6 +122,13 @@ if (file_exists(__DIR__ . '/dist/index.html')) {
     <div class="container">
         <h1>🔍 LZTMEAT Setup Status</h1>
         <div class="content">
+            
+            <?php if (!empty($checks['actions'])): ?>
+            <h2>🔧 Actions Taken</h2>
+            <?php foreach ($checks['actions'] as $msg): ?>
+                <div class="item info"><?= htmlspecialchars($msg) ?></div>
+            <?php endforeach; ?>
+            <?php endif; ?>
             
             <h2>✓ Checks Passed</h2>
             <?php if (empty($checks['success'])): ?>
