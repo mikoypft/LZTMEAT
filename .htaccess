@@ -2,32 +2,38 @@
     RewriteEngine On
     RewriteBase /
 
-    # Don't rewrite real files or directories
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # Allow real files to pass through (don't rewrite them)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Allow real directories to pass through
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
     # Route /api/* to Laravel backend
     RewriteCond %{REQUEST_URI} ^/api(/|$)
     RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA]
 
-    # Route other /backend/* to Laravel
+    # Route /backend/* to Laravel
     RewriteCond %{REQUEST_URI} ^/backend(/|$)
     RewriteRule ^backend/(.*)$ backend/public/index.php [L,QSA]
 
-    # Everything else → dist/index.html (SPA)
+    # Everything else → dist/index.html (SPA routing)
     RewriteRule ^ dist/index.html [L]
 </IfModule>
 
-# Set correct MIME types
+# Force correct MIME types for assets
 <IfModule mod_mime.c>
-    AddType application/javascript js
-    AddType text/css css
-    AddType image/svg+xml svg
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType image/svg+xml .svg
+    AddType font/woff .woff
+    AddType font/woff2 .woff2
 </IfModule>
 
 # Compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript text/xml application/json
 </IfModule>
 
 # Cache headers
@@ -47,6 +53,7 @@
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
 </IfModule>
+
 
 
 
