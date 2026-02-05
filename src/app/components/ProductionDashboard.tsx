@@ -9,6 +9,7 @@ import {
   ChefHat,
   X,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   BarChart,
@@ -140,7 +141,7 @@ export function ProductionDashboard() {
     );
   }
 
-  const { ingredients, deductIngredient } = context;
+  const { ingredients, deductIngredient, refreshIngredients } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProduction, setNewProduction] = useState({
@@ -156,6 +157,16 @@ export function ProductionDashboard() {
   const [products, setProducts] = useState<APIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    show: boolean;
+    productionId?: string;
+  }>({ show: false });
+  const [completionConfirmation, setCompletionConfirmation] = useState<{
+    show: boolean;
+    production?: ProductionEntry;
+    actualWeight?: string;
+    additionalIngredients?: IngredientInput[];
+  }>({ show: false });
 
   // Load products and production records from database on mount
   useEffect(() => {
@@ -509,6 +520,21 @@ export function ProductionDashboard() {
     id: string,
     status: ProductionEntry["status"],
   ) => {
+    // If trying to mark as completed, show confirmation modal instead
+    if (status === "completed") {
+      const production = productions.find((p) => p.id === id);
+      if (production) {
+        setCompletionConfirmation({
+          show: true,
+          production,
+          actualWeight: production.weightKg,
+          additionalIngredients: [],
+        });
+      }
+      return;
+    }
+
+    // For other statuses, update directly
     try {
       console.log("Updating status:", { id, status });
       // Update in database
@@ -520,30 +546,69 @@ export function ProductionDashboard() {
         productions.map((p) => (p.id === id ? { ...p, status } : p)),
       );
 
-      // Show appropriate message based on status
-      if (status === "completed") {
-        const productName = result.productName || "Product";
-        const quantity = result.quantity || 0;
-        toast.success(
-          `Production completed! ${quantity} ${productName} added to Production Facility inventory.`,
-        );
-      } else {
-        toast.success("Production status updated");
-      }
+      toast.success("Production status updated");
     } catch (error) {
       console.error("Error updating production status:", error);
       toast.error("Failed to update status");
     }
   };
 
-  const deleteProduction = async (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this production record? This action cannot be undone.",
-      )
-    ) {
-      return;
+  const confirmCompletion = async () => {
+    const { production, actualWeight, additionalIngredients } =
+      completionConfirmation;
+    if (!production) return;
+
+    try {
+      // Update in database with new weight
+      const result = await updateProductionRecordStatus(
+        production.id,
+        "completed",
+        {
+          actualWeight: actualWeight
+            ? parseFloat(actualWeight)
+            : production.weightKg,
+          additionalIngredients: additionalIngredients || [],
+        },
+      );
+      console.log("Update result:", result);
+
+      // Update local state
+      setProductions(
+        productions.map((p) =>
+          p.id === production.id
+            ? {
+                ...p,
+                status: "completed",
+                weightKg: actualWeight || p.weightKg,
+              }
+            : p,
+        ),
+      );
+
+      const productName = result.productName || production.productName;
+      const quantity = actualWeight || production.weightKg;
+      toast.success(
+        `Production completed! ${quantity} KG ${productName} added to Production Facility inventory.`,
+      );
+
+      // Refresh ingredients to reflect stock changes from additional ingredients
+      await refreshIngredients();
+
+      setCompletionConfirmation({ show: false });
+    } catch (error) {
+      console.error("Error completing production:", error);
+      toast.error("Failed to complete production");
     }
+  };
+
+  const deleteProduction = async (id: string) => {
+    // Show confirmation modal instead of browser confirm
+    setDeleteConfirmation({ show: true, productionId: id });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirmation.productionId;
+    if (!id) return;
 
     console.log(
       "Frontend: Attempting to delete production with ID:",
@@ -563,6 +628,8 @@ export function ProductionDashboard() {
     } catch (error) {
       console.error("Error deleting production record:", error);
       toast.error("Failed to delete record");
+    } finally {
+      setDeleteConfirmation({ show: false });
     }
   };
 
@@ -946,6 +1013,261 @@ export function ProductionDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6 border border-border">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Delete Production Record</h2>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800">
+                Are you sure you want to delete this production record? All
+                associated data will be permanently removed.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmation({ show: false })}
+                className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Confirmation Modal */}
+      {completionConfirmation.show && completionConfirmation.production && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 border border-border my-auto">
+            <h2 className="text-2xl font-bold mb-6">
+              Confirm Production Completion
+            </h2>
+
+            {/* Production Details Summary */}
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+              <div>
+                <p className="text-sm text-muted-foreground">Product</p>
+                <p className="font-semibold">
+                  {completionConfirmation.production.productName}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Batch #</p>
+                <p className="font-semibold">
+                  {completionConfirmation.production.batchNumber}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Date</p>
+                <p className="font-semibold">
+                  {completionConfirmation.production.date}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Time</p>
+                <p className="font-semibold">
+                  {completionConfirmation.production.time}
+                </p>
+              </div>
+            </div>
+
+            {/* Initial Ingredients Used */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-3">Initial Ingredients Used</h3>
+              <div className="space-y-2 p-3 bg-muted/20 rounded-lg">
+                {completionConfirmation.production.ingredientsUsed &&
+                completionConfirmation.production.ingredientsUsed.length > 0 ? (
+                  completionConfirmation.production.ingredientsUsed.map(
+                    (ing, idx) => (
+                      <div key={idx} className="flex justify-between text-sm">
+                        <span>{ing.name || ing.code}</span>
+                        <span className="font-medium">
+                          {ing.quantity} {ing.unit || "unit"}
+                        </span>
+                      </div>
+                    ),
+                  )
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No initial ingredients recorded
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Actual Weight Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-2">
+                Actual Weight Produced (KG) *
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={completionConfirmation.actualWeight || ""}
+                onChange={(e) =>
+                  setCompletionConfirmation({
+                    ...completionConfirmation,
+                    actualWeight: e.target.value,
+                  })
+                }
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Enter actual weight produced"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Planned: {completionConfirmation.production.weightKg} KG
+              </p>
+            </div>
+
+            {/* Additional Ingredients */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Additional Ingredients Used</h3>
+                <button
+                  onClick={() => {
+                    const newIng = [
+                      ...(completionConfirmation.additionalIngredients || []),
+                      { code: "", quantity: "" },
+                    ];
+                    setCompletionConfirmation({
+                      ...completionConfirmation,
+                      additionalIngredients: newIng,
+                    });
+                  }}
+                  className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Ingredient
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {completionConfirmation.additionalIngredients &&
+                completionConfirmation.additionalIngredients.length > 0 ? (
+                  completionConfirmation.additionalIngredients.map(
+                    (ing, idx) => {
+                      const selectedIngredient = ingredients.find(
+                        (i) => i.id.toString() === ing.code,
+                      );
+                      return (
+                        <div key={idx} className="flex gap-2 items-start">
+                          <select
+                            value={ing.code}
+                            onChange={(e) => {
+                              const updated = [
+                                ...(completionConfirmation.additionalIngredients ||
+                                  []),
+                              ];
+                              updated[idx].code = e.target.value;
+                              setCompletionConfirmation({
+                                ...completionConfirmation,
+                                additionalIngredients: updated,
+                              });
+                            }}
+                            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          >
+                            <option value="">Select ingredient</option>
+                            {ingredients.map((ingredient) => (
+                              <option
+                                key={ingredient.id}
+                                value={ingredient.id.toString()}
+                              >
+                                {ingredient.name} (Stock: {ingredient.stock}{" "}
+                                {ingredient.unit})
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="Qty"
+                            value={ing.quantity}
+                            onChange={(e) => {
+                              const updated = [
+                                ...(completionConfirmation.additionalIngredients ||
+                                  []),
+                              ];
+                              updated[idx].quantity = e.target.value;
+                              setCompletionConfirmation({
+                                ...completionConfirmation,
+                                additionalIngredients: updated,
+                              });
+                            }}
+                            className="w-24 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          />
+                          {selectedIngredient && (
+                            <div className="text-xs text-muted-foreground whitespace-nowrap py-2">
+                              Available: {selectedIngredient.stock}{" "}
+                              {selectedIngredient.unit}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => {
+                              const updated =
+                                completionConfirmation.additionalIngredients?.filter(
+                                  (_, i) => i !== idx,
+                                ) || [];
+                              setCompletionConfirmation({
+                                ...completionConfirmation,
+                                additionalIngredients: updated,
+                              });
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    },
+                  )
+                ) : (
+                  <p className="text-sm text-muted-foreground p-2 bg-muted/20 rounded">
+                    No additional ingredients. Click "Add Ingredient" to add
+                    wrapper, oil, or other ingredients used.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-border">
+              <button
+                onClick={() => setCompletionConfirmation({ show: false })}
+                className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCompletion}
+                disabled={!completionConfirmation.actualWeight}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm & Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

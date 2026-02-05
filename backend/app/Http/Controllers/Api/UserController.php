@@ -38,10 +38,13 @@ class UserController extends Controller
                 'id' => $u->id,
                 'name' => $u->full_name,
                 'username' => $u->username,
+                'mobile' => $u->mobile ?? '',
+                'address' => $u->address ?? '',
                 'role' => $u->role,
                 'employeeRole' => $u->employee_role,
                 'storeId' => $u->store_id,
                 'storeName' => $u->store?->name,
+                'permissions' => $u->permissions,
                 'canLogin' => $u->can_login,
                 'userType' => $u->role === 'EMPLOYEE' ? 'employee' : 'system',
             ]),
@@ -58,7 +61,7 @@ class UserController extends Controller
             'Employee' => 'EMPLOYEE',
         ];
         
-        $role = $request->role;
+        $role = $request->input('role');
         if (isset($roleMap[$role])) {
             $role = $roleMap[$role];
         }
@@ -69,7 +72,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string',
             'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
-            'storeId' => 'nullable|exists:stores,id',
+            'storeId' => 'nullable|integer|exists:stores,id',
             'mobile' => 'nullable|string',
             'address' => 'nullable|string',
             'email' => 'nullable|email',
@@ -78,9 +81,9 @@ class UserController extends Controller
         ]);
 
         // Auto-generate username from name if not provided
-        $username = $request->username;
+        $username = $request->input('username');
         if (!$username) {
-            $baseName = strtolower(str_replace(' ', '_', $request->name));
+            $baseName = strtolower(str_replace(' ', '_', $request->input('name')));
             $username = $baseName;
             $counter = 1;
             while (User::where('username', $username)->exists()) {
@@ -90,7 +93,7 @@ class UserController extends Controller
         }
         
         // Auto-generate password if not provided
-        $password = $request->password;
+        $password = $request->input('password');
         $plainPassword = null;
         if (!$password) {
             $plainPassword = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
@@ -98,16 +101,16 @@ class UserController extends Controller
         }
 
         $user = User::create([
-            'full_name' => $request->name,
+            'full_name' => $request->input('name'),
             'username' => $username,
             'password' => Hash::make($password),
             'role' => $role,
             'employee_role' => $role === 'EMPLOYEE' ? 'Employee' : null,
-            'store_id' => $request->storeId,
-            'mobile' => $request->mobile,
-            'address' => $request->address,
-            'permissions' => is_array($request->permissions) ? json_encode($request->permissions) : $request->permissions,
-            'can_login' => $request->canLogin ?? true,
+            'store_id' => $request->input('storeId'),
+            'mobile' => $request->input('mobile'),
+            'address' => $request->input('address'),
+            'permissions' => is_array($request->input('permissions')) ? json_encode($request->input('permissions')) : $request->input('permissions'),
+            'can_login' => $request->input('canLogin') ?? true,
         ]);
 
         $response = [
@@ -115,8 +118,8 @@ class UserController extends Controller
                 'id' => $user->id,
                 'name' => $user->full_name,
                 'fullName' => $user->full_name,
-                'mobile' => $request->mobile ?? '',
-                'address' => $request->address ?? '',
+                'mobile' => $user->mobile ?? '',
+                'address' => $user->address ?? '',
                 'role' => $user->employee_role ?? $user->role,
                 'storeId' => $user->store_id,
                 'storeName' => $user->store?->name,
@@ -140,10 +143,15 @@ class UserController extends Controller
 
         $updateData = [];
         if ($request->has('name')) $updateData['full_name'] = $request->name;
+        if ($request->has('mobile')) $updateData['mobile'] = $request->mobile;
+        if ($request->has('address')) $updateData['address'] = $request->address;
         if ($request->has('password')) $updateData['password'] = Hash::make($request->password);
         if ($request->has('storeId')) $updateData['store_id'] = $request->storeId;
         if ($request->has('email')) $updateData['email'] = $request->email;
-        if ($request->has('permissions')) $updateData['permissions'] = $request->permissions;
+        if ($request->has('permissions')) {
+            $permissions = $request->permissions;
+            $updateData['permissions'] = is_array($permissions) ? json_encode($permissions) : $permissions;
+        }
         if ($request->has('canLogin')) $updateData['can_login'] = $request->canLogin;
 
         $user->update($updateData);
@@ -152,8 +160,8 @@ class UserController extends Controller
             'employee' => [
                 'id' => $user->id,
                 'name' => $user->full_name,
-                'mobile' => $user->email ?? '',
-                'address' => '',
+                'mobile' => $user->mobile ?? '',
+                'address' => $user->address ?? '',
                 'role' => $user->employee_role ?? $user->role,
                 'storeId' => $user->store_id,
                 'storeName' => $user->store?->name,

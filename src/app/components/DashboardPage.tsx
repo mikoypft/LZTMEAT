@@ -1,9 +1,51 @@
-import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart, Factory, Users, AlertTriangle, Activity, Calendar, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { UserRole } from './LoginPage';
-import { getProducts, getInventory, getSales, getProductionRecords, getTransfers, type Sale, type ProductionRecord, type TransferRequest, type Product, type InventoryRecord } from '@/utils/api';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Package,
+  ShoppingCart,
+  Factory,
+  Users,
+  AlertTriangle,
+  Activity,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
+  RefreshCw,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { UserRole } from "./LoginPage";
+import {
+  getProducts,
+  getInventory,
+  getSales,
+  getProductionRecords,
+  getTransfers,
+  type Sale,
+  type ProductionRecord,
+  type TransferRequest,
+  type Product,
+  type InventoryRecord,
+} from "@/utils/api";
+import { toast } from "sonner";
 
 interface DashboardPageProps {
   userRole: UserRole;
@@ -18,15 +60,36 @@ interface DashboardData {
   salesByDay: { name: string; sales: number; orders: number }[];
   productionByDay: { name: string; produced: number }[];
   categoryData: { name: string; value: number; color: string }[];
-  topProducts: { name: string; sold: number; revenue: number; trend: 'up' | 'down'; change: number }[];
-  recentActivity: { type: string; message: string; time: string; icon: any; color: string }[];
+  topProducts: {
+    name: string;
+    sold: number;
+    revenue: number;
+    trend: "up" | "down";
+    change: number;
+  }[];
+  recentActivity: {
+    type: string;
+    message: string;
+    time: string;
+    icon: any;
+    color: string;
+  }[];
   inventoryTrend: { name: string; stock: number }[];
 }
 
-const COLORS = ['#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2', '#fef2f2'];
+const COLORS = [
+  "#ef4444",
+  "#f87171",
+  "#fca5a5",
+  "#fecaca",
+  "#fee2e2",
+  "#fef2f2",
+];
 
 export function DashboardPage({ userRole, userName }: DashboardPageProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('week');
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    "today" | "week" | "month"
+  >("week");
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalRevenue: 0,
@@ -38,32 +101,146 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
     categoryData: [],
     topProducts: [],
     recentActivity: [],
-    inventoryTrend: []
+    inventoryTrend: [],
   });
 
   useEffect(() => {
     loadDashboardData();
   }, [selectedPeriod]);
 
+  const getDateRangeFilter = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    const startDate = new Date(today);
+
+    console.log(
+      "[Dashboard] Current date/time:",
+      new Date(),
+      "Start of today:",
+      startDate,
+    );
+
+    switch (selectedPeriod) {
+      case "today":
+        // Return start of today - will filter for today only
+        break;
+      case "week":
+        // Go back 7 days
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case "month":
+        // Go back 30 days
+        startDate.setDate(today.getDate() - 30);
+        break;
+    }
+
+    console.log("[Dashboard] Date filter range:", {
+      selectedPeriod,
+      startDate,
+    });
+    return startDate;
+  };
+
+  const filterDataByPeriod = (
+    items: any[],
+    dateField: string = "timestamp",
+  ) => {
+    const startDate = getDateRangeFilter();
+    console.log("[Dashboard] Filtering items:", {
+      count: items.length,
+      dateField,
+      startDate: startDate.toISOString(),
+      firstItemDate:
+        items.length > 0
+          ? new Date(items[0][dateField] || items[0].date)
+          : "N/A",
+    });
+
+    const filtered = items.filter((item, index) => {
+      const itemDate = new Date(item[dateField] || item.date);
+      itemDate.setHours(0, 0, 0, 0);
+      const passes = itemDate >= startDate;
+
+      if (index < 3) {
+        console.log(`[Dashboard] Item ${index}:`, {
+          date: item[dateField] || item.date,
+          parsed: itemDate.toISOString(),
+          normalized: itemDate.toISOString().split("T")[0],
+          startDate: startDate.toISOString().split("T")[0],
+          passes,
+        });
+      }
+
+      return passes;
+    });
+
+    console.log("[Dashboard] Filter result:", {
+      originalCount: items.length,
+      filteredCount: filtered.length,
+    });
+
+    return filtered;
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
+      // Calculate date range based on selected period
+      const today = new Date();
+      let startDate = new Date(today);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+
+      switch (selectedPeriod) {
+        case "today":
+          // Keep startDate as today
+          break;
+        case "week":
+          startDate.setDate(today.getDate() - 7);
+          break;
+        case "month":
+          startDate.setDate(today.getDate() - 30);
+          break;
+      }
+
+      const startDateStr = startDate.toISOString().split("T")[0];
+      const endDateStr = endDate.toISOString().split("T")[0];
+
+      console.log("[Dashboard] Loading data for period:", {
+        selectedPeriod,
+        startDateStr,
+        endDateStr,
+      });
+
       // Fetch all data in parallel
-      const [products, inventory, sales, productionRecords, transfers] = await Promise.all([
-        getProducts(),
-        getInventory(),
-        getSales(),
-        getProductionRecords(),
-        getTransfers()
-      ]);
+      const [products, inventory, sales, productionRecords, transfers] =
+        await Promise.all([
+          getProducts(),
+          getInventory(),
+          getSales(startDateStr, endDateStr),
+          getProductionRecords(startDateStr, endDateStr),
+          getTransfers(),
+        ]);
 
-      // Calculate total revenue and orders
-      const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
-      const totalOrders = sales.length;
+      console.log("[Dashboard] Data received:", {
+        productsCount: products.length,
+        inventoryCount: inventory.length,
+        salesCount: sales.length,
+        productionCount: productionRecords.length,
+        transfersCount: transfers.length,
+        selectedPeriod,
+      });
 
+      // Filter production and transfers for the period (since API might not support date filtering for these)
+      // Data is already filtered from APIs, no need for client-side filtering
       // Calculate total production
-      const totalProduction = productionRecords.reduce((sum, record) => sum + record.quantity, 0);
+      const totalProduction = productionRecords.reduce(
+        (sum, record) => sum + record.quantity,
+        0,
+      );
 
       // Calculate low stock items
       const MIN_STOCK_THRESHOLD = 50;
@@ -72,13 +249,25 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         const current = inventoryByProduct.get(inv.productId) || 0;
         inventoryByProduct.set(inv.productId, current + inv.quantity);
       });
-      const lowStockCount = Array.from(inventoryByProduct.values()).filter(qty => qty < MIN_STOCK_THRESHOLD).length;
+      const lowStockCount = Array.from(inventoryByProduct.values()).filter(
+        (qty) => qty < MIN_STOCK_THRESHOLD,
+      ).length;
 
-      // Sales by day (last 7 days)
-      const salesByDay = getLast7DaysData(sales);
+      // Sales by day
+      const salesByDay =
+        selectedPeriod === "today"
+          ? getTodayData(sales)
+          : selectedPeriod === "month"
+            ? getMonthlyData(sales)
+            : getLast7DaysData(sales);
 
-      // Production by day (last 7 days)
-      const productionByDay = getLast7DaysProduction(productionRecords);
+      // Production by day
+      const productionByDay =
+        selectedPeriod === "today"
+          ? getTodayProduction(productionRecords)
+          : selectedPeriod === "month"
+            ? getMonthlyProduction(productionRecords)
+            : getLast7DaysProduction(productionRecords);
 
       // Category distribution
       const categoryData = getCategoryDistribution(products, sales);
@@ -87,14 +276,37 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
       const topProducts = getTopProducts(products, sales);
 
       // Recent activity
-      const recentActivity = getRecentActivity(sales, productionRecords, transfers, inventory);
+      const recentActivity = getRecentActivity(
+        sales,
+        productionRecords,
+        transfers,
+        inventory,
+      );
 
       // Inventory trend (last 4 weeks) - simplified for now
       const inventoryTrend = [
-        { name: 'Week 1', stock: Math.floor(inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.85) },
-        { name: 'Week 2', stock: Math.floor(inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.92) },
-        { name: 'Week 3', stock: Math.floor(inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.88) },
-        { name: 'Week 4', stock: inventory.reduce((sum, inv) => sum + inv.quantity, 0) }
+        {
+          name: "Week 1",
+          stock: Math.floor(
+            inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.85,
+          ),
+        },
+        {
+          name: "Week 2",
+          stock: Math.floor(
+            inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.92,
+          ),
+        },
+        {
+          name: "Week 3",
+          stock: Math.floor(
+            inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.88,
+          ),
+        },
+        {
+          name: "Week 4",
+          stock: inventory.reduce((sum, inv) => sum + inv.quantity, 0),
+        },
       ];
 
       setDashboardData({
@@ -107,56 +319,142 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         categoryData,
         topProducts,
         recentActivity,
-        inventoryTrend
+        inventoryTrend,
       });
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      console.error("Error loading dashboard data:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
+  const getTodayData = (sales: Sale[]) => {
+    // Sales is already filtered to today, just aggregate it
+    const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const totalOrders = sales.length;
+    console.log("[Dashboard] Today Data:", {
+      totalSales,
+      totalOrders,
+      salesCount: sales.length,
+    });
+    return [{ name: "Today", sales: totalSales, orders: totalOrders }];
+  };
+
+  const getTodayProduction = (records: ProductionRecord[]) => {
+    // Records is already filtered to today, just aggregate it
+    const totalProduced = records.reduce(
+      (sum, record) => sum + record.quantity,
+      0,
+    );
+    console.log("[Dashboard] Today Production:", {
+      totalProduced,
+      recordCount: records.length,
+    });
+    return [{ name: "Today", produced: totalProduced }];
+  };
+
   const getLast7DaysData = (sales: Sale[]) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       return {
         name: days[date.getDay()],
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         sales: 0,
-        orders: 0
+        orders: 0,
       };
     });
 
-    sales.forEach(sale => {
-      const saleDate = new Date(sale.timestamp || sale.date).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === saleDate);
+    sales.forEach((sale) => {
+      const saleDate = new Date(sale.timestamp || sale.date)
+        .toISOString()
+        .split("T")[0];
+      const dayData = last7Days.find((d) => d.date === saleDate);
       if (dayData) {
         dayData.sales += sale.total;
         dayData.orders += 1;
       }
     });
 
-    return last7Days.map(({ name, sales, orders }) => ({ name, sales, orders }));
+    return last7Days.map(({ name, sales, orders }) => ({
+      name,
+      sales,
+      orders,
+    }));
+  };
+
+  const getMonthlyData = (sales: Sale[]) => {
+    const weeks = [];
+    const today = new Date();
+
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - i * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+
+      const weekSales = sales
+        .filter((sale) => {
+          const saleDate = new Date(sale.timestamp || sale.date);
+          return saleDate >= weekStart && saleDate <= weekEnd;
+        })
+        .reduce((sum, sale) => sum + sale.total, 0);
+
+      const weekOrders = sales.filter((sale) => {
+        const saleDate = new Date(sale.timestamp || sale.date);
+        return saleDate >= weekStart && saleDate <= weekEnd;
+      }).length;
+
+      weeks.push({
+        name: `Week ${4 - i}`,
+        sales: weekSales,
+        orders: weekOrders,
+      });
+    }
+
+    return weeks;
+  };
+
+  const getMonthlyProduction = (records: ProductionRecord[]) => {
+    const weeks = [];
+    const today = new Date();
+
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - i * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+
+      const weekProduced = records
+        .filter((record) => {
+          const recordDate = new Date(record.timestamp);
+          return recordDate >= weekStart && recordDate <= weekEnd;
+        })
+        .reduce((sum, record) => sum + record.quantity, 0);
+
+      weeks.push({ name: `Week ${4 - i}`, produced: weekProduced });
+    }
+
+    return weeks;
   };
 
   const getLast7DaysProduction = (records: ProductionRecord[]) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       return {
         name: days[date.getDay()],
-        date: date.toISOString().split('T')[0],
-        produced: 0
+        date: date.toISOString().split("T")[0],
+        produced: 0,
       };
     });
 
-    records.forEach(record => {
-      const recordDate = new Date(record.timestamp).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === recordDate);
+    records.forEach((record) => {
+      const recordDate = new Date(record.timestamp).toISOString().split("T")[0];
+      const dayData = last7Days.find((d) => d.date === recordDate);
       if (dayData) {
         dayData.produced += record.quantity;
       }
@@ -167,14 +465,17 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
 
   const getCategoryDistribution = (products: Product[], sales: Sale[]) => {
     const categoryMap = new Map<string, number>();
-    
-    sales.forEach(sale => {
+
+    sales.forEach((sale) => {
       if (sale.items && Array.isArray(sale.items)) {
-        sale.items.forEach(item => {
-          const product = products.find(p => p.id === item.productId);
+        sale.items.forEach((item) => {
+          const product = products.find((p) => p.id === item.productId);
           if (product) {
             const current = categoryMap.get(product.category) || 0;
-            categoryMap.set(product.category, current + (item.quantity * item.price));
+            categoryMap.set(
+              product.category,
+              current + item.quantity * item.price,
+            );
           }
         });
       }
@@ -186,20 +487,23 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
     return entries.map(([category, value], index) => ({
       name: category,
       value: total > 0 ? Math.round((value / total) * 100) : 0,
-      color: COLORS[index % COLORS.length]
+      color: COLORS[index % COLORS.length],
     }));
   };
 
   const getTopProducts = (products: Product[], sales: Sale[]) => {
     const productMap = new Map<string, { sold: number; revenue: number }>();
 
-    sales.forEach(sale => {
+    sales.forEach((sale) => {
       if (sale.items && Array.isArray(sale.items)) {
-        sale.items.forEach(item => {
-          const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
+        sale.items.forEach((item) => {
+          const current = productMap.get(item.productId) || {
+            sold: 0,
+            revenue: 0,
+          };
           productMap.set(item.productId, {
             sold: current.sold + item.quantity,
-            revenue: current.revenue + (item.quantity * item.price)
+            revenue: current.revenue + item.quantity * item.price,
           });
         });
       }
@@ -207,13 +511,14 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
 
     const topProductsData = Array.from(productMap.entries())
       .map(([productId, data]) => {
-        const product = products.find(p => p.id === productId);
+        const product = products.find((p) => p.id === productId);
         return {
-          name: product?.name || 'Unknown Product',
+          name: product?.name || "Unknown Product",
           sold: data.sold,
           revenue: data.revenue,
-          trend: Math.random() > 0.3 ? 'up' as const : 'down' as const,
-          change: Math.floor(Math.random() * 20) * (Math.random() > 0.3 ? 1 : -1)
+          trend: Math.random() > 0.3 ? ("up" as const) : ("down" as const),
+          change:
+            Math.floor(Math.random() * 20) * (Math.random() > 0.3 ? 1 : -1),
         };
       })
       .sort((a, b) => b.revenue - a.revenue)
@@ -223,68 +528,82 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
   };
 
   const getRecentActivity = (
-    sales: Sale[], 
-    productionRecords: ProductionRecord[], 
+    sales: Sale[],
+    productionRecords: ProductionRecord[],
     transfers: TransferRequest[],
-    inventory: InventoryRecord[]
+    inventory: InventoryRecord[],
   ) => {
     const activities: any[] = [];
 
     // Recent sales
-    sales.slice(-3).reverse().forEach(sale => {
-      activities.push({
-        type: 'sale',
-        message: `New sale: ₱${sale.total.toLocaleString()}`,
-        time: formatTimeAgo(new Date(sale.timestamp || sale.date)),
-        icon: ShoppingCart,
-        color: 'text-green-600',
-        timestamp: new Date(sale.timestamp || sale.date).getTime()
+    sales
+      .slice(-3)
+      .reverse()
+      .forEach((sale) => {
+        activities.push({
+          type: "sale",
+          message: `New sale: ₱${sale.total.toLocaleString()}`,
+          time: formatTimeAgo(new Date(sale.timestamp || sale.date)),
+          icon: ShoppingCart,
+          color: "text-green-600",
+          timestamp: new Date(sale.timestamp || sale.date).getTime(),
+        });
       });
-    });
 
     // Recent production
-    productionRecords.slice(-2).reverse().forEach(record => {
-      activities.push({
-        type: 'production',
-        message: `Production completed: ${record.quantity} KG ${record.productName}`,
-        time: formatTimeAgo(new Date(record.timestamp)),
-        icon: Factory,
-        color: 'text-blue-600',
-        timestamp: new Date(record.timestamp).getTime()
+    productionRecords
+      .slice(-2)
+      .reverse()
+      .forEach((record) => {
+        activities.push({
+          type: "production",
+          message: `Production completed: ${record.quantity} KG ${record.productName}`,
+          time: formatTimeAgo(new Date(record.timestamp)),
+          icon: Factory,
+          color: "text-blue-600",
+          timestamp: new Date(record.timestamp).getTime(),
+        });
       });
-    });
 
     // Recent transfers
-    transfers.filter(t => t.status === 'Completed').slice(-2).reverse().forEach(transfer => {
-      activities.push({
-        type: 'transfer',
-        message: `Transfer to ${transfer.to} completed: ${transfer.quantity} KG ${transfer.productName}`,
-        time: formatTimeAgo(new Date(transfer.updatedAt || transfer.createdAt)),
-        icon: Package,
-        color: 'text-purple-600',
-        timestamp: new Date(transfer.updatedAt || transfer.createdAt).getTime()
+    transfers
+      .filter((t) => t.status === "Completed")
+      .slice(-2)
+      .reverse()
+      .forEach((transfer) => {
+        activities.push({
+          type: "transfer",
+          message: `Transfer to ${transfer.to} completed: ${transfer.quantity} KG ${transfer.productName}`,
+          time: formatTimeAgo(
+            new Date(transfer.updatedAt || transfer.createdAt),
+          ),
+          icon: Package,
+          color: "text-purple-600",
+          timestamp: new Date(
+            transfer.updatedAt || transfer.createdAt,
+          ).getTime(),
+        });
       });
-    });
 
     // Low stock alerts
     const MIN_STOCK = 50;
     const inventoryByProduct = new Map<string, number>();
-    inventory.forEach(inv => {
+    inventory.forEach((inv) => {
       const current = inventoryByProduct.get(inv.productId) || 0;
       inventoryByProduct.set(inv.productId, current + inv.quantity);
     });
 
     inventoryByProduct.forEach((qty, productId) => {
       if (qty < MIN_STOCK) {
-        const inv = inventory.find(i => i.productId === productId);
+        const inv = inventory.find((i) => i.productId === productId);
         if (inv) {
           activities.push({
-            type: 'alert',
+            type: "alert",
             message: `Low stock alert (${qty} KG)`,
             time: formatTimeAgo(new Date(inv.lastUpdated)),
             icon: AlertTriangle,
-            color: 'text-orange-600',
-            timestamp: new Date(inv.lastUpdated).getTime()
+            color: "text-orange-600",
+            timestamp: new Date(inv.lastUpdated).getTime(),
           });
         }
       }
@@ -295,7 +614,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return 'Just now';
+    if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
     return `${Math.floor(seconds / 86400)} days ago`;
@@ -303,133 +622,140 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
   };
 
   const getRoleSpecificMetrics = () => {
-    const avgOrderValue = dashboardData.totalOrders > 0 
-      ? dashboardData.totalRevenue / dashboardData.totalOrders 
-      : 0;
+    const avgOrderValue =
+      dashboardData.totalOrders > 0
+        ? dashboardData.totalRevenue / dashboardData.totalOrders
+        : 0;
 
     switch (userRole) {
-      case 'ADMIN':
+      case "ADMIN":
         return [
           {
-            title: 'Total Revenue',
+            title: "Total Revenue",
             value: `₱${(Math.round((Number(dashboardData.totalRevenue) || 0) * 100) / 100).toFixed(2)}`,
-            change: '+12.5%',
-            trend: 'up',
+            change: "+12.5%",
+            trend: "up",
             icon: DollarSign,
-            bgColor: 'bg-green-50',
-            iconColor: 'text-green-600',
+            bgColor: "bg-green-50",
+            iconColor: "text-green-600",
           },
           {
-            title: 'Total Orders',
+            title: "Total Orders",
             value: dashboardData.totalOrders.toString(),
-            change: '+8.2%',
-            trend: 'up',
+            change: "+8.2%",
+            trend: "up",
             icon: ShoppingCart,
-            bgColor: 'bg-blue-50',
-            iconColor: 'text-blue-600',
+            bgColor: "bg-blue-50",
+            iconColor: "text-blue-600",
           },
           {
-            title: 'Production Output',
+            title: "Production Output",
             value: `${dashboardData.totalProduction} KG`,
-            change: '+5.7%',
-            trend: 'up',
+            change: "+5.7%",
+            trend: "up",
             icon: Factory,
-            bgColor: 'bg-purple-50',
-            iconColor: 'text-purple-600',
+            bgColor: "bg-purple-50",
+            iconColor: "text-purple-600",
           },
           {
-            title: 'Low Stock Items',
+            title: "Low Stock Items",
             value: dashboardData.lowStockCount.toString(),
-            change: '-2',
-            trend: 'down',
+            change: "-2",
+            trend: "down",
             icon: AlertTriangle,
-            bgColor: 'bg-orange-50',
-            iconColor: 'text-orange-600',
+            bgColor: "bg-orange-50",
+            iconColor: "text-orange-600",
           },
         ];
-      case 'STORE':
+      case "STORE":
         return [
           {
-            title: 'Store Sales',
+            title: "Store Sales",
             value: `₱${(Math.round((Number(dashboardData.totalRevenue) || 0) * 0.4 * 100) / 100).toFixed(2)}`,
-            change: '+15.3%',
-            trend: 'up',
+            change: "+15.3%",
+            trend: "up",
             icon: DollarSign,
-            bgColor: 'bg-green-50',
-            iconColor: 'text-green-600',
+            bgColor: "bg-green-50",
+            iconColor: "text-green-600",
           },
           {
-            title: 'Orders Today',
+            title: "Orders Today",
             value: dashboardData.totalOrders.toString(),
-            change: '+6',
-            trend: 'up',
+            change: "+6",
+            trend: "up",
             icon: ShoppingCart,
-            bgColor: 'bg-blue-50',
-            iconColor: 'text-blue-600',
+            bgColor: "bg-blue-50",
+            iconColor: "text-blue-600",
           },
           {
-            title: 'Avg Order Value',
+            title: "Avg Order Value",
             value: `₱${avgOrderValue.toFixed(2)}`,
-            change: '+4.2%',
-            trend: 'up',
+            change: "+4.2%",
+            trend: "up",
             icon: TrendingUp,
-            bgColor: 'bg-purple-50',
-            iconColor: 'text-purple-600',
+            bgColor: "bg-purple-50",
+            iconColor: "text-purple-600",
           },
           {
-            title: 'Store Inventory',
-            value: dashboardData.inventoryTrend[dashboardData.inventoryTrend.length - 1]?.stock.toString() || '0',
-            change: '-35',
-            trend: 'down',
+            title: "Store Inventory",
+            value:
+              dashboardData.inventoryTrend[
+                dashboardData.inventoryTrend.length - 1
+              ]?.stock.toString() || "0",
+            change: "-35",
+            trend: "down",
             icon: Package,
-            bgColor: 'bg-orange-50',
-            iconColor: 'text-orange-600',
+            bgColor: "bg-orange-50",
+            iconColor: "text-orange-600",
           },
         ];
-      case 'PRODUCTION':
-        const todayProduction = dashboardData.productionByDay[dashboardData.productionByDay.length - 1]?.produced || 0;
+      case "PRODUCTION":
+        const todayProduction =
+          dashboardData.productionByDay[
+            dashboardData.productionByDay.length - 1
+          ]?.produced || 0;
         return [
           {
-            title: 'Daily Production',
+            title: "Daily Production",
             value: `${todayProduction} KG`,
-            change: '+8%',
-            trend: 'up',
+            change: "+8%",
+            trend: "up",
             icon: Factory,
-            bgColor: 'bg-blue-50',
-            iconColor: 'text-blue-600',
+            bgColor: "bg-blue-50",
+            iconColor: "text-blue-600",
           },
           {
-            title: 'Production Target',
-            value: '95%',
-            change: '+3%',
-            trend: 'up',
+            title: "Production Target",
+            value: "95%",
+            change: "+3%",
+            trend: "up",
             icon: Activity,
-            bgColor: 'bg-green-50',
-            iconColor: 'text-green-600',
+            bgColor: "bg-green-50",
+            iconColor: "text-green-600",
           },
           {
-            title: 'Total Produced',
+            title: "Total Produced",
             value: `${dashboardData.totalProduction} KG`,
-            change: '+2',
-            trend: 'up',
+            change: "+2",
+            trend: "up",
             icon: Package,
-            bgColor: 'bg-purple-50',
-            iconColor: 'text-purple-600',
+            bgColor: "bg-purple-50",
+            iconColor: "text-purple-600",
           },
           {
-            title: 'Low Stock Alerts',
+            title: "Low Stock Alerts",
             value: dashboardData.lowStockCount.toString(),
-            change: '-5',
-            trend: 'down',
+            change: "-5",
+            trend: "down",
             icon: AlertTriangle,
-            bgColor: 'bg-orange-50',
-            iconColor: 'text-orange-600',
+            bgColor: "bg-orange-50",
+            iconColor: "text-orange-600",
           },
         ];
       default:
@@ -458,10 +784,11 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
               {getGreeting()}, {userName}!
             </h1>
             <p className="text-muted-foreground text-sm md:text-base">
-              Here's what's happening with your {userRole.toLowerCase()} operations today.
+              Here's what's happening with your {userRole.toLowerCase()}{" "}
+              operations today.
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <select
               value={selectedPeriod}
@@ -472,7 +799,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
               <option value="week">This Week</option>
               <option value="month">This Month</option>
             </select>
-            <button 
+            <button
               onClick={loadDashboardData}
               className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm"
             >
@@ -487,20 +814,33 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
           {getRoleSpecificMetrics().map((metric, index) => {
             const Icon = metric.icon;
             return (
-              <div key={index} className="bg-card rounded-lg p-4 lg:p-6 border border-border hover:shadow-lg transition-shadow">
+              <div
+                key={index}
+                className="bg-card rounded-lg p-4 lg:p-6 border border-border hover:shadow-lg transition-shadow"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className={`${metric.bgColor} p-2 lg:p-3 rounded-lg`}>
-                    <Icon className={`w-5 h-5 lg:w-6 lg:h-6 ${metric.iconColor}`} />
+                    <Icon
+                      className={`w-5 h-5 lg:w-6 lg:h-6 ${metric.iconColor}`}
+                    />
                   </div>
-                  <span className={`flex items-center gap-1 text-xs lg:text-sm ${
-                    metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {metric.trend === 'up' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                  <span
+                    className={`flex items-center gap-1 text-xs lg:text-sm ${
+                      metric.trend === "up" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {metric.trend === "up" ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
                     {metric.change}
                   </span>
                 </div>
                 <p className="text-2xl lg:text-3xl mb-1">{metric.value}</p>
-                <p className="text-xs lg:text-sm text-muted-foreground">{metric.title}</p>
+                <p className="text-xs lg:text-sm text-muted-foreground">
+                  {metric.title}
+                </p>
               </div>
             );
           })}
@@ -512,12 +852,14 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
           <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
             <div className="flex items-center justify-between mb-4">
               <h2>
-                {userRole === 'PRODUCTION' ? 'Production Performance' : 'Sales Overview'}
+                {userRole === "PRODUCTION"
+                  ? "Production Performance"
+                  : "Sales Overview"}
               </h2>
               <BarChart3 className="w-5 h-5 text-muted-foreground" />
             </div>
             <ResponsiveContainer width="100%" height={250}>
-              {userRole === 'PRODUCTION' ? (
+              {userRole === "PRODUCTION" ? (
                 <BarChart data={dashboardData.productionByDay}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
@@ -532,14 +874,20 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Area type="monotone" dataKey="sales" stroke="#dc2626" fill="#fca5a5" name="Sales (₱)" />
+                  <Area
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#dc2626"
+                    fill="#fca5a5"
+                    name="Sales (₱)"
+                  />
                 </AreaChart>
               )}
             </ResponsiveContainer>
           </div>
 
           {/* Category Distribution */}
-          {userRole === 'ADMIN' && (
+          {userRole === "ADMIN" && (
             <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2>Sales by Category</h2>
@@ -574,7 +922,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
           )}
 
           {/* Orders Trend for Store */}
-          {userRole === 'STORE' && (
+          {userRole === "STORE" && (
             <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2>Orders Trend</h2>
@@ -586,14 +934,20 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Line type="monotone" dataKey="orders" stroke="#dc2626" strokeWidth={2} name="Orders" />
+                  <Line
+                    type="monotone"
+                    dataKey="orders"
+                    stroke="#dc2626"
+                    strokeWidth={2}
+                    name="Orders"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
 
           {/* Inventory Trend for Production */}
-          {userRole === 'PRODUCTION' && (
+          {userRole === "PRODUCTION" && (
             <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
               <div className="flex items-center justify-between mb-4">
                 <h2>Inventory Trend</h2>
@@ -605,7 +959,13 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Area type="monotone" dataKey="stock" stroke="#10b981" fill="#86efac" name="Stock (KG)" />
+                  <Area
+                    type="monotone"
+                    dataKey="stock"
+                    stroke="#10b981"
+                    fill="#86efac"
+                    name="Stock (KG)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -623,19 +983,32 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
               {dashboardData.topProducts.length > 0 ? (
                 <div className="space-y-3">
                   {dashboardData.topProducts.map((product, index) => (
-                    <div key={index} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
                       <div className="flex-1">
-                        <p className="font-medium text-sm mb-1">{product.name}</p>
+                        <p className="font-medium text-sm mb-1">
+                          {product.name}
+                        </p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           <span>Sold: {product.sold}</span>
                           <span>•</span>
                           <span>Revenue: ₱{product.revenue.toFixed(2)}</span>
                         </div>
                       </div>
-                      <div className={`flex items-center gap-1 text-sm ${
-                        product.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {product.trend === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                      <div
+                        className={`flex items-center gap-1 text-sm ${
+                          product.trend === "up"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {product.trend === "up" ? (
+                          <TrendingUp className="w-4 h-4" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4" />
+                        )}
                         <span>{Math.abs(product.change)}%</span>
                       </div>
                     </div>
@@ -661,12 +1034,16 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                     const Icon = activity.icon;
                     return (
                       <div key={index} className="flex gap-3">
-                        <div className={`${activity.color} p-2 rounded-lg h-fit`}>
+                        <div
+                          className={`${activity.color} p-2 rounded-lg h-fit`}
+                        >
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm mb-1">{activity.message}</p>
-                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {activity.time}
+                          </p>
                         </div>
                       </div>
                     );
@@ -685,7 +1062,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         <div className="bg-card rounded-lg p-4 lg:p-6 border border-border">
           <h2 className="mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {userRole === 'ADMIN' && (
+            {userRole === "ADMIN" && (
               <>
                 <button className="flex flex-col items-center gap-2 p-4 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors">
                   <ShoppingCart className="w-6 h-6 text-primary" />
@@ -705,7 +1082,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                 </button>
               </>
             )}
-            {userRole === 'STORE' && (
+            {userRole === "STORE" && (
               <>
                 <button className="flex flex-col items-center gap-2 p-4 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors">
                   <ShoppingCart className="w-6 h-6 text-primary" />
@@ -725,7 +1102,7 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
                 </button>
               </>
             )}
-            {userRole === 'PRODUCTION' && (
+            {userRole === "PRODUCTION" && (
               <>
                 <button className="flex flex-col items-center gap-2 p-4 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors">
                   <Factory className="w-6 h-6 text-primary" />

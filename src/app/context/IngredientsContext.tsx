@@ -1,6 +1,16 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { getIngredients, updateIngredient, type Ingredient as APIIngredient } from '@/utils/api';
-import { toast } from 'sonner';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import {
+  getIngredients,
+  updateIngredient,
+  type Ingredient as APIIngredient,
+} from "@/utils/api";
+import { toast } from "sonner";
 
 export interface Ingredient {
   id: string;
@@ -13,6 +23,7 @@ export interface Ingredient {
   unit: string;
   costPerUnit: number;
   supplier: string;
+  supplierId?: string | number;
   lastUpdated: string;
   expiryDate?: string | null;
 }
@@ -21,10 +32,18 @@ interface IngredientsContextType {
   ingredients: Ingredient[];
   setIngredients: (ingredients: Ingredient[]) => void;
   deductIngredient: (code: string, quantity: number) => Promise<boolean>;
-  adjustStock: (id: string, quantity: number, type: 'add' | 'remove', reason?: string) => Promise<void>;
+  adjustStock: (
+    id: string,
+    quantity: number,
+    type: "add" | "remove",
+    reason?: string,
+  ) => Promise<void>;
+  refreshIngredients: () => Promise<void>;
 }
 
-export const IngredientsContext = createContext<IngredientsContextType | undefined>(undefined);
+export const IngredientsContext = createContext<
+  IngredientsContextType | undefined
+>(undefined);
 
 export function IngredientsProvider({ children }: { children: ReactNode }) {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -33,81 +52,130 @@ export function IngredientsProvider({ children }: { children: ReactNode }) {
     const fetchIngredients = async () => {
       try {
         const apiIngredients: APIIngredient[] = await getIngredients();
-        const formattedIngredients: Ingredient[] = apiIngredients.map(apiIng => ({
-          id: apiIng.id,
-          name: apiIng.name,
-          code: apiIng.code,
-          category: apiIng.category,
-          stock: apiIng.stock,
-          minStockLevel: apiIng.minStockLevel,
-          reorderPoint: apiIng.reorderPoint,
-          unit: apiIng.unit,
-          costPerUnit: apiIng.costPerUnit,
-          supplier: apiIng.supplier,
-          lastUpdated: apiIng.lastUpdated,
-          expiryDate: apiIng.expiryDate,
-        }));
+        const formattedIngredients: Ingredient[] = apiIngredients.map(
+          (apiIng) => ({
+            id: apiIng.id,
+            name: apiIng.name,
+            code: apiIng.code,
+            category: apiIng.categoryName || apiIng.category || "Uncategorized",
+            stock: apiIng.stock,
+            minStockLevel: apiIng.minStockLevel,
+            reorderPoint: apiIng.reorderPoint,
+            unit: apiIng.unit,
+            costPerUnit: apiIng.costPerUnit,
+            supplier: apiIng.supplier,
+            supplierId: apiIng.supplierId,
+            lastUpdated: apiIng.lastUpdated,
+            expiryDate: apiIng.expiryDate,
+          }),
+        );
         setIngredients(formattedIngredients);
       } catch (error) {
-        console.error('Error fetching ingredients:', error);
-        toast.error('Failed to fetch ingredients');
+        console.error("Error fetching ingredients:", error);
+        toast.error("Failed to fetch ingredients");
       }
     };
 
     fetchIngredients();
   }, []);
 
-  const deductIngredient = async (code: string, quantity: number): Promise<boolean> => {
-    const ingredient = ingredients.find(i => i.code === code);
+  const deductIngredient = async (
+    code: string,
+    quantity: number,
+  ): Promise<boolean> => {
+    const ingredient = ingredients.find((i) => i.code === code);
     if (!ingredient) {
       console.error(`Ingredient ${code} not found`);
       return false;
     }
 
     if (ingredient.stock < quantity) {
-      alert(`Insufficient stock for ${ingredient.name}. Available: ${ingredient.stock} ${ingredient.unit}, Required: ${quantity} ${ingredient.unit}`);
+      alert(
+        `Insufficient stock for ${ingredient.name}. Available: ${ingredient.stock} ${ingredient.unit}, Required: ${quantity} ${ingredient.unit}`,
+      );
       return false;
     }
 
-    setIngredients(prev => prev.map(ing => {
-      if (ing.code === code) {
-        const updatedIng = {
-          ...ing,
-          stock: Math.max(0, ing.stock - quantity),
-          lastUpdated: new Date().toLocaleString(),
-        };
-        
-        return updatedIng;
-      }
-      return ing;
-    }));
+    setIngredients((prev) =>
+      prev.map((ing) => {
+        if (ing.code === code) {
+          const updatedIng = {
+            ...ing,
+            stock: Math.max(0, ing.stock - quantity),
+            lastUpdated: new Date().toLocaleString(),
+          };
+
+          return updatedIng;
+        }
+        return ing;
+      }),
+    );
 
     return true;
   };
 
   const adjustStock = async (
-    id: string, 
-    quantity: number, 
-    type: 'add' | 'remove',
-    reason?: string
+    id: string,
+    quantity: number,
+    type: "add" | "remove",
+    reason?: string,
   ) => {
-    setIngredients(prev => prev.map(ing => {
-      if (ing.id === id) {
-        const delta = type === 'add' ? quantity : -quantity;
-        const updatedIng = {
-          ...ing,
-          stock: Math.max(0, ing.stock + delta),
-          lastUpdated: new Date().toLocaleString(),
-        };
-        
-        return updatedIng;
-      }
-      return ing;
-    }));
+    setIngredients((prev) =>
+      prev.map((ing) => {
+        if (ing.id === id) {
+          const delta = type === "add" ? quantity : -quantity;
+          const currentStock =
+            typeof ing.stock === "string" ? parseFloat(ing.stock) : ing.stock;
+          const updatedIng = {
+            ...ing,
+            stock: Math.max(0, currentStock + delta),
+            lastUpdated: new Date().toLocaleString(),
+          };
+
+          return updatedIng;
+        }
+        return ing;
+      }),
+    );
+  };
+
+  const refreshIngredients = async () => {
+    try {
+      const apiIngredients: APIIngredient[] = await getIngredients();
+      const formattedIngredients: Ingredient[] = apiIngredients.map(
+        (apiIng) => ({
+          id: apiIng.id,
+          name: apiIng.name,
+          code: apiIng.code,
+          category: apiIng.categoryName || apiIng.category || "Uncategorized",
+          stock: apiIng.stock,
+          minStockLevel: apiIng.minStockLevel,
+          reorderPoint: apiIng.reorderPoint,
+          unit: apiIng.unit,
+          costPerUnit: apiIng.costPerUnit,
+          supplier: apiIng.supplier,
+          supplierId: apiIng.supplierId,
+          lastUpdated: apiIng.lastUpdated,
+          expiryDate: apiIng.expiryDate,
+        }),
+      );
+      setIngredients(formattedIngredients);
+    } catch (error) {
+      console.error("Error refreshing ingredients:", error);
+      toast.error("Failed to refresh ingredients");
+    }
   };
 
   return (
-    <IngredientsContext.Provider value={{ ingredients, setIngredients, deductIngredient, adjustStock }}>
+    <IngredientsContext.Provider
+      value={{
+        ingredients,
+        setIngredients,
+        deductIngredient,
+        adjustStock,
+        refreshIngredients,
+      }}
+    >
       {children}
     </IngredientsContext.Provider>
   );
@@ -116,7 +184,7 @@ export function IngredientsProvider({ children }: { children: ReactNode }) {
 export function useIngredients() {
   const context = useContext(IngredientsContext);
   if (!context) {
-    throw new Error('useIngredients must be used within IngredientsProvider');
+    throw new Error("useIngredients must be used within IngredientsProvider");
   }
   return context;
 }

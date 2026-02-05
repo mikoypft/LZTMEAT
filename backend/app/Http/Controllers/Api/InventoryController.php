@@ -61,14 +61,18 @@ class InventoryController extends Controller
         $request->validate([
             'productId' => 'required|exists:products,id',
             'location' => 'required|string',
-            'quantity' => 'required|integer',
+            'quantity' => 'required|numeric',
         ]);
 
-        $inventory = Inventory::where('product_id', $request->productId)
-            ->where('location', $request->location)
-            ->firstOrFail();
-
-        $inventory->update(['quantity' => $request->quantity]);
+        $inventory = Inventory::updateOrCreate(
+            [
+                'product_id' => $request->productId,
+                'location' => $request->location,
+            ],
+            [
+                'quantity' => $request->quantity,
+            ]
+        );
 
         return response()->json([
             'inventory' => [

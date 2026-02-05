@@ -14,6 +14,7 @@ class Ingredient extends Model
         'name',
         'code',
         'category',
+        'category_id',
         'unit',
         'stock',
         'min_stock_level',
@@ -34,5 +35,10 @@ class Ingredient extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function ingredientCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id');
     }
 }

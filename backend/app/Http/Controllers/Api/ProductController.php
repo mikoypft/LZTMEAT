@@ -15,6 +15,7 @@ class ProductController extends Controller
             'products' => $products->map(fn($p) => [
                 'id' => $p->id,
                 'name' => $p->name,
+                'sku' => $p->sku,
                 'category' => $p->category->name,
                 'price' => $p->price,
                 'unit' => $p->unit,

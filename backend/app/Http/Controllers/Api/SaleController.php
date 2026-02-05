@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
@@ -13,7 +14,10 @@ class SaleController extends Controller
         $query = Sale::with(['user', 'store']);
 
         if ($request->startDate && $request->endDate) {
-            $query->whereBetween('created_at', [$request->startDate, $request->endDate]);
+            // Parse dates and create proper timestamp ranges
+            $startDate = Carbon::parse($request->startDate)->startOfDay();
+            $endDate = Carbon::parse($request->endDate)->endOfDay();
+            $query->whereBetween('created_at', [$startDate, $endDate]);
         }
 
         $sales = $query->get();
@@ -29,12 +33,13 @@ class SaleController extends Controller
                 'userId' => $s->user_id,
                 'username' => $s->user?->username,
                 'customer' => $s->customer,
-                'items' => $s->items,
+                'items' => is_string($s->items) ? json_decode($s->items, true) : $s->items,
                 'subtotal' => $s->subtotal,
                 'globalDiscount' => $s->global_discount,
                 'tax' => $s->tax,
                 'total' => $s->total,
                 'paymentMethod' => $s->payment_method,
+                'salesType' => $s->sales_type,
                 'timestamp' => $s->created_at?->toIso8601String() ?? now()->toIso8601String(),
             ]),
         ]);
@@ -73,6 +78,7 @@ class SaleController extends Controller
             'tax' => $request->tax ?? 0,
             'total' => $request->total,
             'payment_method' => $request->paymentMethod,
+            'sales_type' => $request->salesType ?? 'retail',
         ]);
 
         // Deduct inventory for each item in the sale
@@ -117,6 +123,7 @@ class SaleController extends Controller
                 'tax' => $sale->tax,
                 'total' => $sale->total,
                 'paymentMethod' => $sale->payment_method,
+                'salesType' => $sale->sales_type,
                 'timestamp' => $sale->created_at->toIso8601String(),
             ],
         ], 201);
@@ -144,6 +151,7 @@ class SaleController extends Controller
                 'tax' => $sale->tax,
                 'total' => $sale->total,
                 'paymentMethod' => $sale->payment_method,
+                'salesType' => $sale->sales_type,
                 'timestamp' => $sale->created_at->toIso8601String(),
             ],
         ]);

@@ -7,6 +7,7 @@ use App\Models\StockAdjustment;
 use App\Models\Ingredient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class StockAdjustmentController extends Controller
 {
@@ -108,9 +109,11 @@ class StockAdjustmentController extends Controller
             ]);
 
             // Update the ingredient stock
-            $ingredient->update([
-                'stock' => $newStock,
-            ]);
+            Log::info('Before ingredient update', ['id' => $ingredient->id, 'current_stock' => $ingredient->stock, 'new_stock' => $newStock]);
+            DB::table('ingredients')
+                ->where('id', $ingredient->id)
+                ->update(['stock' => $newStock]);
+            Log::info('After ingredient update', ['id' => $ingredient->id, 'updated_stock' => $newStock]);
 
             Log::info('Stock adjustment recorded', [
                 'adjustment_id' => $adjustment->id,

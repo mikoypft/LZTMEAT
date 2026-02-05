@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\StockAdjustmentController;
+use App\Http\Controllers\Api\DiscountSettingController;
+use App\Http\Controllers\Api\ReportController;
 
 // Handle CORS preflight requests
 Route::options('{any}', function () {
@@ -38,11 +40,13 @@ Route::delete('/products/delete-all', [ProductController::class, 'deleteAll']);
 // Categories endpoints
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store']);
+Route::put('/categories/{id}', [CategoryController::class, 'update']);
 Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 
 // Ingredient Categories endpoints
 Route::get('/ingredient-categories', [CategoryController::class, 'ingredientCategories']);
 Route::post('/ingredient-categories', [CategoryController::class, 'storeIngredientCategory']);
+Route::put('/ingredient-categories/{id}', [CategoryController::class, 'updateIngredientCategory']);
 Route::delete('/ingredient-categories/{id}', [CategoryController::class, 'destroyIngredientCategory']);
 
 // Inventory endpoints
@@ -106,3 +110,29 @@ Route::get('/history/pos', [HistoryController::class, 'posHistory']);
 Route::get('/history/inventory', [HistoryController::class, 'inventoryHistory']);
 Route::get('/history/production', [HistoryController::class, 'productionHistory']);
 Route::get('/history/ingredients', [HistoryController::class, 'ingredientsHistory']);
+
+// Discount Settings endpoints
+Route::get('/discount-settings', [DiscountSettingController::class, 'show']);
+Route::put('/discount-settings', [DiscountSettingController::class, 'update']);
+
+// Report endpoints
+Route::get('/reports/daily-pdf', [ReportController::class, 'dailyReport']);
+Route::get('/reports/daily-csv', [ReportController::class, 'exportCSV']);
+
+// Debug endpoints
+Route::get('/debug/inventory/{productId}', function ($productId) {
+    $inventory = \App\Models\Inventory::where('product_id', $productId)
+        ->orderBy('location')
+        ->get()
+        ->map(function ($inv) {
+            return [
+                'id' => $inv->id,
+                'product_id' => $inv->product_id,
+                'location' => $inv->location,
+                'quantity' => $inv->quantity,
+                'updated_at' => $inv->updated_at->toIso8601String(),
+            ];
+        });
+    
+    return response()->json(['inventory' => $inventory]);
+});

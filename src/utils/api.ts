@@ -34,13 +34,15 @@ async function apiRequest<T>(
     // Try to parse as JSON, otherwise use as error message
     let errorData: any = {};
     try {
-      // Strip HTML content from response and extract JSON
-      const jsonMatch = text.match(/{[\s\S]*}/);
+      // Strip HTML and non-JSON content from response and extract JSON
+      const trimmed = text.trim();
+      const jsonMatch = trimmed.match(/{[\s\S]*}/);
       if (jsonMatch) {
         errorData = JSON.parse(jsonMatch[0]);
       }
     } catch (e) {
       // Ignore JSON parse errors
+      console.debug("Error parsing error response:", e);
     }
     const errorMessage =
       errorData.error || `API request failed: ${response.statusText}`;
@@ -49,10 +51,17 @@ async function apiRequest<T>(
   }
 
   const text = await response.text();
-  // Strip HTML content from response and extract JSON
-  const jsonMatch = text.match(/{[\s\S]*}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]);
+  try {
+    // Trim and extract JSON from response
+    const trimmed = text.trim();
+    const jsonMatch = trimmed.match(/{[\s\S]*}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch (e) {
+    console.error(`Failed to parse JSON response from ${endpoint}:`, e);
+    console.error("Raw response:", text);
+    throw new Error(`Invalid response format from ${endpoint}`);
   }
 
   throw new Error(`Invalid response format from ${endpoint}`);
@@ -94,8 +103,9 @@ export async function refreshSession(
 // ==================== PRODUCTS API ====================
 
 export interface Product {
-  id: string;
+  id: string | number;
   name: string;
+  sku: string;
   category: string;
   price: number;
   unit: string;
@@ -146,20 +156,24 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
+  type?: "product" | "ingredient";
   createdAt: string;
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const data = await apiRequest<{ categories: Category[] }>("/categories");
+  const data = await apiRequest<{ categories: Category[] }>(
+    "/categories?type=product",
+  );
   return data.categories;
 }
 
 export async function addCategory(
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
+  const categoryWithType = { ...category, type: "product" };
   const data = await apiRequest<{ category: Category }>("/categories", {
     method: "POST",
-    body: JSON.stringify(category),
+    body: JSON.stringify(categoryWithType),
   });
   return data.category;
 }
@@ -168,9 +182,10 @@ export async function updateCategory(
   id: string,
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
+  const categoryWithType = { ...category, type: "product" };
   const data = await apiRequest<{ category: Category }>(`/categories/${id}`, {
     method: "PUT",
-    body: JSON.stringify(category),
+    body: JSON.stringify(categoryWithType),
   });
   return data.category;
 }
@@ -184,7 +199,7 @@ export async function deleteCategory(id: string): Promise<void> {
 // Ingredient Categories API
 export async function getIngredientCategories(): Promise<Category[]> {
   const data = await apiRequest<{ categories: Category[] }>(
-    "/ingredient-categories",
+    "/categories?type=ingredient",
   );
   return data.categories;
 }
@@ -192,13 +207,11 @@ export async function getIngredientCategories(): Promise<Category[]> {
 export async function addIngredientCategory(
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const data = await apiRequest<{ category: Category }>(
-    "/ingredient-categories",
-    {
-      method: "POST",
-      body: JSON.stringify(category),
-    },
-  );
+  const categoryWithType = { ...category, type: "ingredient" };
+  const data = await apiRequest<{ category: Category }>("/categories", {
+    method: "POST",
+    body: JSON.stringify(categoryWithType),
+  });
   return data.category;
 }
 
@@ -206,18 +219,16 @@ export async function updateIngredientCategory(
   id: string,
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const data = await apiRequest<{ category: Category }>(
-    `/ingredient-categories/${id}`,
-    {
-      method: "PUT",
-      body: JSON.stringify(category),
-    },
-  );
+  const categoryWithType = { ...category, type: "ingredient" };
+  const data = await apiRequest<{ category: Category }>(`/categories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(categoryWithType),
+  });
   return data.category;
 }
 
 export async function deleteIngredientCategory(id: string): Promise<void> {
-  await apiRequest<{ success: boolean }>(`/ingredient-categories/${id}`, {
+  await apiRequest<{ success: boolean }>(`/categories/${id}`, {
     method: "DELETE",
   });
 }
@@ -236,8 +247,8 @@ export async function getInventory(
   location?: string,
 ): Promise<InventoryRecord[]> {
   const endpoint = location
-    ? `/inventory?location=${encodeURIComponent(location)}`
-    : "/inventory";
+    ? `/inventory?location=${encodeURIComponent(location)}&t=${Date.now()}`
+    : `/inventory?t=${Date.now()}`;
   const data = await apiRequest<{ inventory: InventoryRecord[] }>(endpoint);
   return data.inventory;
 }
@@ -247,6 +258,9 @@ export async function updateInventoryQuantity(
   location: string,
   quantity: number,
 ): Promise<InventoryRecord> {
+  console.log(
+    `API: Updating inventory - Product: ${productId}, Location: ${location}, Quantity: ${quantity}`,
+  );
   const data = await apiRequest<{ inventory: InventoryRecord }>(
     `/inventory/update`,
     {
@@ -254,6 +268,11 @@ export async function updateInventoryQuantity(
       body: JSON.stringify({ productId, location, quantity }),
     },
   );
+  console.log(`API: Update response:`, data);
+  if (!data.inventory) {
+    throw new Error(`Invalid response from inventory update API`);
+  }
+  console.log(`API: Inventory updated successfully:`, data.inventory);
   return data.inventory;
 }
 
@@ -282,6 +301,7 @@ export interface Ingredient {
   reorderPoint: number;
   costPerUnit: number;
   supplier: string;
+  supplierId?: string | number;
   lastUpdated: string;
   expiryDate?: string | null;
 }
@@ -549,8 +569,15 @@ export interface ProductionRecord {
   timestamp: string;
 }
 
-export async function getProductionRecords(): Promise<ProductionRecord[]> {
-  const data = await apiRequest<{ records: ProductionRecord[] }>("/production");
+export async function getProductionRecords(
+  startDate?: string,
+  endDate?: string,
+): Promise<ProductionRecord[]> {
+  let endpoint = "/production";
+  if (startDate && endDate) {
+    endpoint += `?startDate=${startDate}&endDate=${endDate}`;
+  }
+  const data = await apiRequest<{ records: ProductionRecord[] }>(endpoint);
   return data.records;
 }
 
@@ -568,13 +595,27 @@ export async function createProductionRecord(
 export async function updateProductionRecordStatus(
   id: string,
   status: string,
+  options?: {
+    actualWeight?: number;
+    additionalIngredients?: Array<{ code: string; quantity: string }>;
+  },
 ): Promise<ProductionRecord> {
-  console.log("API: Updating production status:", { id, status });
+  console.log("API: Updating production status:", { id, status, options });
+  const body: any = { status };
+  if (options?.actualWeight) {
+    body.quantity = options.actualWeight;
+  }
+  if (
+    options?.additionalIngredients &&
+    options.additionalIngredients.length > 0
+  ) {
+    body.additionalIngredients = options.additionalIngredients;
+  }
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}`,
     {
       method: "PUT",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     },
   );
   console.log("API: Update response:", data);
@@ -593,11 +634,15 @@ export interface TransferRequest {
   id: string;
   productId: string;
   productName: string;
+  sku: string;
+  unit: string;
   from: string;
   to: string;
   quantity: number;
-  status: "Pending" | "In Transit" | "Completed" | "Cancelled";
-  requestedBy: string;
+  date: string;
+  time: string;
+  status: "pending" | "in-transit" | "completed" | "cancelled" | "rejected";
+  transferredBy: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -608,12 +653,17 @@ export async function getTransfers(): Promise<TransferRequest[]> {
 }
 
 export async function createTransfer(
-  transfer: Omit<TransferRequest, "id" | "status" | "createdAt" | "updatedAt">,
+  transfer: Pick<
+    TransferRequest,
+    "productId" | "quantity" | "from" | "to" | "transferredBy"
+  >,
 ): Promise<TransferRequest> {
+  console.log(`API: Creating transfer:`, transfer);
   const data = await apiRequest<{ transfer: TransferRequest }>("/transfers", {
     method: "POST",
     body: JSON.stringify(transfer),
   });
+  console.log(`API: Transfer created:`, data.transfer);
   return data.transfer;
 }
 
@@ -874,4 +924,88 @@ export async function exportHistoryToCSV(
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// ==================== DISCOUNT SETTINGS API ====================
+
+export interface DiscountSettings {
+  id: number;
+  wholesaleMinUnits: number;
+  discountType: "percentage" | "fixed_amount";
+  wholesaleDiscountPercent: number;
+  wholesaleDiscountAmount: number | null;
+}
+
+export async function getDiscountSettings(): Promise<DiscountSettings> {
+  const data = await apiRequest<{ settings: DiscountSettings }>(
+    "/discount-settings",
+  );
+  return data.settings;
+}
+
+export async function updateDiscountSettings(settings: {
+  wholesaleMinUnits: number;
+  discountType: "percentage" | "fixed_amount";
+  wholesaleDiscountPercent?: number;
+  wholesaleDiscountAmount?: number;
+}): Promise<DiscountSettings> {
+  const data = await apiRequest<{ settings: DiscountSettings }>(
+    "/discount-settings",
+    {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    },
+  );
+  return data.settings;
+}
+// ==================== REPORTS API ====================
+
+export async function exportDailyReportPDF(
+  date: string,
+  storeId?: string,
+): Promise<void> {
+  let endpoint = `/reports/daily-pdf?date=${date}`;
+  if (storeId) {
+    endpoint += `&storeId=${storeId}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`);
+  if (!response.ok) {
+    throw new Error(`Failed to generate PDF report`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Daily-Report-${date}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+export async function exportDailyReportCSV(
+  date: string,
+  storeId?: string,
+): Promise<void> {
+  let endpoint = `/reports/daily-csv?date=${date}`;
+  if (storeId) {
+    endpoint += `&storeId=${storeId}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`);
+  if (!response.ok) {
+    throw new Error(`Failed to generate CSV report`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Daily-Report-${date}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }

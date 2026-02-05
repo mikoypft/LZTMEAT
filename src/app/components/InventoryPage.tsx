@@ -37,6 +37,7 @@ import {
   deleteAllProducts,
   deleteProduct,
   getStores,
+  createTransfer,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -296,24 +297,37 @@ export function InventoryPage({
   const loadInventoryData = async () => {
     try {
       setLoading(true);
+      console.log("Loading inventory data...");
       const [productsData, inventoryData, storesData] = await Promise.all([
         getProducts(),
         getInventory(),
         getStores(),
       ]);
 
+      console.log("Inventory data received:", inventoryData);
+
       // Combine products with inventory data across all locations
       const inventoryItems = productsData.map((product: APIProduct) => {
-        const productionInv = inventoryData.find(
+        // Find the production/facility inventory (could be "Production" or "Production Facility")
+        let productionInv = inventoryData.find(
           (i: InventoryRecord) =>
-            i.productId === product.id && i.location === "Production Facility",
+            i.productId === product.id &&
+            (i.location === "Production Facility" ||
+              i.location === "Production"),
         );
 
-        // Build store stocks dynamically
+        // Build store stocks dynamically (excluding production/facility location)
         const storeStocks: { [storeName: string]: number } = {};
         let totalStoreStock = 0;
 
         storesData.forEach((store: StoreLocation) => {
+          // Skip if this store is the production facility
+          if (
+            store.name === "Production Facility" ||
+            store.name === "Production"
+          ) {
+            return;
+          }
           const storeInv = inventoryData.find(
             (i: InventoryRecord) =>
               i.productId === product.id && i.location === store.name,
@@ -343,6 +357,7 @@ export function InventoryPage({
         };
       });
 
+      console.log("Processed inventory items:", inventoryItems);
       setInventory(inventoryItems);
     } catch (error) {
       console.error("Error loading inventory:", error);
@@ -362,19 +377,16 @@ export function InventoryPage({
 
     try {
       // Verify password by making API call
-      const response = await fetch(
-        `${API_BASE_URL}/verify-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: currentUser?.id,
-            password: deletePassword,
-          }),
+      const response = await fetch(`${API_BASE_URL}/verify-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          password: deletePassword,
+        }),
+      });
 
       if (!response.ok) {
         setDeleteError("Invalid password. Please try again.");
@@ -437,7 +449,12 @@ export function InventoryPage({
   const loadStoreLocations = async () => {
     try {
       const storesData = await getStores();
-      setStoreLocations(storesData);
+      // Filter out "Production Facility" from store locations since it's shown separately as "Production"
+      const filteredStores = storesData.filter(
+        (store) =>
+          store.name !== "Production Facility" && store.name !== "Production",
+      );
+      setStoreLocations(filteredStores);
     } catch (error) {
       console.error("Error loading store locations:", error);
       toast.error("Failed to load store locations");
@@ -478,44 +495,85 @@ export function InventoryPage({
     return chartData;
   });
 
-  // Stock Adjustment Function
+  // Stock Adjustment Function (Bidirectional)
   const handleStockAdjustment = async (adjustment: {
-    storeName: string;
+    fromLocation: string;
+    toLocation: string;
     quantity: number;
     reason: string;
   }) => {
     if (!selectedItem) return;
 
-    // Check if production has enough stock
-    if (selectedItem.stockProduction < adjustment.quantity) {
+    // Check if source has enough stock
+    const sourceStock =
+      adjustment.fromLocation === "Production"
+        ? selectedItem.stockProduction
+        : selectedItem.storeStocks[adjustment.fromLocation] || 0;
+
+    if (sourceStock < adjustment.quantity) {
       toast.error(
-        `Not enough stock in Production! Available: ${selectedItem.stockProduction} ${selectedItem.unit}`,
+        `Not enough stock in ${adjustment.fromLocation}! Available: ${sourceStock} ${selectedItem.unit}`,
       );
       return;
     }
 
     try {
-      // Update production facility (deduct)
-      await updateInventoryQuantity(
-        selectedItem.id,
-        "Production Facility",
-        selectedItem.stockProduction - adjustment.quantity,
-      );
+      console.log("Starting transfer:", { sourceStock, adjustment });
 
-      // Update store (add)
-      const currentStoreStock =
-        selectedItem.storeStocks[adjustment.storeName] || 0;
-      await updateInventoryQuantity(
-        selectedItem.id,
-        adjustment.storeName,
-        currentStoreStock + adjustment.quantity,
+      // Deduct from source location
+      console.log(
+        `Deducting ${adjustment.quantity} from ${adjustment.fromLocation} (current: ${sourceStock})`,
       );
+      const deductResult = await updateInventoryQuantity(
+        selectedItem.id,
+        adjustment.fromLocation,
+        sourceStock - adjustment.quantity,
+      );
+      console.log("Deduct result:", deductResult);
+
+      // Add to destination location
+      const destStock =
+        adjustment.toLocation === "Production"
+          ? selectedItem.stockProduction
+          : selectedItem.storeStocks[adjustment.toLocation] || 0;
+
+      console.log(
+        `Adding ${adjustment.quantity} to ${adjustment.toLocation} (current: ${destStock})`,
+      );
+      const addResult = await updateInventoryQuantity(
+        selectedItem.id,
+        adjustment.toLocation,
+        destStock + adjustment.quantity,
+      );
+      console.log("Add result:", addResult);
+
+      // Create transfer record
+      try {
+        await createTransfer({
+          productId: selectedItem.id,
+          from: adjustment.fromLocation,
+          to: adjustment.toLocation,
+          quantity: adjustment.quantity,
+          transferredBy: user?.username || "System",
+        });
+        console.log("Transfer record created");
+      } catch (transferError) {
+        console.error(
+          "Warning: Transfer record creation failed:",
+          transferError,
+        );
+        // Don't fail the entire operation if transfer record creation fails
+      }
 
       toast.success(
-        `Transferred ${adjustment.quantity} ${selectedItem.unit} from Production to ${adjustment.storeName}`,
+        `Transferred ${adjustment.quantity} ${selectedItem.unit} from ${adjustment.fromLocation} to ${adjustment.toLocation}`,
       );
 
+      // Add a small delay to ensure backend has processed the update
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Reload inventory to reflect changes
+      console.log("Reloading inventory data...");
       await loadInventoryData();
       setShowAdjustmentModal(false);
       setSelectedItem(null);
@@ -780,8 +838,13 @@ export function InventoryPage({
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="Production" fill="#dc2626" />
-                <Bar dataKey="Store 1" fill="#ef4444" />
-                <Bar dataKey="Store 2" fill="#f87171" />
+                {storeLocations.map((store, index) => (
+                  <Bar
+                    key={store.id}
+                    dataKey={store.name}
+                    fill={["#ef4444", "#f87171", "#fca5a5"][index % 3]}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1283,7 +1346,8 @@ function StockAdjustmentModal({
   onAdjust: (adjustment: any) => void;
   onClose: () => void;
 }) {
-  const [storeName, setStoreName] = useState("");
+  const [fromLocation, setFromLocation] = useState("Production");
+  const [toLocation, setToLocation] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [reason, setReason] = useState("");
   const [stores, setStores] = useState<StoreLocation[]>([]);
@@ -1296,8 +1360,8 @@ function StockAdjustmentModal({
     try {
       const storesData = await getStores();
       setStores(storesData);
-      if (storesData.length > 0 && !storeName) {
-        setStoreName(storesData[0].name);
+      if (storesData.length > 0 && !toLocation) {
+        setToLocation(storesData[0].name);
       }
     } catch (error) {
       console.error("Error loading stores:", error);
@@ -1307,11 +1371,18 @@ function StockAdjustmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (quantity <= 0 || !reason || !storeName) {
-      toast.error("Please enter quantity, store, and reason");
+    if (quantity <= 0 || !reason || !toLocation || !fromLocation) {
+      toast.error("Please enter quantity, from/to location, and reason");
       return;
     }
-    onAdjust({ storeName, quantity, reason });
+    onAdjust({ fromLocation, toLocation, quantity, reason });
+  };
+
+  const getAvailableStock = () => {
+    if (fromLocation === "Production") {
+      return item.stockProduction;
+    }
+    return item.storeStocks[fromLocation] || 0;
   };
 
   return (
@@ -1324,37 +1395,55 @@ function StockAdjustmentModal({
           </button>
         </div>
 
-        {/* Production Stock Info */}
+        {/* Available Stock Info */}
         <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                Available in Production
+                Available in {fromLocation}
               </p>
               <p className="text-xl font-bold text-primary">
-                {item.stockProduction} {item.unit}
+                {getAvailableStock()} {item.unit}
               </p>
             </div>
             <Package className="w-8 h-8 text-orange-600" />
           </div>
-          {item.stockProduction === 0 && (
+          {getAvailableStock() === 0 && (
             <p className="text-xs text-red-600 mt-2">
-              ⚠️ No stock available in production!
+              ⚠️ No stock available in {fromLocation}!
             </p>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm mb-2">Transfer to Store *</label>
+            <label className="block text-sm mb-2">Transfer From *</label>
+            <select
+              value={fromLocation}
+              onChange={(e) => setFromLocation(e.target.value)}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            >
+              <option value="Production">Production</option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.name}>
+                  {store.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-2">Transfer to *</label>
             {stores.length > 0 ? (
               <select
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
+                value={toLocation}
+                onChange={(e) => setToLocation(e.target.value)}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               >
-                <option value="">Select Store</option>
+                <option value="">Select Destination</option>
+                <option value="Production">Production</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.name}>
                     {store.name} (Current: {item.storeStocks[store.name] || 0}{" "}
@@ -1377,16 +1466,16 @@ function StockAdjustmentModal({
               type="number"
               min="0"
               step="0.1"
-              max={item.stockProduction}
+              max={getAvailableStock()}
               value={quantity}
               onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder={`Max: ${item.stockProduction}`}
+              placeholder={`Max: ${getAvailableStock()}`}
               required
             />
-            {quantity > item.stockProduction && (
+            {quantity > getAvailableStock() && (
               <p className="text-xs text-red-600 mt-1">
-                ⚠️ Quantity exceeds available production stock!
+                ⚠️ Quantity exceeds available {fromLocation} stock!
               </p>
             )}
           </div>
@@ -1414,7 +1503,7 @@ function StockAdjustmentModal({
               type="submit"
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               disabled={
-                quantity > item.stockProduction || item.stockProduction === 0
+                quantity > getAvailableStock() || getAvailableStock() === 0
               }
             >
               <RefreshCw className="w-4 h-4" />
@@ -1438,6 +1527,20 @@ function EditItemModal({
   onClose: () => void;
 }) {
   const [formData, setFormData] = useState(item);
+  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
+
+  useEffect(() => {
+    loadStoreLocations();
+  }, []);
+
+  const loadStoreLocations = async () => {
+    try {
+      const storesData = await getStores();
+      setStoreLocations(storesData);
+    } catch (error) {
+      console.error("Error loading store locations:", error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

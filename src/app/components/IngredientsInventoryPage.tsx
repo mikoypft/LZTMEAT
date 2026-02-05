@@ -12,6 +12,7 @@ import {
   X,
   Save,
   Trash2,
+  Edit2,
 } from "lucide-react";
 import {
   IngredientsContext,
@@ -62,6 +63,7 @@ export function IngredientsInventoryPage({
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
+  const [showEditIngredientModal, setShowEditIngredientModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [selectedIngredient, setSelectedIngredient] =
@@ -144,18 +146,18 @@ export function IngredientsInventoryPage({
 
       // Record the stock adjustment in the database
       await createStockAdjustment({
-        ingredient_id: selectedIngredient.id,
+        ingredient_id: Number(selectedIngredient.id),
         type: adjustment.type,
         quantity: adjustment.quantity,
         reason: adjustment.reason || "Stock adjustment",
-        user_id: currentUser?.id,
+        user_id: currentUser?.id ? Number(currentUser.id) : undefined,
         user_name:
           currentUser?.fullName || currentUser?.username || "Unknown User",
       });
 
       // Update local state
       await adjustStock(
-        selectedIngredient.id,
+        Number(selectedIngredient.id),
         adjustment.quantity,
         adjustment.type,
         adjustment.reason,
@@ -165,7 +167,7 @@ export function IngredientsInventoryPage({
         adjustment.type === "add" ? adjustment.quantity : -adjustment.quantity;
       const newStock = Math.max(0, ingredient.stock + delta);
 
-      await updateIngredient(selectedIngredient.id, {
+      await updateIngredient(Number(selectedIngredient.id), {
         stock: newStock,
         lastUpdated: new Date().toISOString(),
       });
@@ -507,6 +509,16 @@ export function IngredientsInventoryPage({
                           <button
                             onClick={() => {
                               setSelectedIngredient(item);
+                              setShowEditIngredientModal(true);
+                            }}
+                            className="p-1.5 hover:bg-blue-100 rounded text-blue-600"
+                            title="Edit Ingredient"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedIngredient(item);
                               setShowAdjustmentModal(true);
                             }}
                             className="p-1.5 hover:bg-accent rounded"
@@ -603,6 +615,15 @@ export function IngredientsInventoryPage({
 
                 {/* Actions */}
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedIngredient(item);
+                      setShowEditIngredientModal(true);
+                    }}
+                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedIngredient(item);
@@ -727,6 +748,44 @@ export function IngredientsInventoryPage({
         />
       )}
 
+      {/* Edit Ingredient Modal */}
+      {showEditIngredientModal && selectedIngredient && (
+        <AddIngredientModal
+          ingredient={selectedIngredient}
+          onAdd={async (updatedIng) => {
+            setIsAdding(true);
+            try {
+              const ingredient = await updateIngredient(
+                selectedIngredient.id,
+                updatedIng,
+              );
+              setIngredients(
+                ingredients.map((ing) =>
+                  ing.id === selectedIngredient.id ? ingredient : ing,
+                ),
+              );
+              toast.success(
+                `Ingredient "${ingredient.name}" updated successfully`,
+              );
+              setShowEditIngredientModal(false);
+              setSelectedIngredient(null);
+            } catch (error) {
+              console.error("Error updating ingredient:", error);
+              toast.error("Failed to update ingredient");
+            } finally {
+              setIsAdding(false);
+            }
+          }}
+          onClose={() => {
+            setShowEditIngredientModal(false);
+            setSelectedIngredient(null);
+          }}
+          isAdding={isAdding}
+          suppliers={suppliers}
+          ingredients={ingredients}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedIngredient && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -817,18 +876,19 @@ function StockAdjustmentModal({
   isAdjusting: boolean;
   setIsAdjusting: (value: boolean) => void;
 }) {
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState<string>("");
   const [type, setType] = useState<"add" | "remove">("add");
   const [reason, setReason] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (quantity <= 0 || !reason) {
+    const qty = parseFloat(quantity);
+    if (!quantity || qty <= 0 || !reason) {
       alert("Please enter quantity and reason");
       return;
     }
     setIsAdjusting(true);
-    onAdjust({ quantity, type, reason });
+    onAdjust({ quantity: qty, type, reason });
   };
 
   return (
@@ -888,7 +948,9 @@ function StockAdjustmentModal({
               min="0"
               step="0.1"
               value={quantity}
-              onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setQuantity(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="0"
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
@@ -936,12 +998,14 @@ function AddIngredientModal({
   isAdding,
   suppliers,
   ingredients,
+  ingredient,
 }: {
   onAdd: (newIng: any) => void;
   onClose: () => void;
   isAdding: boolean;
   suppliers: Supplier[];
   ingredients: Ingredient[];
+  ingredient?: Ingredient;
 }) {
   // Auto-generate incremental code
   const generateNextCode = () => {
@@ -963,15 +1027,23 @@ function AddIngredientModal({
     return `ING-${String(nextNumber).padStart(3, "0")}`;
   };
 
-  const [name, setName] = useState("");
-  const [code] = useState(generateNextCode());
-  const [category, setCategory] = useState("");
-  const [unit, setUnit] = useState("");
-  const [costPerUnit, setCostPerUnit] = useState(0);
-  const [minStockLevel, setMinStockLevel] = useState(0);
-  const [reorderPoint, setReorderPoint] = useState(0);
-  const [supplierId, setSupplierId] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
+  const isEditing = !!ingredient;
+
+  const [name, setName] = useState(ingredient?.name || "");
+  const [code] = useState(ingredient?.code || generateNextCode());
+  const [category, setCategory] = useState(ingredient?.category || "");
+  const [unit, setUnit] = useState(ingredient?.unit || "");
+  const [costPerUnit, setCostPerUnit] = useState<string>(
+    ingredient?.costPerUnit ? String(ingredient.costPerUnit) : "",
+  );
+  const [minStockLevel, setMinStockLevel] = useState<string>(
+    ingredient?.minStockLevel ? String(ingredient.minStockLevel) : "",
+  );
+  const [reorderPoint, setReorderPoint] = useState<string>(
+    ingredient?.reorderPoint ? String(ingredient.reorderPoint) : "",
+  );
+  const [supplierId, setSupplierId] = useState(ingredient?.supplierId || "");
+  const [expiryDate, setExpiryDate] = useState(ingredient?.expiryDate || "");
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>(
     [],
   );
@@ -995,13 +1067,19 @@ function AddIngredientModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cost = parseFloat(costPerUnit);
+    const min = parseFloat(minStockLevel);
+    const reorder = parseFloat(reorderPoint);
     if (
       !name ||
       !category ||
       !unit ||
-      costPerUnit <= 0 ||
-      minStockLevel <= 0 ||
-      reorderPoint <= 0 ||
+      !costPerUnit ||
+      cost <= 0 ||
+      !minStockLevel ||
+      min <= 0 ||
+      !reorderPoint ||
+      reorder <= 0 ||
       !supplierId
     ) {
       alert("Please fill in all required fields");
@@ -1012,9 +1090,9 @@ function AddIngredientModal({
       code,
       category,
       unit,
-      costPerUnit,
-      minStockLevel,
-      reorderPoint,
+      costPerUnit: cost,
+      minStockLevel: min,
+      reorderPoint: reorder,
       supplierId,
       expiryDate: expiryDate || null,
       stock: 0,
@@ -1027,7 +1105,9 @@ function AddIngredientModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Add New Ingredient</h2>
+          <h2 className="font-semibold">
+            {isEditing ? "Edit Ingredient" : "Add New Ingredient"}
+          </h2>
           <button onClick={onClose} className="p-2 hover:bg-accent rounded">
             <X className="w-5 h-5" />
           </button>
@@ -1065,11 +1145,13 @@ function AddIngredientModal({
               required
               disabled={loadingCategories}
             >
-              <option value="">
-                {loadingCategories
-                  ? "Loading categories..."
-                  : "Select Category"}
-              </option>
+              {!category && (
+                <option value="">
+                  {loadingCategories
+                    ? "Loading categories..."
+                    : "Select Category"}
+                </option>
+              )}
               {ingredientCategories.map((cat) => (
                 <option key={cat.id} value={cat.name}>
                   {cat.name}
@@ -1098,9 +1180,9 @@ function AddIngredientModal({
                 min="0"
                 step="0.01"
                 value={costPerUnit}
-                onChange={(e) =>
-                  setCostPerUnit(parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => setCostPerUnit(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0.00"
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1115,9 +1197,9 @@ function AddIngredientModal({
                 min="0"
                 step="0.1"
                 value={minStockLevel}
-                onChange={(e) =>
-                  setMinStockLevel(parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => setMinStockLevel(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0"
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1130,9 +1212,9 @@ function AddIngredientModal({
                 min="0"
                 step="0.1"
                 value={reorderPoint}
-                onChange={(e) =>
-                  setReorderPoint(parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => setReorderPoint(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0"
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
@@ -1142,14 +1224,16 @@ function AddIngredientModal({
           <div>
             <label className="block text-sm mb-2">Supplier *</label>
             <select
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
+              value={supplierId ? String(supplierId) : ""}
+              onChange={(e) =>
+                setSupplierId(e.target.value ? Number(e.target.value) : "")
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             >
-              <option value="">Select Supplier</option>
+              {!supplierId && <option value="">Select Supplier</option>}
               {suppliers.map((sup) => (
-                <option key={sup.id} value={sup.id}>
+                <option key={sup.id} value={String(sup.id)}>
                   {sup.name}
                 </option>
               ))}
@@ -1181,7 +1265,13 @@ function AddIngredientModal({
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {isAdding ? "Adding..." : "Add Ingredient"}
+              {isAdding
+                ? isEditing
+                  ? "Updating..."
+                  : "Adding..."
+                : isEditing
+                  ? "Update Ingredient"
+                  : "Add Ingredient"}
             </button>
           </div>
         </form>

@@ -10,9 +10,18 @@ use Illuminate\Http\Request;
 
 class ProductionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $records = ProductionRecord::with(['product', 'ingredients'])->get();
+        $query = ProductionRecord::with(['product', 'ingredients']);
+        
+        if ($request->startDate && $request->endDate) {
+            // Parse dates and create proper timestamp ranges
+            $startDate = \Carbon\Carbon::parse($request->startDate)->startOfDay();
+            $endDate = \Carbon\Carbon::parse($request->endDate)->endOfDay();
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }
+        
+        $records = $query->get();
         
         return response()->json([
             'records' => $records->map(fn($r) => [
@@ -68,10 +77,25 @@ class ProductionController extends Controller
             if (is_array($ingredients)) {
                 foreach ($ingredients as $ingredient) {
                     if (isset($ingredient['ingredientId']) && isset($ingredient['quantity'])) {
+                        // Save the ingredient to production record
                         ProductionIngredient::create([
                             'production_id' => $record->id,
                             'ingredient_id' => $ingredient['ingredientId'],
                             'quantity' => $ingredient['quantity'],
+                        ]);
+
+                        // Deduct the ingredient from stock
+                        $ingredientModel = \App\Models\Ingredient::findOrFail($ingredient['ingredientId']);
+                        $newStock = $ingredientModel->stock - floatval($ingredient['quantity']);
+                        $newStock = max(0, $newStock); // Ensure stock doesn't go negative
+                        
+                        $ingredientModel->update(['stock' => $newStock]);
+                        
+                        \Log::info('Deducted ingredient stock during production creation', [
+                            'ingredient_id' => $ingredient['ingredientId'],
+                            'ingredient_name' => $ingredientModel->name,
+                            'quantity_used' => $ingredient['quantity'],
+                            'new_stock' => $newStock,
                         ]);
                     }
                 }
@@ -103,16 +127,50 @@ class ProductionController extends Controller
     {
         $request->validate([
             'status' => 'required|in:in-progress,completed,quality-check',
+            'quantity' => 'nullable|numeric',
+            'additionalIngredients' => 'nullable|array',
         ]);
 
         $record = ProductionRecord::findOrFail($id);
         $oldStatus = $record->status;
         $newStatus = $request->status;
 
-        \Log::info('updateStatus called', ['id' => $id, 'oldStatus' => $oldStatus, 'newStatus' => $newStatus, 'product_id' => $record->product_id, 'quantity' => $record->quantity]);
+        \Log::info('updateStatus called', ['id' => $id, 'oldStatus' => $oldStatus, 'newStatus' => $newStatus, 'product_id' => $record->product_id, 'old_quantity' => $record->quantity, 'new_quantity' => $request->quantity]);
 
-        // Update the status
-        $record->update(['status' => $newStatus]);
+        // Update the status and quantity if provided
+        $updateData = ['status' => $newStatus];
+        if ($request->quantity) {
+            $updateData['quantity'] = $request->quantity;
+        }
+        $record->update($updateData);
+
+        // Handle additional ingredients if provided - deduct from inventory
+        if ($request->additionalIngredients && is_array($request->additionalIngredients)) {
+            foreach ($request->additionalIngredients as $ingredient) {
+                if (isset($ingredient['code']) && isset($ingredient['quantity']) && $ingredient['code'] && $ingredient['quantity']) {
+                    // Save the additional ingredient to production record
+                    ProductionIngredient::create([
+                        'production_id' => $record->id,
+                        'ingredient_id' => $ingredient['code'],
+                        'quantity' => $ingredient['quantity'],
+                    ]);
+
+                    // Deduct the ingredient from inventory (Production Facility)
+                    $ingredientInventory = \App\Models\Ingredient::findOrFail($ingredient['code']);
+                    $newStock = $ingredientInventory->stock - floatval($ingredient['quantity']);
+                    $newStock = max(0, $newStock); // Ensure stock doesn't go negative
+                    
+                    $ingredientInventory->update(['stock' => $newStock]);
+                    
+                    \Log::info('Deducted additional ingredient stock', [
+                        'ingredient_id' => $ingredient['code'],
+                        'ingredient_name' => $ingredientInventory->name,
+                        'quantity_used' => $ingredient['quantity'],
+                        'new_stock' => $newStock,
+                    ]);
+                }
+            }
+        }
 
         // If transitioning to completed status, sync inventory
         if ($newStatus === 'completed' && $oldStatus !== 'completed') {

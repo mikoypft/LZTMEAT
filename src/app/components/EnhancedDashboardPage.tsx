@@ -1,14 +1,73 @@
-import { useState, useEffect } from 'react';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart, Factory, Users, AlertTriangle, 
-  Activity, Calendar, ArrowUpRight, ArrowDownRight, BarChart3, RefreshCw, Bell, Clock, 
-  CheckCircle, XCircle, Truck, BoxIcon, Tag, FileText, Download, Filter, Search, Eye,
-  ChevronRight, Settings, PieChart, TrendingUpIcon, AlertCircle, MapPin, Plus
-} from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
-import { UserRole } from './LoginPage';
-import { getProducts, getInventory, getSales, getProductionRecords, getTransfers, getCategories, type Sale, type ProductionRecord, type TransferRequest, type Product, type InventoryRecord, type Category } from '@/utils/api';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Package,
+  ShoppingCart,
+  Factory,
+  Users,
+  AlertTriangle,
+  Activity,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart3,
+  RefreshCw,
+  Bell,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Truck,
+  BoxIcon,
+  Tag,
+  FileText,
+  Download,
+  Filter,
+  Search,
+  Eye,
+  ChevronRight,
+  Settings,
+  PieChart,
+  TrendingUpIcon,
+  AlertCircle,
+  MapPin,
+  Plus,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart,
+} from "recharts";
+import { UserRole } from "./LoginPage";
+import {
+  getProducts,
+  getInventory,
+  getSales,
+  getProductionRecords,
+  getTransfers,
+  getCategories,
+  type Sale,
+  type ProductionRecord,
+  type TransferRequest,
+  type Product,
+  type InventoryRecord,
+  type Category,
+} from "@/utils/api";
+import { toast } from "sonner";
 
 interface DashboardPageProps {
   userRole: UserRole;
@@ -35,17 +94,30 @@ interface ComprehensiveMetrics {
 
 interface AlertItem {
   id: string;
-  type: 'critical' | 'warning' | 'info';
+  type: "critical" | "warning" | "info";
   title: string;
   message: string;
   time: string;
   action?: string;
 }
 
-const COLORS = ['#ef4444', '#f87171', '#fca5a5', '#fb923c', '#fbbf24', '#a3e635'];
+const COLORS = [
+  "#ef4444",
+  "#f87171",
+  "#fca5a5",
+  "#fb923c",
+  "#fbbf24",
+  "#a3e635",
+];
 
-export function EnhancedDashboardPage({ userRole, userName, onNavigate }: DashboardPageProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('week');
+export function EnhancedDashboardPage({
+  userRole,
+  userName,
+  onNavigate,
+}: DashboardPageProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    "today" | "week" | "month"
+  >("week");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<ComprehensiveMetrics>({
     totalRevenue: 0,
@@ -75,7 +147,9 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
 
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [lowStockDetails, setLowStockDetails] = useState<Array<{ name: string; quantity: number; status: 'critical' | 'warning' }>>([]);
+  const [lowStockDetails, setLowStockDetails] = useState<
+    Array<{ name: string; quantity: number; status: "critical" | "warning" }>
+  >([]);
   const [recentTransfers, setRecentTransfers] = useState<TransferRequest[]>([]);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
 
@@ -86,24 +160,40 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
   const loadComprehensiveData = async () => {
     try {
       setLoading(true);
-      
-      const [products, inventory, sales, productionRecords, transfers, categories] = await Promise.all([
+
+      const [
+        products,
+        inventory,
+        sales,
+        productionRecords,
+        transfers,
+        categories,
+      ] = await Promise.all([
         getProducts(),
         getInventory(),
         getSales(),
         getProductionRecords(),
         getTransfers(),
-        getCategories()
+        getCategories(),
       ]);
 
       // Calculate comprehensive metrics
-      const totalRevenue = sales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+      const totalRevenue = sales.reduce(
+        (sum, sale) => sum + (Number(sale.total) || 0),
+        0,
+      );
       const totalOrders = sales.length;
-      const totalProduction = productionRecords.reduce((sum, record) => sum + record.quantity, 0);
+      const totalProduction = productionRecords.reduce(
+        (sum, record) => sum + record.quantity,
+        0,
+      );
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
       // Inventory metrics
-      const totalInventoryKG = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
+      const totalInventoryKG = inventory.reduce(
+        (sum, inv) => sum + inv.quantity,
+        0,
+      );
       const totalInventoryValue = inventory.reduce((sum, inv) => {
         const product = products.find((p: Product) => p.id === inv.productId);
         return sum + (product ? inv.quantity * product.price : 0);
@@ -112,14 +202,14 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
       // Low stock calculation - More accurate
       const MIN_STOCK_THRESHOLD = 50;
       const CRITICAL_STOCK_THRESHOLD = 20;
-      
+
       // Aggregate inventory by product across all locations
       const inventoryByProduct = new Map<string, number>();
       inventory.forEach((inv: InventoryRecord) => {
         const current = inventoryByProduct.get(inv.productId) || 0;
         inventoryByProduct.set(inv.productId, current + inv.quantity);
       });
-      
+
       // Count only products that have inventory records and are below threshold
       let lowStockCount = 0;
       inventoryByProduct.forEach((totalQty, productId) => {
@@ -131,10 +221,15 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
       });
 
       // Transfer metrics
-      const pendingTransfers = transfers.filter((t: TransferRequest) => t.status === 'Pending').length;
-      const today = new Date().toISOString().split('T')[0];
-      const completedTransfersToday = transfers.filter((t: TransferRequest) => 
-        t.status === 'Completed' && new Date(t.updatedAt || t.createdAt).toISOString().split('T')[0] === today
+      const pendingTransfers = transfers.filter(
+        (t: TransferRequest) => t.status === "pending",
+      ).length;
+      const today = new Date().toISOString().split("T")[0];
+      const completedTransfersToday = transfers.filter(
+        (t: TransferRequest) =>
+          t.status === "completed" &&
+          new Date(t.updatedAt || t.createdAt).toISOString().split("T")[0] ===
+            today,
       ).length;
 
       setMetrics({
@@ -161,14 +256,21 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
         categoryDistribution: generateCategoryDistribution(products, sales),
         topProducts: generateTopProducts(products, sales),
         inventoryByLocation: generateInventoryByLocation(inventory),
-        revenueVsProduction: generateRevenueVsProduction(sales, productionRecords),
+        revenueVsProduction: generateRevenueVsProduction(
+          sales,
+          productionRecords,
+        ),
       });
 
       // Generate alerts
-      setAlerts(generateAlerts(inventory, transfers, products, inventoryByProduct));
+      setAlerts(
+        generateAlerts(inventory, transfers, products, inventoryByProduct),
+      );
 
       // Generate recent activity
-      setRecentActivity(generateRecentActivity(sales, productionRecords, transfers, inventory));
+      setRecentActivity(
+        generateRecentActivity(sales, productionRecords, transfers, inventory),
+      );
 
       // Generate low stock details
       setLowStockDetails(generateLowStockDetails(products, inventoryByProduct));
@@ -183,56 +285,61 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
         return dateB - dateA; // Most recent first
       });
       setRecentSales(sortedSales.slice(0, 10));
-
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      console.error("Error loading dashboard data:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
   const generateSalesByDay = (sales: Sale[]) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       return {
         name: days[date.getDay()],
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         sales: 0,
         orders: 0,
-        revenue: 0
+        revenue: 0,
       };
     });
 
-    sales.forEach(sale => {
-      const saleDate = new Date(sale.timestamp || sale.date).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === saleDate);
+    sales.forEach((sale) => {
+      const saleDate = new Date(sale.timestamp || sale.date)
+        .toISOString()
+        .split("T")[0];
+      const dayData = last7Days.find((d) => d.date === saleDate);
       if (dayData) {
         dayData.revenue += sale.total;
         dayData.orders += 1;
       }
     });
 
-    return last7Days.map(({ name, revenue, orders }) => ({ name, revenue, orders }));
+    return last7Days.map(({ name, revenue, orders }) => ({
+      name,
+      revenue,
+      orders,
+    }));
   };
 
   const generateProductionByDay = (records: ProductionRecord[]) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       return {
         name: days[date.getDay()],
-        date: date.toISOString().split('T')[0],
-        produced: 0
+        date: date.toISOString().split("T")[0],
+        produced: 0,
       };
     });
 
-    records.forEach(record => {
-      const recordDate = new Date(record.timestamp).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === recordDate);
+    records.forEach((record) => {
+      const recordDate = new Date(record.timestamp).toISOString().split("T")[0];
+      const dayData = last7Days.find((d) => d.date === recordDate);
       if (dayData) {
         dayData.produced += record.quantity;
       }
@@ -243,14 +350,17 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
 
   const generateCategoryDistribution = (products: Product[], sales: Sale[]) => {
     const categoryMap = new Map<string, number>();
-    
-    sales.forEach(sale => {
+
+    sales.forEach((sale) => {
       if (sale.items && Array.isArray(sale.items)) {
-        sale.items.forEach(item => {
-          const product = products.find(p => p.id === item.productId);
+        sale.items.forEach((item) => {
+          const product = products.find((p) => p.id === item.productId);
           if (product) {
             const current = categoryMap.get(product.category) || 0;
-            categoryMap.set(product.category, current + (item.quantity * item.price));
+            categoryMap.set(
+              product.category,
+              current + item.quantity * item.price,
+            );
           }
         });
       }
@@ -259,20 +369,23 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
     return Array.from(categoryMap.entries()).map(([name, value], index) => ({
       name,
       value: Math.round(value),
-      color: COLORS[index % COLORS.length]
+      color: COLORS[index % COLORS.length],
     }));
   };
 
   const generateTopProducts = (products: Product[], sales: Sale[]) => {
     const productMap = new Map<string, { sold: number; revenue: number }>();
 
-    sales.forEach(sale => {
+    sales.forEach((sale) => {
       if (sale.items && Array.isArray(sale.items)) {
-        sale.items.forEach(item => {
-          const current = productMap.get(item.productId) || { sold: 0, revenue: 0 };
+        sale.items.forEach((item) => {
+          const current = productMap.get(item.productId) || {
+            sold: 0,
+            revenue: 0,
+          };
           productMap.set(item.productId, {
             sold: current.sold + item.quantity,
-            revenue: current.revenue + (item.quantity * item.price)
+            revenue: current.revenue + item.quantity * item.price,
           });
         });
       }
@@ -280,12 +393,14 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
 
     const topProductsData = Array.from(productMap.entries())
       .map(([productId, data]) => {
-        const product = products.find(p => p.id === productId);
-        return product ? {
-          name: product.name,
-          sold: data.sold,
-          revenue: data.revenue
-        } : null;
+        const product = products.find((p) => p.id === productId);
+        return product
+          ? {
+              name: product.name,
+              sold: data.sold,
+              revenue: data.revenue,
+            }
+          : null;
       })
       .filter(Boolean)
       .sort((a, b) => (b?.revenue || 0) - (a?.revenue || 0))
@@ -296,37 +411,45 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
 
   const generateInventoryByLocation = (inventory: InventoryRecord[]) => {
     const locationMap = new Map<string, number>();
-    
-    inventory.forEach(inv => {
+
+    inventory.forEach((inv) => {
       const current = locationMap.get(inv.location) || 0;
       locationMap.set(inv.location, current + inv.quantity);
     });
 
-    return Array.from(locationMap.entries()).map(([name, stock]) => ({ name, stock }));
+    return Array.from(locationMap.entries()).map(([name, stock]) => ({
+      name,
+      stock,
+    }));
   };
 
-  const generateRevenueVsProduction = (sales: Sale[], productionRecords: ProductionRecord[]) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const generateRevenueVsProduction = (
+    sales: Sale[],
+    productionRecords: ProductionRecord[],
+  ) => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       return {
         name: days[date.getDay()],
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         revenue: 0,
-        production: 0
+        production: 0,
       };
     });
 
-    sales.forEach(sale => {
-      const saleDate = new Date(sale.timestamp || sale.date).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === saleDate);
+    sales.forEach((sale) => {
+      const saleDate = new Date(sale.timestamp || sale.date)
+        .toISOString()
+        .split("T")[0];
+      const dayData = last7Days.find((d) => d.date === saleDate);
       if (dayData) dayData.revenue += sale.total;
     });
 
-    productionRecords.forEach(record => {
-      const recordDate = new Date(record.timestamp).toISOString().split('T')[0];
-      const dayData = last7Days.find(d => d.date === recordDate);
+    productionRecords.forEach((record) => {
+      const recordDate = new Date(record.timestamp).toISOString().split("T")[0];
+      const dayData = last7Days.find((d) => d.date === recordDate);
       if (dayData) dayData.production += record.quantity * 10; // Scale for visibility
     });
 
@@ -334,51 +457,51 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
   };
 
   const generateAlerts = (
-    inventory: InventoryRecord[], 
-    transfers: TransferRequest[], 
+    inventory: InventoryRecord[],
+    transfers: TransferRequest[],
     products: Product[],
-    inventoryByProduct: Map<string, number>
+    inventoryByProduct: Map<string, number>,
   ): AlertItem[] => {
     const alerts: AlertItem[] = [];
 
     // Critical stock alerts
     inventoryByProduct.forEach((qty, productId) => {
       if (qty < 20) {
-        const product = products.find(p => p.id === productId);
+        const product = products.find((p) => p.id === productId);
         if (product) {
           alerts.push({
             id: `critical-${productId}`,
-            type: 'critical',
-            title: 'Critical Stock Level',
+            type: "critical",
+            title: "Critical Stock Level",
             message: `${product.name} has only ${qty} KG remaining`,
-            time: 'Now',
-            action: 'Reorder Now'
+            time: "Now",
+            action: "Reorder Now",
           });
         }
       } else if (qty < 50) {
-        const product = products.find(p => p.id === productId);
+        const product = products.find((p) => p.id === productId);
         if (product) {
           alerts.push({
             id: `warning-${productId}`,
-            type: 'warning',
-            title: 'Low Stock Warning',
+            type: "warning",
+            title: "Low Stock Warning",
             message: `${product.name} stock is running low (${qty} KG)`,
-            time: '5 min ago'
+            time: "5 min ago",
           });
         }
       }
     });
 
     // Pending transfer alerts
-    const pendingTransfers = transfers.filter(t => t.status === 'Pending');
+    const pendingTransfers = transfers.filter((t) => t.status === "pending");
     if (pendingTransfers.length > 0) {
       alerts.push({
-        id: 'pending-transfers',
-        type: 'info',
-        title: 'Pending Transfers',
+        id: "pending-transfers",
+        type: "info",
+        title: "Pending Transfers",
         message: `${pendingTransfers.length} transfer(s) waiting for approval`,
-        time: '10 min ago',
-        action: 'Review'
+        time: "10 min ago",
+        action: "Review",
       });
     }
 
@@ -386,58 +509,72 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
   };
 
   const generateRecentActivity = (
-    sales: Sale[], 
-    productionRecords: ProductionRecord[], 
+    sales: Sale[],
+    productionRecords: ProductionRecord[],
     transfers: TransferRequest[],
-    inventory: InventoryRecord[]
+    inventory: InventoryRecord[],
   ) => {
     const activities: any[] = [];
 
-    sales.slice(-3).reverse().forEach(sale => {
-      activities.push({
-        type: 'sale',
-        message: `New sale: ₱${sale.total.toLocaleString()}`,
-        detail: `${sale.items.length} items sold`,
-        time: formatTimeAgo(new Date(sale.timestamp || sale.date)),
-        icon: ShoppingCart,
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
-        timestamp: new Date(sale.timestamp || sale.date).getTime()
+    sales
+      .slice(-3)
+      .reverse()
+      .forEach((sale) => {
+        activities.push({
+          type: "sale",
+          message: `New sale: ₱${sale.total.toLocaleString()}`,
+          detail: `${sale.items.length} items sold`,
+          time: formatTimeAgo(new Date(sale.timestamp || sale.date)),
+          icon: ShoppingCart,
+          color: "text-green-600",
+          bgColor: "bg-green-50",
+          timestamp: new Date(sale.timestamp || sale.date).getTime(),
+        });
       });
-    });
 
-    productionRecords.slice(-2).reverse().forEach(record => {
-      activities.push({
-        type: 'production',
-        message: `Production completed`,
-        detail: `${record.quantity} KG ${record.productName}`,
-        time: formatTimeAgo(new Date(record.timestamp)),
-        icon: Factory,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
-        timestamp: new Date(record.timestamp).getTime()
+    productionRecords
+      .slice(-2)
+      .reverse()
+      .forEach((record) => {
+        activities.push({
+          type: "production",
+          message: `Production completed`,
+          detail: `${record.quantity} KG ${record.productName}`,
+          time: formatTimeAgo(new Date(record.timestamp)),
+          icon: Factory,
+          color: "text-blue-600",
+          bgColor: "bg-blue-50",
+          timestamp: new Date(record.timestamp).getTime(),
+        });
       });
-    });
 
-    transfers.filter(t => t.status === 'Completed').slice(-2).reverse().forEach(transfer => {
-      activities.push({
-        type: 'transfer',
-        message: `Transfer completed`,
-        detail: `${transfer.quantity} KG ${transfer.productName} to ${transfer.to}`,
-        time: formatTimeAgo(new Date(transfer.updatedAt || transfer.createdAt)),
-        icon: Truck,
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50',
-        timestamp: new Date(transfer.updatedAt || transfer.createdAt).getTime()
+    transfers
+      .filter((t) => t.status === "completed")
+      .slice(-2)
+      .reverse()
+      .forEach((transfer) => {
+        activities.push({
+          type: "transfer",
+          message: `Transfer completed`,
+          detail: `${transfer.quantity} KG ${transfer.productName} to ${transfer.to}`,
+          time: formatTimeAgo(
+            new Date(transfer.updatedAt || transfer.createdAt),
+          ),
+          icon: Truck,
+          color: "text-purple-600",
+          bgColor: "bg-purple-50",
+          timestamp: new Date(
+            transfer.updatedAt || transfer.createdAt,
+          ).getTime(),
+        });
       });
-    });
 
     return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, 8);
   };
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return 'Just now';
+    if (seconds < 60) return "Just now";
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
@@ -445,21 +582,36 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
   };
 
-  const generateLowStockDetails = (products: Product[], inventoryByProduct: Map<string, number>) => {
-    const lowStockDetails: Array<{ name: string; quantity: number; status: 'critical' | 'warning' }> = [];
+  const generateLowStockDetails = (
+    products: Product[],
+    inventoryByProduct: Map<string, number>,
+  ) => {
+    const lowStockDetails: Array<{
+      name: string;
+      quantity: number;
+      status: "critical" | "warning";
+    }> = [];
 
     inventoryByProduct.forEach((qty, productId) => {
-      const product = products.find(p => p.id === productId);
+      const product = products.find((p) => p.id === productId);
       if (product) {
         if (qty < 20) {
-          lowStockDetails.push({ name: product.name, quantity: qty, status: 'critical' });
+          lowStockDetails.push({
+            name: product.name,
+            quantity: qty,
+            status: "critical",
+          });
         } else if (qty < 50) {
-          lowStockDetails.push({ name: product.name, quantity: qty, status: 'warning' });
+          lowStockDetails.push({
+            name: product.name,
+            quantity: qty,
+            status: "warning",
+          });
         }
       }
     });
@@ -501,14 +653,14 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <div className="flex items-center gap-2 bg-card border border-border rounded-lg overflow-hidden">
-              {['today', 'week', 'month'].map((period) => (
+              {["today", "week", "month"].map((period) => (
                 <button
                   key={period}
                   onClick={() => setSelectedPeriod(period as any)}
                   className={`px-3 py-2 text-sm transition-colors ${
                     selectedPeriod === period
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
                   }`}
                 >
                   {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -550,8 +702,8 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
           <MetricCard
             title="Low Stock Items"
             value={metrics.lowStockCount.toString()}
-            change={metrics.lowStockCount > 5 ? 'High' : 'Normal'}
-            trend={metrics.lowStockCount > 5 ? 'up' : 'down'}
+            change={metrics.lowStockCount > 5 ? "High" : "Normal"}
+            trend={metrics.lowStockCount > 5 ? "up" : "down"}
             icon={AlertTriangle}
             bgColor="bg-orange-50"
             iconColor="text-orange-600"
@@ -562,38 +714,58 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Inventory Value</span>
+              <span className="text-sm text-muted-foreground">
+                Inventory Value
+              </span>
               <Package className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-2xl font-semibold">₱{metrics.totalInventoryValue.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">{metrics.totalInventoryKG} KG total</p>
+            <p className="text-2xl font-semibold">
+              ₱{metrics.totalInventoryValue.toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {metrics.totalInventoryKG} KG total
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Avg Order Value</span>
+              <span className="text-sm text-muted-foreground">
+                Avg Order Value
+              </span>
               <TrendingUpIcon className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-2xl font-semibold">₱{metrics.avgOrderValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Per transaction</p>
+            <p className="text-2xl font-semibold">
+              ₱{metrics.avgOrderValue.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Per transaction
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Pending Transfers</span>
+              <span className="text-sm text-muted-foreground">
+                Pending Transfers
+              </span>
               <Truck className="w-4 h-4 text-primary" />
             </div>
             <p className="text-2xl font-semibold">{metrics.pendingTransfers}</p>
-            <p className="text-xs text-muted-foreground mt-1">{metrics.completedTransfersToday} completed today</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {metrics.completedTransfersToday} completed today
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Product Catalog</span>
+              <span className="text-sm text-muted-foreground">
+                Product Catalog
+              </span>
               <Tag className="w-4 h-4 text-primary" />
             </div>
             <p className="text-2xl font-semibold">{metrics.productsCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">{metrics.categoriesCount} categories</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {metrics.categoriesCount} categories
+            </p>
           </div>
         </div>
 
@@ -606,7 +778,7 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                 Active Alerts
               </h2>
               <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
-                {alerts.filter(a => a.type === 'critical').length} Critical
+                {alerts.filter((a) => a.type === "critical").length} Critical
               </span>
             </div>
             <div className="space-y-3">
@@ -614,29 +786,33 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                 <div
                   key={alert.id}
                   className={`p-4 rounded-lg border-l-4 ${
-                    alert.type === 'critical'
-                      ? 'bg-red-50 border-red-500'
-                      : alert.type === 'warning'
-                      ? 'bg-orange-50 border-orange-500'
-                      : 'bg-blue-50 border-blue-500'
+                    alert.type === "critical"
+                      ? "bg-red-50 border-red-500"
+                      : alert.type === "warning"
+                        ? "bg-orange-50 border-orange-500"
+                        : "bg-blue-50 border-blue-500"
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        {alert.type === 'critical' ? (
+                        {alert.type === "critical" ? (
                           <XCircle className="w-4 h-4 text-red-600" />
-                        ) : alert.type === 'warning' ? (
+                        ) : alert.type === "warning" ? (
                           <AlertCircle className="w-4 h-4 text-orange-600" />
                         ) : (
                           <AlertTriangle className="w-4 h-4 text-blue-600" />
                         )}
                         <h4 className="text-sm font-semibold">{alert.title}</h4>
                       </div>
-                      <p className="text-sm text-muted-foreground">{alert.message}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {alert.message}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{alert.time}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {alert.time}
+                      </span>
                       {alert.action && (
                         <button className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90">
                           {alert.action}
@@ -666,8 +842,20 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                 <YAxis yAxisId="right" orientation="right" stroke="#6b7280" />
                 <Tooltip />
                 <Legend />
-                <Bar yAxisId="left" dataKey="orders" fill="#3b82f6" name="Orders" />
-                <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#ef4444" strokeWidth={2} name="Revenue (₱)" />
+                <Bar
+                  yAxisId="left"
+                  dataKey="orders"
+                  fill="#3b82f6"
+                  name="Orders"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  name="Revenue (₱)"
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -685,7 +873,9 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) => `${name}: ₱${value.toLocaleString()}`}
+                  label={({ name, value }) =>
+                    `${name}: ₱${value.toLocaleString()}`
+                  }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -711,7 +901,13 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                 <XAxis dataKey="name" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
                 <Tooltip />
-                <Area type="monotone" dataKey="produced" stroke="#8b5cf6" fill="#c4b5fd" name="Produced (KG)" />
+                <Area
+                  type="monotone"
+                  dataKey="produced"
+                  stroke="#8b5cf6"
+                  fill="#c4b5fd"
+                  name="Produced (KG)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -744,14 +940,19 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
             </h3>
             <div className="space-y-3">
               {chartData.topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-semibold text-sm">
                       {index + 1}
                     </div>
                     <div>
                       <p className="font-medium text-sm">{product?.name}</p>
-                      <p className="text-xs text-muted-foreground">{product?.sold} KG sold</p>
+                      <p className="text-xs text-muted-foreground">
+                        {product?.sold} KG sold
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -774,15 +975,22 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
               {recentActivity.map((activity, index) => {
                 const Icon = activity.icon;
                 return (
-                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
                     <div className={`p-2 rounded-lg ${activity.bgColor}`}>
                       <Icon className={`w-4 h-4 ${activity.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{activity.message}</p>
-                      <p className="text-xs text-muted-foreground truncate">{activity.detail}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {activity.detail}
+                      </p>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {activity.time}
+                    </span>
                   </div>
                 );
               })}
@@ -794,29 +1002,29 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
         <div className="bg-card rounded-lg p-6 border border-border">
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button 
-              onClick={() => onNavigate?.('pos')}
+            <button
+              onClick={() => onNavigate?.("pos")}
               className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
             >
               <Plus className="w-6 h-6" />
               <span className="text-sm font-medium">New Sale</span>
             </button>
-            <button 
-              onClick={() => onNavigate?.('production')}
+            <button
+              onClick={() => onNavigate?.("production")}
               className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
             >
               <Factory className="w-6 h-6" />
               <span className="text-sm font-medium">Record Production</span>
             </button>
-            <button 
-              onClick={() => onNavigate?.('transfer')}
+            <button
+              onClick={() => onNavigate?.("transfer")}
               className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
             >
               <Truck className="w-6 h-6" />
               <span className="text-sm font-medium">Create Transfer</span>
             </button>
-            <button 
-              onClick={() => onNavigate?.('inventory')}
+            <button
+              onClick={() => onNavigate?.("inventory")}
               className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
             >
               <FileText className="w-6 h-6" />
@@ -832,8 +1040,8 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
               <Truck className="w-5 h-5 text-primary" />
               Recent Transfer History
             </h3>
-            <button 
-              onClick={() => onNavigate?.('transfer')}
+            <button
+              onClick={() => onNavigate?.("transfer")}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               View All
@@ -844,28 +1052,48 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
             <table className="w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Transfer ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Product</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">From</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">To</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Quantity</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Date</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Transfer ID
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Product
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    From
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    To
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Quantity
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Status
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Date
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {recentTransfers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                    <td
+                      colSpan={7}
+                      className="py-12 text-center text-muted-foreground"
+                    >
                       <Truck className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No transfer records found</p>
                     </td>
                   </tr>
                 ) : (
                   recentTransfers.map((transfer) => (
-                    <tr key={transfer.id} className="border-b border-border hover:bg-muted/50">
+                    <tr
+                      key={transfer.id}
+                      className="border-b border-border hover:bg-muted/50"
+                    >
                       <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
-                        #{transfer.id.slice(0, 8)}
+                        #{String(transfer.id).padStart(4, "0")}
                       </td>
                       <td className="py-3 px-4 text-sm font-medium">
                         {transfer.productName}
@@ -886,24 +1114,30 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
                         {transfer.quantity} KG
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          transfer.status === 'Completed'
-                            ? 'bg-green-100 text-green-700'
-                            : transfer.status === 'Pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : transfer.status === 'In Transit'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {transfer.status}
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            transfer.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : transfer.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : transfer.status === "in-transit"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {transfer.status.charAt(0).toUpperCase() +
+                            transfer.status.slice(1).replace("-", " ")}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-sm text-muted-foreground">
-                        {new Date(transfer.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                        {new Date(transfer.createdAt).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}
                       </td>
                     </tr>
                   ))
@@ -920,8 +1154,8 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
               <ShoppingCart className="w-5 h-5 text-primary" />
               Recent Sales
             </h3>
-            <button 
-              onClick={() => onNavigate?.('sales')}
+            <button
+              onClick={() => onNavigate?.("sales")}
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
               View All
@@ -932,61 +1166,91 @@ export function EnhancedDashboardPage({ userRole, userName, onNavigate }: Dashbo
             <table className="w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Transaction ID</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Date & Time</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Store Location</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Items</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Payment Method</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">Total Amount</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Transaction ID
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Date & Time
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Store Location
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Items
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Payment Method
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-medium">
+                    Total Amount
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {recentSales.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="py-12 text-center text-muted-foreground"
+                    >
                       <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No sales records found</p>
                     </td>
                   </tr>
                 ) : (
                   recentSales.map((sale) => (
-                    <tr key={sale.id || sale.transactionId} className="border-b border-border hover:bg-muted/50">
+                    <tr
+                      key={sale.id || sale.transactionId}
+                      className="border-b border-border hover:bg-muted/50"
+                    >
                       <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
                         {sale.transactionId}
                       </td>
                       <td className="py-3 px-4 text-sm">
-                        {new Date(sale.timestamp || sale.date).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {new Date(sale.timestamp || sale.date).toLocaleString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-muted-foreground" />
-                          {sale.location || 'Main Store'}
+                          {sale.location || "Main Store"}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex flex-col">
-                          <span className="font-medium">{sale.items && Array.isArray(sale.items) ? sale.items.length : 0} items</span>
+                          <span className="font-medium">
+                            {sale.items && Array.isArray(sale.items)
+                              ? sale.items.length
+                              : 0}{" "}
+                            items
+                          </span>
                           <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                            {sale.items && Array.isArray(sale.items) ? sale.items.map(item => item.name).join(', ') : 'N/A'}
+                            {sale.items && Array.isArray(sale.items)
+                              ? sale.items.map((item) => item.name).join(", ")
+                              : "N/A"}
                           </span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          sale.paymentMethod === 'Cash'
-                            ? 'bg-green-100 text-green-700'
-                            : sale.paymentMethod === 'Card'
-                            ? 'bg-blue-100 text-blue-700'
-                            : sale.paymentMethod === 'GCash'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            sale.paymentMethod === "Cash"
+                              ? "bg-green-100 text-green-700"
+                              : sale.paymentMethod === "Card"
+                                ? "bg-blue-100 text-blue-700"
+                                : sale.paymentMethod === "GCash"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
                           {sale.paymentMethod}
                         </span>
                       </td>
@@ -1017,7 +1281,7 @@ function MetricCard({
   title: string;
   value: string;
   change: string;
-  trend: 'up' | 'down';
+  trend: "up" | "down";
   icon: any;
   bgColor: string;
   iconColor: string;
@@ -1033,13 +1297,15 @@ function MetricCard({
       <div className="space-y-1">
         <p className="text-2xl lg:text-3xl font-semibold">{value}</p>
         <div className="flex items-center gap-1">
-          {trend === 'up' ? (
+          {trend === "up" ? (
             <ArrowUpRight className="w-4 h-4 text-green-600" />
           ) : (
             <ArrowDownRight className="w-4 h-4 text-green-600" />
           )}
           <span className="text-sm text-green-600 font-medium">{change}</span>
-          <span className="text-xs text-muted-foreground">from last period</span>
+          <span className="text-xs text-muted-foreground">
+            from last period
+          </span>
         </div>
       </div>
     </div>

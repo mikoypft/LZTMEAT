@@ -10,19 +10,22 @@ class IngredientController extends Controller
 {
     public function index()
     {
-        $ingredients = Ingredient::with('supplier')->get();
+        $ingredients = Ingredient::with('supplier', 'ingredientCategory')->get();
         return response()->json([
             'ingredients' => $ingredients->map(fn($i) => [
                 'id' => $i->id,
                 'name' => $i->name,
                 'code' => $i->code,
                 'category' => $i->category,
+                'categoryId' => $i->category_id,
+                'categoryName' => $i->ingredientCategory?->name,
                 'unit' => $i->unit,
                 'stock' => $i->stock,
                 'minStockLevel' => $i->min_stock_level,
                 'reorderPoint' => $i->reorder_point,
                 'costPerUnit' => $i->cost_per_unit,
                 'supplier' => $i->supplier?->name,
+                'supplierId' => $i->supplier_id,
                 'lastUpdated' => $i->updated_at->toIso8601String(),
                 'expiryDate' => $i->expiry_date?->toDateString(),
             ]),
@@ -40,7 +43,7 @@ class IngredientController extends Controller
             'minStockLevel' => 'required|numeric',
             'reorderPoint' => 'required|numeric',
             'costPerUnit' => 'required|numeric',
-            'supplier' => 'nullable|string',
+            'supplierId' => 'nullable|exists:suppliers,id',
             'expiryDate' => 'nullable|date',
         ]);
 
@@ -53,6 +56,7 @@ class IngredientController extends Controller
             'min_stock_level' => $request->minStockLevel,
             'reorder_point' => $request->reorderPoint,
             'cost_per_unit' => $request->costPerUnit,
+            'supplier_id' => $request->supplierId,
             'expiry_date' => $request->expiryDate,
         ]);
 
@@ -68,6 +72,7 @@ class IngredientController extends Controller
                 'reorderPoint' => $ingredient->reorder_point,
                 'costPerUnit' => $ingredient->cost_per_unit,
                 'supplier' => $ingredient->supplier?->name,
+                'supplierId' => $ingredient->supplier_id,
                 'lastUpdated' => $ingredient->updated_at->toIso8601String(),
                 'expiryDate' => $ingredient->expiry_date?->toDateString(),
             ],
@@ -80,10 +85,13 @@ class IngredientController extends Controller
         
         $updateData = [];
         if ($request->has('name')) $updateData['name'] = $request->name;
+        if ($request->has('category')) $updateData['category'] = $request->category;
+        if ($request->has('unit')) $updateData['unit'] = $request->unit;
         if ($request->has('stock')) $updateData['stock'] = $request->stock;
         if ($request->has('minStockLevel')) $updateData['min_stock_level'] = $request->minStockLevel;
         if ($request->has('reorderPoint')) $updateData['reorder_point'] = $request->reorderPoint;
         if ($request->has('costPerUnit')) $updateData['cost_per_unit'] = $request->costPerUnit;
+        if ($request->has('supplierId')) $updateData['supplier_id'] = $request->supplierId;
         if ($request->has('expiryDate')) $updateData['expiry_date'] = $request->expiryDate;
 
         $ingredient->update($updateData);
@@ -100,6 +108,7 @@ class IngredientController extends Controller
                 'reorderPoint' => $ingredient->reorder_point,
                 'costPerUnit' => $ingredient->cost_per_unit,
                 'supplier' => $ingredient->supplier?->name,
+                'supplierId' => $ingredient->supplier_id,
                 'lastUpdated' => $ingredient->updated_at->toIso8601String(),
                 'expiryDate' => $ingredient->expiry_date?->toDateString(),
             ],

@@ -8,14 +8,22 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::all();
+        $type = $request->query('type'); // 'product' or 'ingredient'
+        
+        $query = Category::query();
+        if ($type) {
+            $query->where('type', $type);
+        }
+        
+        $categories = $query->get();
         return response()->json([
             'categories' => $categories->map(fn($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'description' => $c->description,
+                'type' => $c->type,
                 'createdAt' => $c->created_at->toIso8601String(),
             ]),
         ]);
@@ -26,9 +34,35 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|unique:categories',
             'description' => 'nullable|string',
+            'type' => 'nullable|in:product,ingredient',
         ]);
 
-        $category = Category::create($request->all());
+        $data = $request->all();
+        $data['type'] = $data['type'] ?? 'product';
+        
+        $category = Category::create($data);
+
+        return response()->json([
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'description' => $category->description,
+                'type' => $category->type,
+                'createdAt' => $category->created_at->toIso8601String(),
+            ],
+        ], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $category = Category::findOrFail($id);
+        
+        $request->validate([
+            'name' => 'required|string|unique:categories,name,' . $id,
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update($request->all());
 
         return response()->json([
             'category' => [
@@ -37,7 +71,7 @@ class CategoryController extends Controller
                 'description' => $category->description,
                 'createdAt' => $category->created_at->toIso8601String(),
             ],
-        ], 201);
+        ]);
     }
 
     public function destroy($id)
@@ -81,6 +115,30 @@ class CategoryController extends Controller
                 'createdAt' => $category->created_at?->toIso8601String() ?? now()->toIso8601String(),
             ],
         ], 201);
+    }
+
+    public function updateIngredientCategory(Request $request, $id)
+    {
+        $category = Category::findOrFail($id);
+        
+        $request->validate([
+            'name' => 'required|string|unique:categories,name,' . $id,
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update([
+            'name' => $request->name,
+            'description' => $request->description,
+        ]);
+
+        return response()->json([
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'description' => $category->description,
+                'createdAt' => $category->created_at?->toIso8601String() ?? now()->toIso8601String(),
+            ],
+        ]);
     }
 
     public function destroyIngredientCategory($id)

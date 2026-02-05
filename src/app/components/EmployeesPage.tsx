@@ -1,27 +1,52 @@
-import { useState, useEffect } from 'react';
-import { Users, Plus, Edit2, Trash2, X, Phone, MapPin, Key, Store, ShieldCheck, Check, Copy, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { 
-  getEmployees, 
+import { useState, useEffect } from "react";
+import {
+  Users,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  Phone,
+  MapPin,
+  Key,
+  Store,
+  ShieldCheck,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  getEmployees,
   getAllUsers,
-  createEmployee, 
-  updateEmployee, 
+  createEmployee,
+  updateEmployee,
   deleteEmployee,
   deleteUser,
   getStores,
   type Employee,
   type AllUser,
-  type StoreLocation
-} from '@/utils/api';
+  type StoreLocation,
+} from "@/utils/api";
 
 // Available permissions for Employee role
 const AVAILABLE_PERMISSIONS = [
-  { id: 'pos', label: 'Point of Sale', description: 'Access POS system' },
-  { id: 'inventory', label: 'Inventory', description: 'View and manage inventory' },
-  { id: 'categories', label: 'Categories', description: 'Manage product categories' },
-  { id: 'ingredients', label: 'Ingredients', description: 'View ingredients' },
-  { id: 'sales', label: 'Sales', description: 'View sales reports' },
-  { id: 'history', label: 'History', description: 'View history logs' },
+  { id: "pos", label: "Point of Sale", description: "Access POS system" },
+  {
+    id: "inventory",
+    label: "Inventory",
+    description: "View and manage inventory",
+  },
+  {
+    id: "categories",
+    label: "Categories",
+    description: "Manage product categories",
+  },
+  { id: "ingredients", label: "Ingredients", description: "View ingredients" },
+  { id: "sales", label: "Sales", description: "View sales reports" },
+  { id: "history", label: "History", description: "View history logs" },
 ];
 
 export function EmployeesPage() {
@@ -33,28 +58,36 @@ export function EmployeesPage() {
     name: string;
     mobile: string;
     address: string;
-    role?: 'Store' | 'Production' | 'POS' | 'Employee';
+    role?: "Store" | "Production" | "POS" | "Employee";
     storeId?: string;
     permissions?: string[];
   }>({
-    name: '',
-    mobile: '',
-    address: '',
+    name: "",
+    mobile: "",
+    address: "",
     role: undefined,
-    storeId: '',
-    permissions: []
+    storeId: "",
+    permissions: [],
   });
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<AllUser | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<AllUser | null>(
+    null,
+  );
   const [passwordData, setPasswordData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: ''
+    username: "",
+    password: "",
+    confirmPassword: "",
   });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [newEmployeeCredentials, setNewEmployeeCredentials] = useState<{ username: string; password: string; name: string } | null>(null);
-  const [copiedField, setCopiedField] = useState<'username' | 'password' | null>(null);
+  const [newEmployeeCredentials, setNewEmployeeCredentials] = useState<{
+    username: string;
+    password: string;
+    name: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<
+    "username" | "password" | null
+  >(null);
 
   useEffect(() => {
     loadEmployees();
@@ -65,23 +98,23 @@ export function EmployeesPage() {
     try {
       setLoading(true);
       const data = await getAllUsers();
-      console.log('=== EMPLOYEES LOADED ===');
-      console.log('Total users:', data.length);
-      
+      console.log("=== EMPLOYEES LOADED ===");
+      console.log("Total users:", data.length);
+
       // Log mark_sioson specifically for debugging
-      const markSioson = data.find(u => u.username === 'mark_sioson');
+      const markSioson = data.find((u) => u.username === "mark_sioson");
       if (markSioson) {
-        console.log('→ mark_sioson found in loaded data:');
-        console.log('  - ID:', markSioson.id);
-        console.log('  - StoreId:', markSioson.storeId);
-        console.log('  - StoreName:', markSioson.storeName);
-        console.log('  - Role:', markSioson.role);
+        console.log("→ mark_sioson found in loaded data:");
+        console.log("  - ID:", markSioson.id);
+        console.log("  - StoreId:", markSioson.storeId);
+        console.log("  - StoreName:", markSioson.storeName);
+        console.log("  - Role:", markSioson.role);
       }
-      
+
       setEmployees(data);
     } catch (error) {
-      console.error('Error loading users:', error);
-      toast.error('Failed to load users');
+      console.error("Error loading users:", error);
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -92,8 +125,8 @@ export function EmployeesPage() {
       const data = await getStores();
       setStores(data);
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores");
     }
   };
 
@@ -101,65 +134,95 @@ export function EmployeesPage() {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      toast.error('Please enter employee name');
+      toast.error("Please enter employee name");
       return;
     }
 
     if (!formData.mobile.trim()) {
-      toast.error('Please enter mobile number');
+      toast.error("Please enter mobile number");
       return;
     }
 
-    console.log('=== SUBMITTING EMPLOYEE FORM ===');
-    console.log('FormData being sent:', formData);
-    console.log('StoreId:', formData.storeId);
-    console.log('StoreId type:', typeof formData.storeId);
-    console.log('Is Editing?', !!editingEmployee);
-    if (editingEmployee) {
-      console.log('Editing Employee ID:', editingEmployee.id);
-      console.log('Previous StoreId:', editingEmployee.storeId);
-      console.log('Previous StoreName:', editingEmployee.storeName);
+    // Validate Philippine mobile number format
+    const phoneRegex = /^(09|\+639)\d{9}$/;
+    if (!phoneRegex.test(formData.mobile.replace(/\s/g, ""))) {
+      toast.error(
+        "Please enter a valid Philippine mobile number (09XXXXXXXXX)",
+      );
+      return;
     }
-    
+
+    console.log("=== SUBMITTING EMPLOYEE FORM ===");
+    console.log("FormData being sent:", formData);
+    console.log("StoreId:", formData.storeId);
+    console.log("StoreId type:", typeof formData.storeId);
+
+    // Build clean data object - only include non-empty values
+    const cleanData: any = {
+      name: formData.name,
+      mobile: formData.mobile,
+      address: formData.address,
+      role: formData.role,
+      permissions: formData.permissions || [],
+    };
+
+    // Only include storeId if it's provided and not empty
+    if (formData.storeId && formData.storeId.trim()) {
+      cleanData.storeId = formData.storeId;
+    }
+
+    console.log("Clean data being sent:", cleanData);
+    console.log("Is Editing?", !!editingEmployee);
+    if (editingEmployee) {
+      console.log("Editing Employee ID:", editingEmployee.id);
+      console.log("Previous StoreId:", editingEmployee.storeId);
+      console.log("Previous StoreName:", editingEmployee.storeName);
+    }
+
     // Find the store name for logging
-    const selectedStore = stores.find(s => s.id === formData.storeId);
-    console.log('Selected Store Name:', selectedStore?.name || 'None');
+    const selectedStore = stores.find((s) => s.id === cleanData.storeId);
+    console.log("Selected Store Name:", selectedStore?.name || "None");
 
     try {
       if (editingEmployee) {
-        console.log('→ Calling updateEmployee API...');
-        const result = await updateEmployee(editingEmployee.id, formData);
-        console.log('→ Update result from server:', result);
-        console.log('  - StoreId in response:', result.storeId);
-        console.log('  - StoreName in response:', result.storeName);
-        toast.success('Employee updated successfully');
+        console.log("→ Calling updateEmployee API...");
+        const result = await updateEmployee(editingEmployee.id, cleanData);
+        console.log("→ Update result from server:", result);
+        console.log("  - StoreId in response:", result.storeId);
+        console.log("  - StoreName in response:", result.storeName);
+        toast.success("Employee updated successfully");
         await loadEmployees();
         resetForm();
       } else {
-        console.log('Creating new employee');
-        const newEmployee = await createEmployee(formData);
-        console.log('New employee created:', newEmployee);
-        toast.success('Employee added successfully');
-        
+        console.log("Creating new employee");
+        const newEmployee = await createEmployee(cleanData);
+        console.log("New employee created:", newEmployee);
+        toast.success("Employee added successfully");
+
         // Check if credentials were returned
         if (newEmployee.username && newEmployee.password) {
-          setNewEmployeeCredentials({ 
-            username: newEmployee.username, 
-            password: newEmployee.password, 
-            name: newEmployee.name 
+          setNewEmployeeCredentials({
+            username: newEmployee.username,
+            password: newEmployee.password,
+            name: newEmployee.name,
           });
           setShowCredentialsModal(true);
         } else {
-          console.error('Employee created but credentials not returned:', newEmployee);
-          toast.warning('Employee created but credentials were not generated. Please set password manually.');
+          console.error(
+            "Employee created but credentials not returned:",
+            newEmployee,
+          );
+          toast.warning(
+            "Employee created but credentials were not generated. Please set password manually.",
+          );
         }
-        
+
         await loadEmployees();
         resetForm();
       }
     } catch (error) {
-      console.error('Error saving employee:', error);
-      toast.error('Failed to save employee');
+      console.error("Error saving employee:", error);
+      toast.error("Failed to save employee");
     }
   };
 
@@ -170,25 +233,25 @@ export function EmployeesPage() {
       mobile: employee.mobile,
       address: employee.address,
       role: employee.role,
-      storeId: employee.storeId || '',
-      permissions: employee.permissions || []
+      storeId: employee.storeId || "",
+      permissions: employee.permissions || [],
     });
     setShowAddForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
+    if (!confirm("Are you sure you want to delete this user?")) {
       return;
     }
 
     try {
-      console.log('Deleting user with ID:', id);
+      console.log("Deleting user with ID:", id);
       await deleteUser(id);
-      toast.success('User deleted successfully');
+      toast.success("User deleted successfully");
       await loadEmployees();
     } catch (error) {
-      console.error('Error deleting user:', error);
-      toast.error('Failed to delete user');
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
     }
   };
 
@@ -196,29 +259,42 @@ export function EmployeesPage() {
     try {
       const newCanLogin = !employee.canLogin;
       await updateEmployee(employee.id, { canLogin: newCanLogin });
-      toast.success(`Login access ${newCanLogin ? 'enabled' : 'disabled'} for ${employee.name}`);
+      toast.success(
+        `Login access ${newCanLogin ? "enabled" : "disabled"} for ${employee.name}`,
+      );
       await loadEmployees();
     } catch (error) {
-      console.error('Error toggling canLogin:', error);
-      toast.error('Failed to update login permission');
+      console.error("Error toggling canLogin:", error);
+      toast.error("Failed to update login permission");
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: '', mobile: '', address: '', role: undefined, storeId: '', permissions: [] });
+    setFormData({
+      name: "",
+      mobile: "",
+      address: "",
+      role: undefined,
+      storeId: "",
+      permissions: [],
+    });
     setShowAddForm(false);
     setEditingEmployee(null);
   };
 
   const handlePasswordModalOpen = (employee: AllUser) => {
     setSelectedEmployee(employee);
-    setPasswordData({ username: employee.name, password: '', confirmPassword: '' });
+    setPasswordData({
+      username: employee.name,
+      password: "",
+      confirmPassword: "",
+    });
     setShowPasswordModal(true);
   };
 
   const handlePasswordModalClose = () => {
     setSelectedEmployee(null);
-    setPasswordData({ username: '', password: '', confirmPassword: '' });
+    setPasswordData({ username: "", password: "", confirmPassword: "" });
     setShowPasswordModal(false);
   };
 
@@ -226,17 +302,17 @@ export function EmployeesPage() {
     e.preventDefault();
 
     if (!passwordData.username.trim()) {
-      toast.error('Please enter a username');
+      toast.error("Please enter a username");
       return;
     }
 
     if (!passwordData.password.trim()) {
-      toast.error('Please enter a password');
+      toast.error("Please enter a password");
       return;
     }
 
     if (passwordData.password !== passwordData.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -244,25 +320,31 @@ export function EmployeesPage() {
       if (selectedEmployee) {
         await updateEmployee(selectedEmployee.id, {
           username: passwordData.username,
-          password: passwordData.password
+          password: passwordData.password,
         });
-        toast.success(`Login credentials set successfully! Username: ${passwordData.username}`);
+        toast.success(
+          `Login credentials set successfully! Username: ${passwordData.username}`,
+        );
         await loadEmployees();
       }
-      
+
       handlePasswordModalClose();
     } catch (error) {
-      console.error('Error updating password:', error);
-      toast.error('Failed to set password');
+      console.error("Error updating password:", error);
+      toast.error("Failed to set password");
     }
   };
 
-  const handleCopy = (field: 'username' | 'password') => {
-    const text = field === 'username' ? newEmployeeCredentials?.username : newEmployeeCredentials?.password;
+  const handleCopy = (field: "username" | "password") => {
+    const text =
+      field === "username"
+        ? newEmployeeCredentials?.username
+        : newEmployeeCredentials?.password;
     if (text) {
       // Try modern Clipboard API first
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
+        navigator.clipboard
+          .writeText(text)
           .then(() => {
             setCopiedField(field);
             toast.success(`Copied ${field} to clipboard`);
@@ -279,23 +361,23 @@ export function EmployeesPage() {
     }
   };
 
-  const fallbackCopy = (text: string, field: 'username' | 'password') => {
+  const fallbackCopy = (text: string, field: "username" | "password") => {
     try {
       // Create a temporary textarea element
-      const textarea = document.createElement('textarea');
+      const textarea = document.createElement("textarea");
       textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      textarea.style.top = '-9999px';
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
       document.body.appendChild(textarea);
-      
+
       // Select and copy the text
       textarea.select();
       textarea.setSelectionRange(0, 99999); // For mobile devices
-      
-      const successful = document.execCommand('copy');
+
+      const successful = document.execCommand("copy");
       document.body.removeChild(textarea);
-      
+
       if (successful) {
         setCopiedField(field);
         toast.success(`Copied ${field} to clipboard`);
@@ -304,7 +386,7 @@ export function EmployeesPage() {
         toast.error(`Failed to copy ${field}. Please copy manually.`);
       }
     } catch (err) {
-      console.error('Fallback copy failed:', err);
+      console.error("Fallback copy failed:", err);
       toast.error(`Failed to copy ${field}. Please copy manually.`);
     }
   };
@@ -337,7 +419,7 @@ export function EmployeesPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">
-                {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+                {editingEmployee ? "Edit Employee" : "Add New Employee"}
               </h2>
               <button
                 onClick={resetForm}
@@ -351,11 +433,13 @@ export function EmployeesPage() {
               {!editingEmployee && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> Login credentials will be automatically generated for this employee. You'll see them after creating the account.
+                    <strong>Note:</strong> Login credentials will be
+                    automatically generated for this employee. You'll see them
+                    after creating the account.
                   </p>
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Employee Name *
@@ -363,7 +447,9 @@ export function EmployeesPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   placeholder="Enter employee name"
                 />
@@ -376,10 +462,20 @@ export function EmployeesPage() {
                 <input
                   type="tel"
                   value={formData.mobile}
-                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only digits, +, and spaces
+                    if (/^[\d+\s]*$/.test(value) || value === "") {
+                      setFormData({ ...formData, mobile: value });
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Enter mobile number"
+                  placeholder="Enter mobile number (09XXXXXXXXX)"
+                  maxLength="13"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: 09XXXXXXXXX or +639XXXXXXXXX
+                </p>
               </div>
 
               <div>
@@ -388,7 +484,9 @@ export function EmployeesPage() {
                 </label>
                 <textarea
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   placeholder="Enter address"
                   rows={3}
@@ -401,7 +499,16 @@ export function EmployeesPage() {
                 </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'Store' | 'Production' | 'POS' | 'Employee' })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      role: e.target.value as
+                        | "Store"
+                        | "Production"
+                        | "POS"
+                        | "Employee",
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
                   <option value="">Select a role</option>
@@ -418,7 +525,9 @@ export function EmployeesPage() {
                 </label>
                 <select
                   value={formData.storeId}
-                  onChange={(e) => setFormData({ ...formData, storeId: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, storeId: e.target.value })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
                   <option value="">Select a store</option>
@@ -431,28 +540,42 @@ export function EmployeesPage() {
               </div>
 
               {/* Permissions (only for Employee role) */}
-              {formData.role === 'Employee' && (
+              {formData.role === "Employee" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Permissions
                   </label>
                   <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 space-y-3">
                     {AVAILABLE_PERMISSIONS.map((perm) => (
-                      <label key={perm.id} className="flex items-start gap-3 cursor-pointer">
+                      <label
+                        key={perm.id}
+                        className="flex items-start gap-3 cursor-pointer"
+                      >
                         <input
                           type="checkbox"
-                          checked={formData.permissions?.includes(perm.id) || false}
+                          checked={
+                            formData.permissions?.includes(perm.id) || false
+                          }
                           onChange={(e) => {
                             const newPermissions = e.target.checked
                               ? [...(formData.permissions || []), perm.id]
-                              : (formData.permissions || []).filter(p => p !== perm.id);
-                            setFormData({ ...formData, permissions: newPermissions });
+                              : (formData.permissions || []).filter(
+                                  (p) => p !== perm.id,
+                                );
+                            setFormData({
+                              ...formData,
+                              permissions: newPermissions,
+                            });
                           }}
                           className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                         />
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{perm.label}</div>
-                          <div className="text-xs text-gray-500">{perm.description}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {perm.label}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {perm.description}
+                          </div>
                         </div>
                       </label>
                     ))}
@@ -468,7 +591,7 @@ export function EmployeesPage() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                 >
-                  {editingEmployee ? 'Update Employee' : 'Add Employee'}
+                  {editingEmployee ? "Update Employee" : "Add Employee"}
                 </button>
                 <button
                   type="button"
@@ -511,13 +634,19 @@ export function EmployeesPage() {
               <tbody className="divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
                       Loading users...
                     </td>
                   </tr>
                 ) : employees.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
                       No users found. Add your first employee to get started.
                     </td>
                   </tr>
@@ -532,9 +661,13 @@ export function EmployeesPage() {
                             </span>
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">{employee.name}</div>
+                            <div className="font-medium text-gray-900">
+                              {employee.name}
+                            </div>
                             {employee.username && (
-                              <div className="text-xs text-gray-500">@{employee.username}</div>
+                              <div className="text-xs text-gray-500">
+                                @{employee.username}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -553,11 +686,16 @@ export function EmployeesPage() {
                               <span className="text-sm font-medium text-gray-700">
                                 {employee.role}
                               </span>
-                              {employee.role === 'Employee' && employee.permissions && employee.permissions.length > 0 && (
-                                <span className="text-xs text-gray-500">
-                                  {employee.permissions.length} permission{employee.permissions.length !== 1 ? 's' : ''}
-                                </span>
-                              )}
+                              {employee.role === "Employee" &&
+                                employee.permissions &&
+                                employee.permissions.length > 0 && (
+                                  <span className="text-xs text-gray-500">
+                                    {employee.permissions.length} permission
+                                    {employee.permissions.length !== 1
+                                      ? "s"
+                                      : ""}
+                                  </span>
+                                )}
                             </div>
                           </div>
                         ) : (
@@ -569,11 +707,16 @@ export function EmployeesPage() {
                           <div className="flex items-center gap-2">
                             <Store className="w-4 h-4 text-gray-400" />
                             <span className="text-sm text-gray-700">
-                              {employee.storeName || stores.find(s => s.id === employee.storeId)?.name || 'Unknown Store'}
+                              {employee.storeName ||
+                                stores.find((s) => s.id === employee.storeId)
+                                  ?.name ||
+                                "Unknown Store"}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Not Assigned</span>
+                          <span className="text-sm text-gray-400">
+                            Not Assigned
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -581,10 +724,14 @@ export function EmployeesPage() {
                           onClick={() => handleToggleCanLogin(employee)}
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                             employee.canLogin !== false
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              ? "bg-green-100 text-green-700 hover:bg-green-200"
+                              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                           }`}
-                          title={employee.canLogin !== false ? 'Click to disable login' : 'Click to enable login'}
+                          title={
+                            employee.canLogin !== false
+                              ? "Click to disable login"
+                              : "Click to enable login"
+                          }
                         >
                           {employee.canLogin !== false ? (
                             <>
@@ -656,11 +803,18 @@ export function EmployeesPage() {
                   <input
                     type="text"
                     value={passwordData.username}
-                    onChange={(e) => setPasswordData({ ...passwordData, username: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        username: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Enter username"
                   />
-                  <p className="text-xs text-gray-500 mt-1">This username will be used for login</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This username will be used for login
+                  </p>
                 </div>
 
                 <div>
@@ -670,7 +824,12 @@ export function EmployeesPage() {
                   <input
                     type="password"
                     value={passwordData.password}
-                    onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        password: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Enter password"
                   />
@@ -683,7 +842,12 @@ export function EmployeesPage() {
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="Confirm password"
                   />
@@ -727,7 +891,8 @@ export function EmployeesPage() {
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-green-800">
-                  <strong>Login credentials have been generated.</strong> Please save them securely and share with the employee.
+                  <strong>Login credentials have been generated.</strong> Please
+                  save them securely and share with the employee.
                 </p>
               </div>
 
@@ -738,7 +903,7 @@ export function EmployeesPage() {
                   </label>
                   <input
                     type="text"
-                    value={newEmployeeCredentials.name || 'N/A'}
+                    value={newEmployeeCredentials.name || "N/A"}
                     className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg"
                     readOnly
                   />
@@ -751,17 +916,17 @@ export function EmployeesPage() {
                   <div className="relative">
                     <input
                       type="text"
-                      value={newEmployeeCredentials.username || 'Not generated'}
+                      value={newEmployeeCredentials.username || "Not generated"}
                       className="w-full px-4 py-2 pr-10 bg-gray-50 border border-gray-300 rounded-lg"
                       readOnly
                     />
                     <button
                       type="button"
-                      onClick={() => handleCopy('username')}
+                      onClick={() => handleCopy("username")}
                       className="absolute right-2 top-2 p-2 hover:bg-gray-200 rounded-lg transition-colors"
                       disabled={!newEmployeeCredentials.username}
                     >
-                      {copiedField === 'username' ? (
+                      {copiedField === "username" ? (
                         <Check className="w-4 h-4 text-green-600" />
                       ) : (
                         <Copy className="w-4 h-4 text-gray-500" />
@@ -777,17 +942,17 @@ export function EmployeesPage() {
                   <div className="relative">
                     <input
                       type="text"
-                      value={newEmployeeCredentials.password || 'Not generated'}
+                      value={newEmployeeCredentials.password || "Not generated"}
                       className="w-full px-4 py-2 pr-10 bg-gray-50 border border-gray-300 rounded-lg font-mono"
                       readOnly
                     />
                     <button
                       type="button"
-                      onClick={() => handleCopy('password')}
+                      onClick={() => handleCopy("password")}
                       className="absolute right-2 top-2 p-2 hover:bg-gray-200 rounded-lg transition-colors"
                       disabled={!newEmployeeCredentials.password}
                     >
-                      {copiedField === 'password' ? (
+                      {copiedField === "password" ? (
                         <Check className="w-4 h-4 text-green-600" />
                       ) : (
                         <Copy className="w-4 h-4 text-gray-500" />

@@ -16,7 +16,7 @@ import {
   Users,
   History,
   DollarSign,
-  ChevronDown,
+  Percent,
 } from "lucide-react";
 import { POSPage } from "@/app/components/POSPage";
 import { ProductionDashboard } from "@/app/components/ProductionDashboard";
@@ -33,6 +33,7 @@ import { StoresManagementPage } from "@/app/components/StoresManagementPage";
 import { EmployeesPage } from "@/app/components/EmployeesPage";
 import { SuppliersPage } from "@/app/components/SuppliersPage";
 import { HistoryPage } from "@/app/components/HistoryPage";
+import { DiscountsPage } from "@/app/components/DiscountsPage";
 import TransactionsPage from "@/app/components/TransactionsPage";
 import { refreshSession } from "@/utils/api";
 
@@ -49,7 +50,8 @@ type Page =
   | "employees"
   | "suppliers"
   | "history"
-  | "transactions";
+  | "transactions"
+  | "discounts";
 
 const SESSION_KEY = "lzt_user_session";
 const SESSION_EXPIRY_KEY = "lzt_session_expiry";
@@ -61,7 +63,6 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -80,51 +81,24 @@ export default function App() {
           // Check if session has expired
           if (now < expiryTime) {
             const userData: UserData = JSON.parse(savedSession);
-            console.log("🔄 Refreshing session for:", userData.username);
+            console.log("✅ Session restored for:", userData.username);
+            console.log("  - Store:", userData.storeName || "None");
+            console.log("  - StoreId:", userData.storeId || "None");
+            console.log(
+              "⏰ Session expires in:",
+              Math.round((expiryTime - now) / 1000 / 60),
+              "minutes",
+            );
 
-            // Only attempt refresh if we have valid user data
-            if (userData && userData.id) {
-              // Refresh user data from database to get latest store assignment
-              try {
-                const refreshedUser = await refreshSession(
-                  userData.id,
-                  userData.username,
-                );
-                console.log("✅ Session refreshed with latest data");
-                console.log("  - Store:", refreshedUser.storeName || "None");
-                console.log("  - StoreId:", refreshedUser.storeId || "None");
-                console.log(
-                  "⏰ Session expires in:",
-                  Math.round((expiryTime - now) / 1000 / 60),
-                  "minutes",
-                );
+            // Use cached session directly
+            setCurrentUser(userData);
 
-                setCurrentUser(refreshedUser);
-
-                // Restore the last page if valid
-                if (savedPage && (savedPage as Page)) {
-                  setCurrentPage(savedPage as Page);
-                  console.log("📄 Restored page:", savedPage);
-                }
-              } catch (refreshError) {
-                console.error("Failed to refresh session:", refreshError);
-                // Fall back to using cached data if refresh fails
-                console.log("⚠️ Using cached session data");
-                setCurrentUser(userData);
-
-                if (savedPage && (savedPage as Page)) {
-                  setCurrentPage(savedPage as Page);
-                }
-              }
-            } else {
-              // Invalid session data
-              console.warn("⚠️ Invalid session data, clearing session");
-              localStorage.removeItem(SESSION_KEY);
-              localStorage.removeItem(SESSION_EXPIRY_KEY);
-              localStorage.removeItem(SESSION_PAGE_KEY);
-              setSessionChecked(true);
-              return;
+            // Restore the last page if valid
+            if (savedPage && (savedPage as Page)) {
+              setCurrentPage(savedPage as Page);
+              console.log("📄 Restored page:", savedPage);
             }
+          } else {
             console.log("⚠️ Session expired, clearing...");
             clearSession();
           }
@@ -497,6 +471,12 @@ export default function App() {
         roles: ["ADMIN"],
       },
       {
+        id: "discounts" as Page,
+        icon: Percent,
+        label: "Discounts",
+        roles: ["ADMIN"],
+      },
+      {
         id: "history" as Page,
         icon: History,
         label: "History",
@@ -736,44 +716,13 @@ export default function App() {
                 <span className="text-sm">Live</span>
               </div>
 
-              {/* User Menu Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
-                >
-                  <User className="w-4 h-4" />
-                  <span className="text-sm hidden sm:inline">
-                    {currentUser.username}
-                  </span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {/* Dropdown Menu */}
-                {userMenuOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-30"
-                      onClick={() => setUserMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-40">
-                      <div className="px-4 py-3 border-b border-border">
-                        <p className="text-sm font-semibold">
-                          {currentUser.fullName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {currentUser.role}
-                        </p>
-                        {currentUser.storeName && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {currentUser.storeName}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* User Button */}
+              <button className="flex items-center gap-2 px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
+                <User className="w-4 h-4" />
+                <span className="text-sm hidden sm:inline">
+                  {currentUser.username}
+                </span>
+              </button>
             </div>
           </header>
 
@@ -805,6 +754,7 @@ export default function App() {
             {currentPage === "stores" && <StoresManagementPage />}
             {currentPage === "employees" && <EmployeesPage />}
             {currentPage === "suppliers" && <SuppliersPage />}
+            {currentPage === "discounts" && <DiscountsPage />}
             {currentPage === "history" && <HistoryPage />}
             {currentPage === "transactions" && (
               <TransactionsPage user={currentUser} />

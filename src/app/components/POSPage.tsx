@@ -25,6 +25,7 @@ import {
   addProduct,
   addInventory,
   getCategories,
+  getDiscountSettings,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -45,12 +46,11 @@ interface Product {
 interface CartItem extends Product {
   quantity: number;
   discount: number;
+  basePrice?: number; // Original price before weight adjustment
 }
 
 interface Customer {
   name: string;
-  phone: string;
-  email: string;
 }
 
 interface POSPageProps {
@@ -184,6 +184,23 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     tax: number;
     total: number;
   } | null>(null);
+  const [wholesaleDiscount, setWholesaleDiscount] = useState<number>(0);
+  const [salesType, setSalesType] = useState<"wholesale" | "retail">("retail");
+  const [discountSettings, setDiscountSettings] = useState({
+    wholesaleMinUnits: 5,
+    discountType: "percentage" as "percentage" | "fixed_amount",
+    wholesaleDiscountPercent: 1,
+    wholesaleDiscountAmount: 0,
+  });
+  const [weightAdjustmentModal, setWeightAdjustmentModal] = useState<{
+    show: boolean;
+    product: Product | null;
+    weight: string;
+  }>({
+    show: false,
+    product: null,
+    weight: "1",
+  });
 
   // Determine if user can switch stores (only ADMIN can)
   const canSwitchStores = currentUser?.role === "ADMIN";
@@ -199,10 +216,75 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   console.log("Can Switch Stores:", canSwitchStores);
   console.log("=======================================");
 
+  // Calculate which price categories qualify for wholesale discount
+  const calculateWholesalePrices = (
+    cartItems: CartItem[],
+  ): { salesType: "wholesale" | "retail"; wholesalePrices: Set<number> } => {
+    // Group items by base price (original price before weight adjustment)
+    const itemsByBasePrice: { [price: number]: CartItem[] } = {};
+
+    cartItems.forEach((item) => {
+      const basePriceKey = item.basePrice || item.price;
+      if (!itemsByBasePrice[basePriceKey]) {
+        itemsByBasePrice[basePriceKey] = [];
+      }
+      itemsByBasePrice[basePriceKey].push(item);
+    });
+
+    // Check each base price group to see if total quantity exceeds the threshold
+    const wholesalePrices = new Set<number>();
+    let hasAnyWholesale = false;
+
+    for (const [basePrice, priceGroup] of Object.entries(itemsByBasePrice)) {
+      const totalQuantity = priceGroup.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+      // If quantity >= minimum units threshold, this base price category qualifies for wholesale
+      if (totalQuantity >= discountSettings.wholesaleMinUnits) {
+        wholesalePrices.add(parseFloat(basePrice));
+        hasAnyWholesale = true;
+      }
+    }
+
+    const salesType = hasAnyWholesale ? "wholesale" : "retail";
+
+    return { salesType, wholesalePrices };
+  };
+
+  // Calculate wholesale/retail status based on products with same price
+  const calculateWholesaleStatus = (
+    cartItems: CartItem[],
+  ): { salesType: "wholesale" | "retail"; discountAmount: number } => {
+    const { salesType } = calculateWholesalePrices(cartItems);
+
+    if (salesType !== "wholesale") {
+      return { salesType, discountAmount: 0 };
+    }
+
+    // Calculate discount based on type
+    let discountAmount = 0;
+    if (discountSettings.discountType === "percentage") {
+      // Calculate percentage discount on total
+      const total = cartItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+      discountAmount =
+        (discountSettings.wholesaleDiscountPercent / 100) * total;
+    } else {
+      // Use fixed amount discount
+      discountAmount = discountSettings.wholesaleDiscountAmount || 0;
+    }
+
+    return { salesType, discountAmount };
+  };
+
   // Load products and inventory on mount
   useEffect(() => {
     loadStoresFirst();
     loadCategories();
+    loadDiscountSettings();
   }, []);
 
   const loadStoresFirst = async () => {
@@ -312,6 +394,22 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     }
   };
 
+  const loadDiscountSettings = async () => {
+    try {
+      const settings = await getDiscountSettings();
+      setDiscountSettings({
+        wholesaleMinUnits: settings.wholesaleMinUnits,
+        discountType: settings.discountType,
+        wholesaleDiscountPercent: settings.wholesaleDiscountPercent,
+        wholesaleDiscountAmount: settings.wholesaleDiscountAmount || 0,
+      });
+      console.log("✓ Discount settings loaded:", settings);
+    } catch (error) {
+      console.error("Error loading discount settings:", error);
+      // Use defaults if fails
+    }
+  };
+
   // Reload products when store changes
   useEffect(() => {
     if (selectedStore) {
@@ -328,7 +426,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: Product) => {
+  const openWeightAdjustmentModal = (product: Product) => {
     // Validate that we have a selected store
     if (!selectedStore) {
       toast.error("Please select a store before adding items to cart");
@@ -341,12 +439,33 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       return;
     }
 
-    const existingItem = cart.find((item) => item.id === product.id);
-    if (existingItem) {
-      if (existingItem.quantity < product.stock) {
+    setWeightAdjustmentModal({
+      show: true,
+      product,
+      weight: "1",
+    });
+  };
+
+  const addToCart = (adjustedPrice?: number) => {
+    const { product, weight } = weightAdjustmentModal;
+    if (!product) return;
+
+    const actualWeight = parseFloat(weight) || 1;
+    const priceToUse = adjustedPrice || product.price;
+    const basePrice = product.price; // Store original base price
+
+    // Look for an existing item with the SAME product ID AND price
+    // If prices differ (due to weight), create a new line item instead
+    const existingItemWithSamePrice = cart.find(
+      (item) => item.id === product.id && item.price === priceToUse,
+    );
+
+    if (existingItemWithSamePrice) {
+      // Same product, same price - increment quantity
+      if (existingItemWithSamePrice.quantity < product.stock) {
         setCart(
           cart.map((item) =>
-            item.id === product.id
+            item.id === product.id && item.price === priceToUse
               ? { ...item, quantity: item.quantity + 1 }
               : item,
           ),
@@ -354,13 +473,23 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         toast.success(`Added ${product.name} to cart`);
       } else {
         toast.warning(
-          `Cannot add more. Only ${product.stock} available at ${selectedStore.name}`,
+          `Cannot add more. Only ${product.stock} available at ${selectedStore?.name}`,
         );
       }
     } else {
-      setCart([...cart, { ...product, quantity: 1, discount: 0 }]);
+      // Different price (different weight) or new product - create new line item
+      setCart([
+        ...cart,
+        { ...product, price: priceToUse, quantity: 1, discount: 0, basePrice },
+      ]);
       toast.success(`Added ${product.name} to cart`);
     }
+
+    setWeightAdjustmentModal({
+      show: false,
+      product: null,
+      weight: "1",
+    });
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -397,22 +526,61 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     setCustomer(null);
   };
 
+  // Update wholesale status whenever cart changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      const { salesType, discountAmount } = calculateWholesaleStatus(cart);
+      setSalesType(salesType);
+      setWholesaleDiscount(discountAmount);
+    } else {
+      setSalesType("retail");
+      setWholesaleDiscount(0);
+    }
+  }, [cart]);
+
   const calculateItemTotal = (item: CartItem) => {
     const itemTotal = item.price * item.quantity;
     const itemDiscount = (itemTotal * item.discount) / 100;
     return itemTotal - itemDiscount;
   };
 
-  const subtotal = cart.reduce(
-    (sum, item) => sum + calculateItemTotal(item),
-    0,
-  );
+  // Calculate subtotal with per-category wholesale discounts
+  const { wholesalePrices } = calculateWholesalePrices(cart);
+
+  let totalWholesaleDiscount = 0;
+  const subtotal = cart.reduce((sum, item) => {
+    const itemTotal = item.price * item.quantity;
+    // Apply wholesale discount if this item's base price qualifies
+    const basePrice = item.basePrice || item.price;
+    let wholesaleDiscount = 0;
+    if (wholesalePrices.has(basePrice)) {
+      if (discountSettings.discountType === "percentage") {
+        wholesaleDiscount =
+          (itemTotal * discountSettings.wholesaleDiscountPercent) / 100;
+      } else {
+        // Apply fixed amount discount per unit
+        wholesaleDiscount =
+          discountSettings.wholesaleDiscountAmount * item.quantity;
+      }
+    }
+    totalWholesaleDiscount += wholesaleDiscount;
+    const itemDiscount = (itemTotal * item.discount) / 100;
+    const totalDiscount = itemDiscount + wholesaleDiscount;
+    return sum + itemTotal - totalDiscount;
+  }, 0);
+
   const globalDiscountAmount = (subtotal * globalDiscount) / 100;
   const afterDiscount = subtotal - globalDiscountAmount;
-  const tax = afterDiscount * 0.08; // 8% tax
-  const total = afterDiscount + tax;
+  const tax = 0; // Tax hidden
+  const total = afterDiscount;
 
   const handleCheckout = async (method: string) => {
+    // Validate customer name is required
+    if (!customer?.name || customer.name.trim() === "") {
+      toast.error("Customer name is required to complete the sale.");
+      return;
+    }
+
     // Validate store is selected
     if (!selectedStore) {
       toast.error("No store selected. Cannot process checkout.");
@@ -458,8 +626,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         customer: customer
           ? {
               name: customer.name,
-              phone: customer.phone,
-              email: customer.email,
             }
           : null,
         items: cart.map((item) => ({
@@ -474,6 +640,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         tax: tax,
         total: total,
         paymentMethod: method,
+        salesType: salesType,
       });
 
       toast.success(`Sale recorded successfully at ${selectedStore?.name}!`);
@@ -542,7 +709,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     if (globalDiscount > 0) {
       receipt += `Global Discount (${globalDiscount}%): -₱${globalDiscountAmount.toFixed(2)}\n`;
     }
-    receipt += `Tax (8%): ₱${tax.toFixed(2)}\n`;
     receipt += "----------------------------------------\n";
     receipt += `TOTAL: ₱${total.toFixed(2)}\n`;
     receipt += `Payment Method: ${paymentMethod}\n`;
@@ -571,20 +737,26 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   };
 
   return (
-    <div className="h-full flex flex-col lg:flex-row">
+    <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
       {/* Left Side - Products */}
-      <div className="flex-1 flex flex-col p-4 lg:p-6 bg-muted/30">
+      <div className="flex-1 flex flex-col p-4 lg:p-6 bg-muted/30 overflow-hidden">
         {/* Store Selector */}
         <div className="mb-4 bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-3">
             <Store className="w-5 h-5 text-primary" />
             <label className="text-sm font-medium">Active Store:</label>
             <select
-              value={selectedStore?.id || ""}
+              value={selectedStore?.id?.toString() || ""}
               onChange={(e) => {
-                const store = stores.find((s) => s.id === e.target.value);
-                setSelectedStore(store || null);
-                setCart([]); // Clear cart when switching stores
+                const store = stores.find(
+                  (s) =>
+                    s.id === Number(e.target.value) || s.id === e.target.value,
+                );
+                if (store) {
+                  setSelectedStore(store);
+                  setCart([]); // Clear cart when switching stores
+                  loadProductsAndInventory(store.name);
+                }
               }}
               className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={!canSwitchStores}
@@ -651,7 +823,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               <UserPlus className="w-5 h-5" />
               Customer Information
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <input
                 type="text"
                 placeholder="Customer Name"
@@ -659,34 +831,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                 onChange={(e) =>
                   setCustomer({
                     name: e.target.value,
-                    phone: customer?.phone || "",
-                    email: customer?.email || "",
-                  })
-                }
-                className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="tel"
-                placeholder="Phone Number"
-                value={customer?.phone || ""}
-                onChange={(e) =>
-                  setCustomer({
-                    name: customer?.name || "",
-                    phone: e.target.value,
-                    email: customer?.email || "",
-                  })
-                }
-                className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={customer?.email || ""}
-                onChange={(e) =>
-                  setCustomer({
-                    name: customer?.name || "",
-                    phone: customer?.phone || "",
-                    email: e.target.value,
                   })
                 }
                 className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -758,7 +902,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all group"
+                onClick={() =>
+                  product.stock > 0 && openWeightAdjustmentModal(product)
+                }
+                className={`bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all group ${product.stock > 0 ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
               >
                 <div className="flex flex-col h-full">
                   <div className="flex justify-between items-start mb-2">
@@ -804,13 +951,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                         Stock: {product.stock}
                       </p>
                     </div>
-                    <button
-                      onClick={() => addToCart(product)}
-                      disabled={product.stock === 0}
-                      className="bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -820,8 +960,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       </div>
 
       {/* Right Side - Cart */}
-      <div className="w-full lg:w-96 bg-card border-l border-border flex flex-col max-h-[50vh] lg:max-h-full">
-        <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3">
+      <div className="w-full lg:w-96 bg-card border-l border-border flex flex-col h-full lg:max-h-screen">
+        <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3 flex-shrink-0">
           <ShoppingCart className="w-6 h-6" />
           <h2 className="flex-1">Current Order</h2>
           <span className="bg-primary-foreground text-primary px-3 py-1 rounded-full text-sm">
@@ -830,7 +970,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <ShoppingCart className="w-16 h-16 mb-4 opacity-20" />
@@ -838,80 +978,177 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               <p className="text-sm">Add products to get started</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {cart.map((item) => (
-                <div key={item.id} className="bg-muted/50 rounded-lg p-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        ₱{item.price.toFixed(2)} each
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-destructive hover:bg-destructive/10 p-1 rounded"
+            <div className="space-y-4">
+              {/* Group items by price */}
+              {Object.entries(
+                cart.reduce(
+                  (acc, item) => {
+                    const basePrice = item.basePrice || item.price;
+                    if (!acc[basePrice]) {
+                      acc[basePrice] = [];
+                    }
+                    acc[basePrice].push(item);
+                    return acc;
+                  },
+                  {} as { [key: number]: CartItem[] },
+                ),
+              )
+                .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                .map(([basePrice, items]) => {
+                  const basePriceNum = parseFloat(basePrice);
+                  // Check if this base price group qualifies for wholesale
+                  const isWholesale = wholesalePrices.has(basePriceNum);
+                  const categoryTotal = items.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0,
+                  );
+
+                  return (
+                    <div
+                      key={basePrice}
+                      className="border border-border rounded-lg overflow-hidden"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1 bg-background rounded-lg border border-border">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        disabled={item.quantity <= 1}
-                        className="p-1.5 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
+                      {/* Category Header */}
+                      <div
+                        className={`p-3 font-semibold text-sm flex justify-between items-center ${
+                          isWholesale
+                            ? "bg-blue-50 text-blue-900 border-b border-blue-200"
+                            : "bg-gray-50 text-gray-900 border-b border-gray-200"
+                        }`}
                       >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-8 text-center text-sm">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        disabled={item.quantity >= item.stock}
-                        className="p-1.5 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
+                        <div className="flex items-center gap-2">
+                          <span>₱{basePriceNum.toFixed(2)} Category</span>
+                          <span className="text-xs bg-background px-2 py-1 rounded">
+                            {categoryTotal} units
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-bold px-2 py-1 rounded ${
+                              isWholesale
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-600 text-white"
+                            }`}
+                          >
+                            {isWholesale ? "WHOLESALE" : "RETAIL"}
+                          </span>
+                          {isWholesale && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
+                              {discountSettings.discountType === "percentage"
+                                ? `${discountSettings.wholesaleDiscountPercent}% OFF`
+                                : `₱${discountSettings.wholesaleDiscountAmount.toFixed(2)} OFF`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-1 flex-1">
-                      <Percent className="w-4 h-4 text-muted-foreground" />
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={item.discount}
-                        onChange={(e) =>
-                          updateItemDiscount(
-                            item.id,
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        placeholder="0"
-                        className="w-full px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <span className="text-xs">%</span>
-                    </div>
-                  </div>
+                      {/* Category Items */}
+                      <div className="space-y-2 p-3 bg-background/50">
+                        {items.map((item) => (
+                          <div
+                            key={`${item.id}-${item.price}`}
+                            className="bg-background rounded p-2 border border-border/50"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">
+                                  {item.name}
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                  ₱{item.price.toFixed(2)} each
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => removeFromCart(item.id)}
+                                className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
 
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Total:</span>
-                    <span className="text-primary font-medium">
-                      ₱{calculateItemTotal(item).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-1 bg-muted rounded-lg border border-border">
+                                <button
+                                  onClick={() => updateQuantity(item.id, -1)}
+                                  disabled={item.quantity <= 1}
+                                  className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="w-6 text-center text-sm">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setWeightAdjustmentModal({
+                                      show: true,
+                                      product: item,
+                                      weight: "1",
+                                    });
+                                  }}
+                                  disabled={item.quantity >= item.stock}
+                                  className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-1 flex-1">
+                                <Percent className="w-3 h-3 text-muted-foreground" />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={item.discount}
+                                  onChange={(e) =>
+                                    updateItemDiscount(
+                                      item.id,
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  placeholder="0"
+                                  className="w-full px-2 py-0.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <span className="text-xs">%</span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">
+                                Total:
+                              </span>
+                              <span className="text-primary font-medium">
+                                ₱
+                                {(
+                                  item.price * item.quantity -
+                                  (item.price * item.quantity * item.discount) /
+                                    100 -
+                                  (isWholesale
+                                    ? discountSettings.discountType ===
+                                      "percentage"
+                                      ? (item.price *
+                                          item.quantity *
+                                          discountSettings.wholesaleDiscountPercent) /
+                                        100
+                                      : discountSettings.wholesaleDiscountAmount *
+                                        item.quantity
+                                    : 0)
+                                ).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>
 
         {/* Cart Summary */}
         {cart.length > 0 && (
-          <div className="border-t border-border p-4 space-y-4">
+          <div className="border-t border-border p-4 space-y-4 flex-shrink-0 bg-background/95">
             {/* Global Discount */}
             <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
               <Percent className="w-4 h-4 text-muted-foreground" />
@@ -935,16 +1172,18 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                 <span>Subtotal:</span>
                 <span>₱{subtotal.toFixed(2)}</span>
               </div>
+              {totalWholesaleDiscount > 0 && (
+                <div className="flex justify-between text-blue-600">
+                  <span>Wholesale Discount:</span>
+                  <span>-₱{totalWholesaleDiscount.toFixed(2)}</span>
+                </div>
+              )}
               {globalDiscount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount ({globalDiscount}%):</span>
                   <span>-₱{globalDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span>Tax (8%):</span>
-                <span>₱{tax.toFixed(2)}</span>
-              </div>
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-base">Total:</span>
                 <span className="text-xl text-primary">
@@ -1096,10 +1335,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                   </span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (8%):</span>
-                <span>₱{receiptData.tax.toFixed(2)}</span>
-              </div>
             </div>
 
             <div className="bg-primary/10 rounded-lg p-4 mb-6">
@@ -1125,6 +1360,107 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             >
               Close Receipt
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Weight Adjustment Modal */}
+      {weightAdjustmentModal.show && weightAdjustmentModal.product && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">
+              Adjust Package Weight
+            </h2>
+
+            {/* Product Details */}
+            <div className="bg-muted/50 rounded-lg p-4 mb-6 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Product:</span>
+                <span className="font-medium">
+                  {weightAdjustmentModal.product.name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">SKU:</span>
+                <span className="text-sm">
+                  {weightAdjustmentModal.product.sku}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Base Price (1kg):
+                </span>
+                <span className="font-medium text-primary">
+                  ₱{weightAdjustmentModal.product.price.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Weight Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Actual Weight (kg)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={weightAdjustmentModal.weight}
+                onChange={(e) =>
+                  setWeightAdjustmentModal({
+                    ...weightAdjustmentModal,
+                    weight: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Enter weight"
+              />
+            </div>
+
+            {/* Adjusted Price Display */}
+            <div className="bg-primary/10 rounded-lg p-4 mb-6">
+              <div className="text-sm text-muted-foreground mb-1">
+                Adjusted Price:
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                ₱
+                {(
+                  weightAdjustmentModal.product.price *
+                  (parseFloat(weightAdjustmentModal.weight) || 1)
+                ).toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                {parseFloat(weightAdjustmentModal.weight) || 1}kg × ₱
+                {weightAdjustmentModal.product.price.toFixed(2)}/kg
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() =>
+                  setWeightAdjustmentModal({
+                    show: false,
+                    product: null,
+                    weight: "1",
+                  })
+                }
+                className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const adjustedPrice =
+                    weightAdjustmentModal.product.price *
+                    (parseFloat(weightAdjustmentModal.weight) || 1);
+                  addToCart(adjustedPrice);
+                }}
+                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              >
+                Add to Cart
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -47,11 +47,15 @@ class AuthController extends Controller
 
     public function refresh(Request $request)
     {
-        $request->validate([
-            'userId' => 'required|integer',
-        ]);
+        $userId = $request->input('userId') ?? $request->input('user_id');
+        
+        if (!$userId) {
+            return response()->json([
+                'error' => 'User ID is required',
+            ], 400);
+        }
 
-        $user = User::find($request->userId);
+        $user = User::find((int) $userId);
 
         if (!$user) {
             return response()->json([
