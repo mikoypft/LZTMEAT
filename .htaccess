@@ -2,54 +2,29 @@
     RewriteEngine On
     RewriteBase /
 
-    # If it's a real file, serve it
+    # Skip actual files
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # If it's a real directory, serve it
+    # Skip actual directories
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Route /api to Laravel
+    # Skip /backend (don't rewrite backend dir requests)
+    RewriteRule ^backend/ - [L]
+
+    # Route /api through backend public directory
+    RewriteRule ^api(/|$) - [L]
     RewriteCond %{REQUEST_URI} ^/api
-    RewriteRule ^api(/.*)?$ backend/public/index.php [L,QSA]
+    RewriteRule ^(.*)$ /backend/public/index.php [L]
 
-    # Route /backend to Laravel (but not setup.php)
-    RewriteCond %{REQUEST_URI} ^/backend
-    RewriteCond %{REQUEST_URI} !backend/setup\.php
-    RewriteRule ^backend(/.*)?$ backend/public/index.php [L,QSA]
-
-    # Don't rewrite further if already rewritten
-    RewriteCond %{ENV:REWRITTEN} =1
-    RewriteRule ^ - [L]
-
-    # Rewrite everything else to dist/index.html (SPA)
-    RewriteRule ^(.*)$ dist/index.html [L,E=REWRITTEN:1]
+    # Default: Route everything else to SPA
+    RewriteRule ^(.*)$ /dist/index.html [L]
 </IfModule>
 
 AddType application/javascript js
 AddType text/css css
-AddType image/svg+xml svg
-AddType font/woff woff
-AddType font/woff2 woff2
 
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
-</IfModule>
-
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresDefault "access plus 0 seconds"
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType image/png "access plus 1 year"
-    ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType font/woff2 "access plus 1 year"
-</IfModule>
-
-<IfModule mod_headers.c>
-    Header set X-Content-Type-Options "nosniff"
-</IfModule>
 
 
 
