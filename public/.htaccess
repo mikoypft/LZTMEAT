@@ -2,14 +2,24 @@
     RewriteEngine On
     RewriteBase /
 
-    # Proxy API requests to Laravel backend
-    RewriteCond %{REQUEST_URI} ^/api
-    RewriteRule ^api/(.*)$ /backend/public/index.php [L,QSA]
+    # Allow setup.php to be accessed directly during deployment
+    RewriteCond %{REQUEST_URI} ^/backend/setup\.php$
+    RewriteRule ^(.*)$ - [L]
 
-    # Handle SPA - serve index.html for all non-file routes
+    # Route API requests to Laravel backend
+    RewriteCond %{REQUEST_URI} ^/api
+    RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA]
+
+    # Route backend requests to Laravel
+    RewriteCond %{REQUEST_URI} ^/backend/public
+    RewriteRule ^backend/public/(.*)$ backend/public/index.php [L,QSA]
+
+    # Serve dist folder (frontend SPA) for all other requests
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ index.html [L]
+    RewriteCond %{REQUEST_URI} !^/api
+    RewriteCond %{REQUEST_URI} !^/backend
+    RewriteRule ^(.*)$ dist/index.html [L]
 </IfModule>
 
 # Enable compression
@@ -36,3 +46,4 @@
     Header set X-Frame-Options "SAMEORIGIN"
     Header set X-XSS-Protection "1; mode=block"
 </IfModule>
+
