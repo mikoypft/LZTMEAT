@@ -1,6 +1,7 @@
-# Minimal .htaccess - MIME types only
-# All routing handled by index.php and setup.php
+# Set index.html as the default file (avoid PHP and Passenger issues)
+DirectoryIndex index.html index.php
 
+# MIME types for assets
 AddType application/javascript js
 AddType text/css css
 AddType image/svg+xml svg
