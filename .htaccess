@@ -2,74 +2,51 @@
     RewriteEngine On
     RewriteBase /
 
-    # Don't rewrite dist/assets - these are real files
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^ - [L]
-
-    # Don't rewrite real directories
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
+    # Don't rewrite real files or directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
 
     # Route /api/* to Laravel backend
     RewriteCond %{REQUEST_URI} ^/api(/|$)
-    RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA,E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA]
 
-    # Route /backend/* to Laravel
+    # Route other /backend/* to Laravel
     RewriteCond %{REQUEST_URI} ^/backend(/|$)
-    RewriteCond %{REQUEST_URI} !^/backend/setup\.php$
-    RewriteRule ^backend/(.*)$ backend/public/index.php [L,QSA,E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    RewriteRule ^backend/(.*)$ backend/public/index.php [L,QSA]
 
-    # SPA fallback - serve dist/index.html for all other requests
-    RewriteCond %{REQUEST_URI} !^/api(/|$)
-    RewriteCond %{REQUEST_URI} !^/backend(/|$)
-    RewriteCond %{REQUEST_URI} !^/setup\.php$
-    RewriteRule ^(.*)$ dist/index.html [L]
+    # Everything else → dist/index.html (SPA)
+    RewriteRule ^ dist/index.html [L]
 </IfModule>
 
 # Set correct MIME types
 <IfModule mod_mime.c>
     AddType application/javascript js
     AddType text/css css
-    AddEncoding gzip svg
+    AddType image/svg+xml svg
 </IfModule>
 
-# Enable compression
+# Compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json application/octet-stream
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
 </IfModule>
 
-# Cache control for static assets
+# Cache headers
 <IfModule mod_expires.c>
     ExpiresActive On
-    
-    # Images
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType image/png "access plus 1 year"
     ExpiresByType image/jpeg "access plus 1 year"
     ExpiresByType image/gif "access plus 1 year"
-    ExpiresByType image/png "access plus 1 year"
-    ExpiresByType image/webp "access plus 1 year"
-    ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType image/x-icon "access plus 1 year"
-    
-    # CSS and JavaScript
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType application/octet-stream "access plus 1 month"
-    
-    # Fonts
-    ExpiresByType font/woff "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
-    ExpiresByType font/ttf "access plus 1 year"
-    
-    # HTML (no cache)
-    ExpiresByType text/html "access plus 0 seconds"
 </IfModule>
 
-# Security headers
+# Security
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
-    Header set X-XSS-Protection "1; mode=block"
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
+
 
 
