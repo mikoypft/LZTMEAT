@@ -2,23 +2,27 @@
     RewriteEngine On
     RewriteBase /
 
-    # Skip actual files
+    # Skip real files
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Skip actual directories
+    # Skip real directories  
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Skip /backend and /setup.php (don't rewrite these)
+    # Skip backend, setup, debug - don't rewrite these
     RewriteRule ^(backend|setup\.php|debug\.php) - [L]
 
-    # Default: Route everything else to SPA frontend
-    RewriteRule ^(.*)$ /dist/index.html [L]
+    # SPA: Route all other requests to dist/index.html
+    RewriteCond %{REQUEST_URI} !^/dist/
+    RewriteRule ^(.*)$ /dist/index.html [PT,L]
 </IfModule>
 
 AddType application/javascript js
 AddType text/css css
+
+
+
 
 
 
