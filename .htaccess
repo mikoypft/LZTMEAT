@@ -2,57 +2,55 @@
     RewriteEngine On
     RewriteBase /
 
-    # Allow real files to pass through (don't rewrite them)
+    # If it's a real file, serve it
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Allow real directories to pass through
+    # If it's a real directory, serve it
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Route /api/* to Laravel backend
-    RewriteCond %{REQUEST_URI} ^/api(/|$)
-    RewriteRule ^api/(.*)$ backend/public/index.php [L,QSA]
+    # Route /api to Laravel
+    RewriteCond %{REQUEST_URI} ^/api
+    RewriteRule ^api(/.*)?$ backend/public/index.php [L,QSA]
 
-    # Route /backend/* to Laravel
-    RewriteCond %{REQUEST_URI} ^/backend(/|$)
-    RewriteRule ^backend/(.*)$ backend/public/index.php [L,QSA]
+    # Route /backend to Laravel (but not setup.php)
+    RewriteCond %{REQUEST_URI} ^/backend
+    RewriteCond %{REQUEST_URI} !backend/setup\.php
+    RewriteRule ^backend(/.*)?$ backend/public/index.php [L,QSA]
 
-    # Everything else → dist/index.html (SPA routing)
-    RewriteRule ^ dist/index.html [L]
+    # Don't rewrite further if already rewritten
+    RewriteCond %{ENV:REWRITTEN} =1
+    RewriteRule ^ - [L]
+
+    # Rewrite everything else to dist/index.html (SPA)
+    RewriteRule ^(.*)$ dist/index.html [L,E=REWRITTEN:1]
 </IfModule>
 
-# Force correct MIME types for assets
-<IfModule mod_mime.c>
-    AddType application/javascript .js
-    AddType text/css .css
-    AddType image/svg+xml .svg
-    AddType font/woff .woff
-    AddType font/woff2 .woff2
-</IfModule>
+AddType application/javascript js
+AddType text/css css
+AddType image/svg+xml svg
+AddType font/woff woff
+AddType font/woff2 woff2
 
-# Compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript text/xml application/json
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript
 </IfModule>
 
-# Cache headers
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresByType text/html "access plus 0 seconds"
-    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresDefault "access plus 0 seconds"
     ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
     ExpiresByType image/png "access plus 1 year"
     ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType image/gif "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# Security
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
 </IfModule>
+
 
 
 
