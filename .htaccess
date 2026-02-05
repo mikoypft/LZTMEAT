@@ -10,15 +10,10 @@
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Skip /backend (don't rewrite backend dir requests)
-    RewriteRule ^backend/ - [L]
+    # Skip /backend and /setup.php (don't rewrite these)
+    RewriteRule ^(backend|setup\.php|debug\.php) - [L]
 
-    # Route /api through backend public directory
-    RewriteRule ^api(/|$) - [L]
-    RewriteCond %{REQUEST_URI} ^/api
-    RewriteRule ^(.*)$ /backend/public/index.php [L]
-
-    # Default: Route everything else to SPA
+    # Default: Route everything else to SPA frontend
     RewriteRule ^(.*)$ /dist/index.html [L]
 </IfModule>
 

@@ -1,308 +1,161 @@
 <?php
-/**
- * Simple diagnostic and setup script - place at root
- * Access: https://lztmeat.com/setup.php
- */
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$output = [];
-$errors = [];
+$checks = ['success' => [], 'errors' => []];
 
-// Get backend path
-$backendPath = __DIR__ . '/backend';
+// ===== PATHS =====
+$paths = [
+    'dist/index.html' => __DIR__ . '/dist/index.html',
+    'backend/' => __DIR__ . '/backend',
+    'backend/.env.production' => __DIR__ . '/backend/.env.production',
+    '.htaccess' => __DIR__ . '/.htaccess',
+];
 
-$output[] = "📍 Project Path: " . __DIR__;
-$output[] = "📍 Backend Path: " . $backendPath;
-
-// 1. Check if backend exists
-if (is_dir($backendPath)) {
-    $output[] = "✓ Backend directory found";
-} else {
-    $errors[] = "✗ Backend directory not found at: $backendPath";
+foreach ($paths as $name => $path) {
+    if (is_file($path) || is_dir($path)) {
+        $checks['success'][] = "✓ $name exists";
+    } else {
+        $checks['errors'][] = "✗ $name NOT FOUND at " . $path;
+    }
 }
 
-// 2. Check .env.production
-$envProdPath = $backendPath . '/.env.production';
-if (file_exists($envProdPath)) {
-    $output[] = "✓ .env.production found";
+// ===== ENVIRONMENT =====
+$checks['success'][] = "Server: " . $_SERVER['SERVER_SOFTWARE'];
+$checks['success'][] = "PHP Version: " . phpversion();
+$checks['success'][] = "Document Root: " . $_SERVER['DOCUMENT_ROOT'];
+
+// ===== EXTENSIONS =====
+foreach (['pdo', 'pdo_mysql', 'openssl'] as $ext) {
+    if (extension_loaded($ext)) {
+        $checks['success'][] = "✓ Extension: $ext";
+    } else {
+        $checks['errors'][] = "✗ Missing: $ext";
+    }
+}
+
+// ===== DATABASE =====
+$envFile = __DIR__ . '/backend/.env.production';
+if (file_exists($envFile)) {
+    $env = [];
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos($line, '#') === 0 || !strpos($line, '=')) continue;
+        list($k, $v) = explode('=', $line, 2);
+        $env[trim($k)] = trim(trim($v), '"\'');
+    }
     
-    // Copy to .env if it doesn't exist
-    $envPath = $backendPath . '/.env';
-    if (!file_exists($envPath)) {
-        if (copy($envProdPath, $envPath)) {
-            $output[] = "✓ Created .env from .env.production";
-        } else {
-            $errors[] = "✗ Cannot copy .env.production to .env - check permissions";
+    if (isset($env['DB_HOST'], $env['DB_DATABASE'], $env['DB_USERNAME'], $env['DB_PASSWORD'])) {
+        try {
+            new PDO(
+                "mysql:host={$env['DB_HOST']};dbname={$env['DB_DATABASE']}",
+                $env['DB_USERNAME'],
+                $env['DB_PASSWORD']
+            );
+            $checks['success'][] = "✓ Database: Connected ({$env['DB_DATABASE']})";
+        } catch (Exception $e) {
+            $checks['errors'][] = "✗ Database: Connection failed - " . $e->getMessage();
         }
-    } else {
-        $output[] = "✓ .env already exists";
-    }
-} else {
-    $errors[] = "✗ .env.production not found at: $envProdPath";
-}
-
-// 3. Generate APP_KEY
-$envFile = $backendPath . '/.env';
-if (file_exists($envFile)) {
-    $envContent = file_get_contents($envFile);
-    if (strpos($envContent, 'APP_KEY=base64:') === false) {
-        $appKey = 'base64:' . bin2hex(random_bytes(32));
-        // Replace APP_KEY line carefully
-        $lines = explode("\n", $envContent);
-        $newLines = [];
-        $found = false;
-        foreach ($lines as $line) {
-            if (strpos($line, 'APP_KEY=') === 0) {
-                $newLines[] = 'APP_KEY=' . $appKey;
-                $found = true;
-            } else {
-                $newLines[] = $line;
-            }
-        }
-        $newContent = implode("\n", $newLines);
-        if (file_put_contents($envFile, $newContent)) {
-            $output[] = "✓ Generated APP_KEY";
-        } else {
-            $errors[] = "✗ Cannot write to .env file - check permissions";
-        }
-    } else {
-        $output[] = "✓ APP_KEY already generated";
     }
 }
 
-// 4. Check artisan
-if (file_exists($backendPath . '/artisan')) {
-    $output[] = "✓ Laravel artisan found";
+// ===== LARAVEL =====
+if (file_exists(__DIR__ . '/backend/artisan')) {
+    $checks['success'][] = "✓ Laravel: artisan found";
 } else {
-    $errors[] = "✗ Laravel artisan not found - composer dependencies may not be installed";
+    $checks['errors'][] = "✗ Laravel: artisan not found (composer install needed)";
 }
 
-// 5. Check storage/logs
-$storageDir = $backendPath . '/storage';
-$logsDir = $storageDir . '/logs';
-if (!is_dir($logsDir)) {
-    @mkdir($logsDir, 0777, true);
-}
-if (is_dir($logsDir)) {
-    $output[] = "✓ Storage/logs directory accessible";
+if (file_exists(__DIR__ . '/backend/bootstrap/app.php')) {
+    $checks['success'][] = "✓ Laravel: bootstrap found";
 } else {
-    $errors[] = "✗ Cannot access storage/logs directory";
+    $checks['errors'][] = "✗ Laravel: bootstrap/app.php not found";
 }
 
-// 6. Check bootstrap/cache
-$bootCacheDir = $backendPath . '/bootstrap/cache';
-if (!is_dir($bootCacheDir)) {
-    @mkdir($bootCacheDir, 0777, true);
-}
-if (is_writeable($backendPath . '/bootstrap')) {
-    $output[] = "✓ Bootstrap directory writable";
+// ===== FRONTEND =====
+if (file_exists(__DIR__ . '/dist/index.html')) {
+    $size = filesize(__DIR__ . '/dist/index.html');
+    $checks['success'][] = "✓ Frontend: dist/index.html (" . number_format($size) . " bytes)";
 } else {
-    $errors[] = "⚠ Bootstrap directory may not be writable";
+    $checks['errors'][] = "✗ Frontend: dist/index.html not found (npm run build needed)";
 }
 
-// 7. Try to detect Laravel version
-if (file_exists($backendPath . '/vendor/laravel/framework/src/Illuminate/Foundation/Application.php')) {
-    $output[] = "✓ Laravel framework installed";
-} else {
-    $errors[] = "⚠ Laravel framework might not be installed (check vendor folder)";
-}
-
-// 8. Check database config
-if (file_exists($envFile)) {
-    $envContent = file_get_contents($envFile);
-    $hasDb = preg_match('/DB_DATABASE\s*=\s*\w+/', $envContent);
-    $hasUser = preg_match('/DB_USERNAME\s*=\s*\w+/', $envContent);
-    if ($hasDb && $hasUser) {
-        if (preg_match('/DB_DATABASE\s*=\s*(\w+)/', $envContent, $m)) {
-            $output[] = "✓ Database configured: DB=" . $m[1];
-        }
-    } else {
-        $errors[] = "⚠ Database credentials not fully configured - check .env file";
-    }
-}
-
-// 9. Check dist folder
-if (is_dir(__DIR__ . '/dist')) {
-    if (file_exists(__DIR__ . '/dist/index.html')) {
-        $output[] = "✓ Frontend dist/index.html found";
-    } else {
-        $errors[] = "⚠ dist folder found but no index.html (run: npm run build)";
-    }
-} else {
-    $errors[] = "⚠ dist folder not found (run: npm run build)";
-}
-
-// 10. Check .htaccess
-if (file_exists(__DIR__ . '/.htaccess')) {
-    $output[] = "✓ Root .htaccess found";
-} else {
-    $errors[] = "⚠ Root .htaccess not found - routing may fail";
-}
-
-$status = empty($errors) ? 'success' : 'warning';
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LZT Meat - Setup Diagnostic</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Setup Check - LZTMEAT</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-        .content {
-            padding: 40px;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-weight: 600;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        .status-badge.success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-badge.warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .section {
-            margin-bottom: 40px;
-        }
-        .section h2 {
-            font-size: 18px;
-            margin-bottom: 20px;
-            color: #333;
-            border-bottom: 2px solid #f0f2f5;
-            padding-bottom: 10px;
-        }
-        .log-item {
-            padding: 12px 16px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        .log-success {
-            background: #f0f8f4;
-            color: #27ae60;
-            border-left: 4px solid #27ae60;
-        }
-        .log-error {
-            background: #fdf0f0;
-            color: #dc3545;
-            border-left: 4px solid #dc3545;
-            font-weight: 500;
-        }
-        .log-warning {
-            background: #fffbf0;
-            color: #f39c12;
-            border-left: 4px solid #f39c12;
-        }
-        .next-steps {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 20px;
-            border-radius: 6px;
-            margin-top: 30px;
-        }
-        .next-steps h3 {
-            color: #1976d2;
-            margin-bottom: 15px;
-        }
-        .next-steps ol {
-            margin-left: 25px;
-        }
-        .next-steps li {
-            margin: 10px 0;
-            color: #333;
-        }
-        .next-steps code {
-            background: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; padding: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+        h1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; margin: 0; }
+        .content { padding: 30px; }
+        h2 { color: #333; margin-top: 25px; margin-bottom: 15px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+        h2:first-of-type { margin-top: 0; }
+        .item { padding: 10px 12px; margin: 8px 0; border-left: 4px solid #ddd; background: #fafafa; border-radius: 4px; }
+        .success { border-left-color: #28a745; background: #f0fdf4; color: #166534; }
+        .error { border-left-color: #dc3545; background: #fef2f2; color: #991b1b; }
+        .info { border-left-color: #0dcaf0; background: #f0f9ff; color: #0369a1; }
+        .steps { background: #fff8f0; border: 1px solid #fed7aa; border-radius: 6px; padding: 20px; margin-top: 20px; }
+        .steps h3 { color: #c2410c; margin-bottom: 12px; }
+        .steps ol { margin-left: 20px; }
+        .steps li { margin: 8px 0; color: #78350f; }
+        code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-family: 'Monaco', monospace; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🚀 LZT Meat Setup</h1>
-            <p>Deployment Diagnostic</p>
-        </div>
-        
+        <h1>🔍 LZTMEAT Setup Status</h1>
         <div class="content">
-            <div class="status-badge <?php echo $status; ?>">
-                <?php echo $status === 'success' ? '✅ All Systems Ready' : '⚠️ Review Issues Below'; ?>
-            </div>
-
-            <div class="section">
-                <h2>Setup Status</h2>
-                <?php foreach ($output as $msg): ?>
-                    <div class="log-item log-success"><?php echo htmlspecialchars($msg); ?></div>
-                <?php endforeach; ?>
-                
-                <?php if (!empty($errors)): ?>
-                    <div style="margin-top: 20px;">
-                        <?php foreach ($errors as $err): ?>
-                            <div class="log-item log-error"><?php echo htmlspecialchars($err); ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <?php if ($status === 'success'): ?>
-                <div class="next-steps">
-                    <h3>✅ Ready for Production</h3>
-                    <ol>
-                        <li>Visit: <a href="/" target="_blank">https://lztmeat.com</a> (Frontend)</li>
-                        <li>Test API: <a href="/api" target="_blank">https://lztmeat.com/api</a></li>
-                        <li><strong>Delete this file:</strong> Delete <code>setup.php</code> from the root via Plesk File Manager</li>
-                    </ol>
-                </div>
+            
+            <h2>✓ Checks Passed</h2>
+            <?php if (empty($checks['success'])): ?>
+                <div class="item error">No successful checks</div>
             <?php else: ?>
-                <div class="next-steps">
-                    <h3>⚠️ Manual Setup Required</h3>
-                    <p style="margin-bottom: 15px;">Contact Plesk support or run these commands:</p>
-                    <ol>
-                        <li><code>cd backend && composer install --no-dev --optimize-autoloader</code></li>
-                        <li><code>php artisan key:generate</code></li>
-                        <li><code>php artisan migrate --force</code></li>
-                        <li><code>chmod -R 777 storage bootstrap/cache</code></li>
-                    </ol>
-                </div>
+                <?php foreach ($checks['success'] as $msg): ?>
+                    <div class="item success"><?= htmlspecialchars($msg) ?></div>
+                <?php endforeach; ?>
             <?php endif; ?>
+            
+            <h2>✗ Issues</h2>
+            <?php if (empty($checks['errors'])): ?>
+                <div class="item success">✓ No issues detected! Your site should work.</div>
+            <?php else: ?>
+                <?php foreach ($checks['errors'] as $msg): ?>
+                    <div class="item error">⚠️ <?= htmlspecialchars($msg) ?></div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            
+            <div class="steps">
+                <h3>📋 Troubleshooting Steps</h3>
+                <ol>
+                    <li><strong>Verify Plesk pulled latest code:</strong><br>
+                        In Plesk → Websites → Git → Check the commit hash matches your latest push
+                    </li>
+                    <li><strong>Restart Apache:</strong><br>
+                        In Plesk → Services & Applications → Service Management → Apache → Restart
+                    </li>
+                    <li><strong>Hard refresh browser:</strong><br>
+                        Press <code>Ctrl+Shift+R</code> (Windows) or <code>Cmd+Shift+R</code> (Mac)
+                    </li>
+                    <li><strong>If still getting errors after these steps:</strong><br>
+                        Your hosting provider may need to run on the server:
+                        <div style="background: #f3f4f6; padding: 10px; margin-top: 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; overflow-x: auto;">
+cd /var/www/vhosts/lztmeat.com/httpdocs/backend<br>
+composer install<br>
+php artisan key:generate<br>
+php artisan migrate
+                        </div>
+                    </li>
+                </ol>
+            </div>
+            
+            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                This diagnostic page is at: <code><?= $_SERVER['REQUEST_URI'] ?></code><br>
+                You can delete setup.php after deployment is complete.
+            </p>
         </div>
     </div>
 </body>
