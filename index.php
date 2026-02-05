@@ -4,9 +4,9 @@
  * This is the main entry point for all requests to the application
  */
 
-// Enable error reporting for debugging
+// Set up error handling
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Don't display errors to users
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
 // Get the request path
@@ -15,90 +15,92 @@ $request = $_SERVER['REQUEST_URI'] ?? '/';
 // Remove query string
 $request = parse_url($request, PHP_URL_PATH);
 
-// Remove leading slash for cleaner comparisons
+// Remove leading slash
 $requestPath = ltrim($request, '/');
 
-// Handle API routes - route to Laravel backend
-if ($requestPath === 'api' || strpos($requestPath, 'api/') === 0) {
-    require_once __DIR__ . '/backend/public/index.php';
-    exit;
-}
-
-// Handle backend routes (except setup.php) - route to Laravel
-if (($requestPath === 'backend' || strpos($requestPath, 'backend/') === 0) && strpos($requestPath, 'backend/setup.php') !== 0) {
-    require_once __DIR__ . '/backend/public/index.php';
-    exit;
-}
-
-// Handle static assets from dist
-if (strpos($requestPath, 'dist/assets/') === 0 || strpos($requestPath, 'dist/') === 0) {
-    $filePath = __DIR__ . '/' . $requestPath;
-    
-    // Security check - prevent directory traversal
-    $realPath = realpath($filePath);
-    $distDir = realpath(__DIR__ . '/dist');
-    
-    if ($realPath && $distDir && strpos($realPath, $distDir) === 0 && file_exists($realPath) && is_file($realPath)) {
-        // Set proper MIME type
-        $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
-        $mimeTypes = [
-            'js'    => 'application/javascript; charset=utf-8',
-            'css'   => 'text/css; charset=utf-8',
-            'json'  => 'application/json',
-            'png'   => 'image/png',
-            'jpg'   => 'image/jpeg',
-            'jpeg'  => 'image/jpeg',
-            'gif'   => 'image/gif',
-            'svg'   => 'image/svg+xml',
-            'woff'  => 'font/woff',
-            'woff2' => 'font/woff2',
-            'ttf'   => 'font/ttf',
-            'eot'   => 'application/vnd.ms-fontobject',
-            'html'  => 'text/html; charset=utf-8',
-        ];
-        
-        $mimeType = $mimeTypes[$ext] ?? 'application/octet-stream';
-        header('Content-Type: ' . $mimeType);
-        header('Cache-Control: public, max-age=31536000'); // 1 year cache for assets
-        readfile($realPath);
+try {
+    // Handle API routes - route to Laravel backend
+    if ($requestPath === 'api' || strpos($requestPath, 'api/') === 0) {
+        // Check if backend exists
+        $backendIndex = __DIR__ . '/backend/public/index.php';
+        if (!file_exists($backendIndex)) {
+            http_response_code(500);
+            die('Backend Laravel application not found at: ' . $backendIndex);
+        }
+        require_once $backendIndex;
         exit;
     }
-}
 
-// For all other requests, serve the SPA frontend
-$indexPath = __DIR__ . '/dist/index.html';
+    // Handle backend routes (except setup.php)
+    if (($requestPath === 'backend' || strpos($requestPath, 'backend/') === 0) && strpos($requestPath, 'backend/setup.php') !== 0) {
+        $backendIndex = __DIR__ . '/backend/public/index.php';
+        if (!file_exists($backendIndex)) {
+            http_response_code(500);
+            die('Backend Laravel application not found');
+        }
+        require_once $backendIndex;
+        exit;
+    }
 
-if (file_exists($indexPath)) {
+    // Don't route these paths - serve actual files if they exist
+    if (strpos($requestPath, 'setup.php') === 0 || strpos($requestPath, 'favicon.ico') === 0) {
+        $filePath = __DIR__ . '/' . $requestPath;
+        if (file_exists($filePath) && is_file($filePath)) {
+            header('Content-Type: ' . mime_content_type($filePath));
+            readfile($filePath);
+            exit;
+        }
+        http_response_code(404);
+        exit;
+    }
+
+    // Handle dist static assets
+    if (strpos($requestPath, 'dist/assets/') === 0 || strpos($requestPath, 'dist/') === 0) {
+        $filePath = __DIR__ . '/' . $requestPath;
+        
+        // Security: prevent directory traversal
+        $realPath = realpath($filePath);
+        $distDir = realpath(__DIR__ . '/dist');
+        
+        if ($realPath && $distDir && strpos($realPath, $distDir) === 0 && file_exists($realPath) && is_file($realPath)) {
+            $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
+            $mimeTypes = [
+                'js'    => 'application/javascript; charset=utf-8',
+                'css'   => 'text/css; charset=utf-8',
+                'json'  => 'application/json',
+                'html'  => 'text/html; charset=utf-8',
+                'png'   => 'image/png',
+                'jpg'   => 'image/jpeg',
+                'jpeg'  => 'image/jpeg',
+                'gif'   => 'image/gif',
+                'svg'   => 'image/svg+xml',
+                'woff'  => 'font/woff',
+                'woff2' => 'font/woff2',
+            ];
+            
+            header('Content-Type: ' . ($mimeTypes[$ext] ?? 'application/octet-stream'));
+            header('Cache-Control: public, max-age=31536000');
+            readfile($realPath);
+            exit;
+        }
+    }
+
+    // For everything else, serve the SPA frontend
+    $indexPath = __DIR__ . '/dist/index.html';
+    
+    if (!file_exists($indexPath)) {
+        http_response_code(500);
+        die('Frontend not found. Run: npm run build');
+    }
+    
     header('Content-Type: text/html; charset=utf-8');
-    header('Cache-Control: no-cache, no-store, must-revalidate'); // Don't cache HTML
-    echo file_get_contents($indexPath);
-    exit;
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    readfile($indexPath);
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    error_log('Router error: ' . $e->getMessage());
+    die('Application error. Check logs.');
 }
 
-// Fallback error if frontend is not built
-http_response_code(500);
-header('Content-Type: text/html; charset=utf-8');
-?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Application Error</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 8px; }
-        h1 { color: #d32f2f; }
-        p { color: #666; line-height: 1.6; }
-        code { background: #f5f5f5; padding: 10px; display: block; margin: 20px 0; border-radius: 4px; font-family: monospace; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>⚠️ Application Error</h1>
-        <p>The frontend distribution folder is missing or incomplete.</p>
-        <p>Please ensure the frontend has been built by running:</p>
-        <code>npm run build</code>
-        <p>Then ensure the <code>dist/index.html</code> file exists on the server.</p>
-    </div>
-</body>
-</html>
 
