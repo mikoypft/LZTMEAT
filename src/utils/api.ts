@@ -13,15 +13,28 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {
+  const baseHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    ...options.headers,
   };
+  
+  const headers: Record<string, string> = {
+    ...baseHeaders,
+  };
+  
+  if (options.headers) {
+    const optionHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, optionHeaders);
+  }
 
   // Add authorization header based on API mode
   if (API_MODE === "supabase") {
-    const { publicAnonKey } = await import("/utils/supabase/info");
-    headers["Authorization"] = `Bearer ${publicAnonKey}`;
+    try {
+      const infoModule = await import("../../utils/supabase/info");
+      const { publicAnonKey } = infoModule;
+      headers["Authorization"] = `Bearer ${publicAnonKey}`;
+    } catch (error) {
+      console.warn("Failed to import supabase info:", error);
+    }
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {

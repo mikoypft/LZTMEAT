@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Save, AlertCircle, Percent, Package } from "lucide-react";
 import { toast } from "sonner";
-import { getDiscountSettings, updateDiscountSettings } from "@/utils/api";
+import { getDiscountSettings, updateDiscountSettings } from "../../utils/api";
 
 export function DiscountsPage() {
   const [settings, setSettings] = useState({
