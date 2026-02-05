@@ -1,18 +1,10 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteBase /
-    
-    # Let real files pass through unchanged
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^ - [L]
-    
-    # Let real directories pass through unchanged
-    RewriteCond %{REQUEST_FILENAME} -d
-    RewriteRule ^ - [L]
-</IfModule>
+# Passenger handles all routing via app.js
+# This file is only for static file MIME types
 
 AddType application/javascript js
 AddType text/css css
+AddType image/svg+xml svg
+
 
 
 
