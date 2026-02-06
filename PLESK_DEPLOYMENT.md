@@ -1,7 +1,9 @@
 # LZT Meat - Plesk Deployment Guide
 
 ## Overview
+
 This project consists of:
+
 - **Frontend**: Vite + React SPA (builds to `/dist`)
 - **Backend**: Laravel 11 API (in `/backend`)
 
@@ -12,21 +14,27 @@ Production URL: https://lztmeat.com
 ## Plesk Configuration
 
 ### 1. Document Root Setup
+
 Set the document root in Plesk to point to the **`dist`** folder:
+
 ```
 /httpdocs/dist
 ```
 
 Or if the repo is cloned directly:
+
 ```
 /your-repo-folder/dist
 ```
 
 ### 2. PHP Version
+
 Ensure PHP 8.1+ is selected for the domain.
 
 ### 3. Git Repository Settings
+
 In Plesk Git panel:
+
 - **Repository URL**: Your Git repo URL
 - **Branch**: `plesk/prod-fixes-2`
 - **Deployment mode**: Automatic
@@ -39,12 +47,14 @@ In Plesk Git panel:
 If not using the automated script:
 
 ### Frontend
+
 ```bash
 npm ci
 npm run build
 ```
 
 ### Backend
+
 ```bash
 cd backend
 composer install --no-dev --optimize-autoloader
@@ -63,7 +73,9 @@ chmod -R 775 storage bootstrap/cache
 ## Environment Configuration
 
 ### Backend (.env)
+
 Update these values in `backend/.env`:
+
 ```env
 DB_DATABASE=your_database_name
 DB_USERNAME=your_database_user
@@ -71,6 +83,7 @@ DB_PASSWORD=your_database_password
 ```
 
 ### Frontend
+
 The frontend is pre-configured to use `/api` for API calls. No changes needed.
 
 ---
@@ -97,6 +110,7 @@ The frontend is pre-configured to use `/api` for API calls. No changes needed.
 ## API Routing
 
 The `.htaccess` in `/dist` routes:
+
 - `/api/*` → Laravel backend (`/backend/public/index.php`)
 - All other routes → `index.html` (SPA routing)
 
@@ -105,16 +119,19 @@ The `.htaccess` in `/dist` routes:
 ## Troubleshooting
 
 ### 500 Error on API
+
 1. Check `backend/storage/logs/laravel.log`
 2. Ensure storage permissions: `chmod -R 775 backend/storage`
 3. Verify `.env` database credentials
 
 ### Frontend shows blank page
+
 1. Check browser console for errors
 2. Verify document root is set to `/dist`
 3. Check `.htaccess` is in the dist folder
 
 ### CORS errors
+
 The Laravel backend already has CORS configured. Ensure the request goes through `/api` path.
 
 ---
