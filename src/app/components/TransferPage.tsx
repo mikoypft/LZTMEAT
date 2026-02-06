@@ -180,7 +180,7 @@ export function TransferPage() {
     }
 
     const product = products.find(
-      (p) => p.id === Number(newTransfer.productId),
+      (p) => String(p.id) === String(newTransfer.productId),
     );
     if (!product) {
       toast.error("Product not found");
