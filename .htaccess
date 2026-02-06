@@ -13,8 +13,11 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Route /api calls to Laravel backend (keep /api prefix for Laravel routing)
-RewriteRule ^api(/.*|$) backend/public/index.php [QSA,L]
+# Route /api calls to Laravel backend (preserve full path for Laravel routing)
+# Rewrite /api/sales to backend/public/index.php/api/sales so Laravel gets correct PATH_INFO
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(api/.*)$ backend/public/index.php/$1 [QSA,L]
 
 # Route all other non-existent files/dirs to index.html for React Router (SPA)
 # This allows client-side routing to work properly
