@@ -33,38 +33,41 @@ if (!file_exists($envFile)) {
     $envFile = __DIR__ . '/.env.production';
 }
 
+$envLoaded = false;
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         // Skip comments
-        if (strpos($line, '#') === 0) continue;
+        if (strpos(trim($line), '#') === 0 || trim($line) === '') continue;
         
         if (strpos($line, '=') !== false) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
             // Remove quotes if present
-            $value = trim($value, '"\'');
+            $value = preg_replace('/^["\']|["\']$/', '', $value);
             $_ENV[$key] = $value;
-        }
-    }
-    // Also set as global variables for backwards compatibility
-    foreach ($_ENV as $key => $value) {
-        if (strpos($key, 'DB_') === 0) {
+            // Also set via putenv for getenv()
             putenv("$key=$value");
         }
     }
+    $envLoaded = true;
 } else {
     // Log warning - no env file found
-    error_log(date('Y-m-d H:i:s') . " - WARNING: No .env or .env.production found in " . __DIR__, 3, __DIR__ . '/env_not_found.log');
+    error_log(date('Y-m-d H:i:s') . " - WARNING: No .env or .env.production found in " . __DIR__ . " - using defaults", 3, __DIR__ . '/env_not_found.log');
 }
 
-// Database configuration
-$dbHost = $_ENV['DB_HOST'] ?? '127.0.0.1';
-$dbPort = $_ENV['DB_PORT'] ?? '3306';
-$dbName = $_ENV['DB_DATABASE'] ?? 'lzt_meat';
-$dbUser = $_ENV['DB_USERNAME'] ?? 'root';
-$dbPass = $_ENV['DB_PASSWORD'] ?? '';
+// Database configuration - use env vars, with sensible defaults
+$dbHost = trim($_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? '127.0.0.1');
+$dbPort = trim($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? '3306');
+$dbName = trim($_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?? 'lzt_meat');
+$dbUser = trim($_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?? 'root');
+$dbPass = trim($_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '');
+
+// Log what env was loaded for debugging
+error_log(date('Y-m-d H:i:s') . " - ENV loaded: $envLoaded from: $envFile\n" .
+          "DB config: host=$dbHost, port=$dbPort, db=$dbName, user=$dbUser\n", 
+          3, __DIR__ . '/env_debug.log');
 
 // Create database connection
 try {
