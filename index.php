@@ -71,6 +71,7 @@ if (str_starts_with($path, '/api')) {
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
     header('Access-Control-Allow-Credentials: true');
+    header('Content-Type: application/json');
 
     // Handle preflight
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -95,12 +96,19 @@ if (str_starts_with($path, '/api')) {
         // Fallback to standalone PHP API (no composer needed)
         // The standalone API will auto-detect .env or .env.production
         chdir(__DIR__ . '/backend');
+        
+        // Debug: Check if .env or .env.production exists
+        $envPath = file_exists('.env') ? '.env' : (file_exists('.env.production') ? '.env.production' : 'NONE');
+        
         require $standaloneApi;
     } else {
         http_response_code(500);
-        header('Content-Type: application/json');
         echo json_encode([
-            'error' => 'Backend not configured. Run: cd backend && composer install',
+            'error' => 'Backend not configured',
+            'details' => [
+                'Laravel not found: ' . $laravelAutoload,
+                'Standalone API missing: ' . $standaloneApi,
+            ],
         ]);
     }
     exit;
