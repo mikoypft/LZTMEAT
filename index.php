@@ -20,6 +20,46 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($requestUri, PHP_URL_PATH);
 
 // ─────────────────────────────────────────────────────────
+// QUICK DIAGNOSTIC: /api/health check
+// ─────────────────────────────────────────────────────────
+if ($path === '/api/health') {
+    header('Content-Type: application/json; charset=utf-8');
+    
+    // Check if backend API exists
+    $backendApi = __DIR__ . '/backend/index.php';
+    $envFile = __DIR__ . '/backend/.env';
+    $envProdFile = __DIR__ . '/backend/.env.production';
+    
+    $response = [
+        'status' => 'diagnostic',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'php_version' => phpversion(),
+        'cwd' => getcwd(),
+        'backend_api_exists' => file_exists($backendApi),
+        'env_exists' => file_exists($envFile),
+        'env_production_exists' => file_exists($envProdFile),
+        'request_uri' => $_SERVER['REQUEST_URI'],
+        'path' => $path,
+    ];
+    
+    // Check database connection
+    if (file_exists($envProdFile)) {
+        $lines = file($envProdFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos($line, 'DB_') === 0 && strpos($line, '=') !== false) {
+                list($key, $value) = explode('=', $line, 2);
+                $key = trim($key);
+                $value = trim($value, '"\'');
+                $response['env'][$key] = ($key === 'DB_PASSWORD') ? '***' : $value;
+            }
+        }
+    }
+    
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────
 // 1. Serve static files from dist/ (CSS, JS, images, etc.)
 // ─────────────────────────────────────────────────────────
 if ($path !== '/' && $path !== '') {
