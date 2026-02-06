@@ -1725,7 +1725,7 @@ $routes = [
             
             // Get history records
             $stmt = $pdo->query("
-                SELECT sh.*, u.name as user_name 
+                SELECT sh.*, u.full_name as user_name 
                 FROM system_history sh
                 LEFT JOIN users u ON sh.user_id = u.id
                 ORDER BY sh.created_at DESC
