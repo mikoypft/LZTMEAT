@@ -58,15 +58,17 @@ if (file_exists($envFile)) {
 }
 
 // Database configuration - use env vars, with sensible defaults
-$dbHost = trim($_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? '127.0.0.1');
-$dbPort = trim($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? '3306');
-$dbName = trim($_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?? 'lzt_meat');
-$dbUser = trim($_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?? 'root');
-$dbPass = trim($_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '');
+$dbHost = !empty($_ENV['DB_HOST']) ? trim($_ENV['DB_HOST']) : (getenv('DB_HOST') ?: 'localhost');
+$dbPort = !empty($_ENV['DB_PORT']) ? trim($_ENV['DB_PORT']) : (getenv('DB_PORT') ?: '3306');
+$dbName = !empty($_ENV['DB_DATABASE']) ? trim($_ENV['DB_DATABASE']) : (getenv('DB_DATABASE') ?: 'lztmeat_admin');
+$dbUser = !empty($_ENV['DB_USERNAME']) ? trim($_ENV['DB_USERNAME']) : (getenv('DB_USERNAME') ?: 'lztmeat');
+$dbPass = !empty($_ENV['DB_PASSWORD']) ? trim($_ENV['DB_PASSWORD']) : (getenv('DB_PASSWORD') ?: 'Lztmeat@2026');
 
 // Log what env was loaded for debugging
-error_log(date('Y-m-d H:i:s') . " - ENV loaded: $envLoaded from: $envFile\n" .
-          "DB config: host=$dbHost, port=$dbPort, db=$dbName, user=$dbUser\n", 
+error_log(date('Y-m-d H:i:s') . " - Backend API starting\n" .
+          "Env loaded: $envLoaded from: $envFile\n" .
+          "DB config: host=$dbHost, port=$dbPort, db=$dbName, user=$dbUser\n" .
+          "_ENV keys: " . implode(', ', array_keys($_ENV)) . "\n", 
           3, __DIR__ . '/env_debug.log');
 
 // Create database connection
@@ -161,6 +163,29 @@ $routes = [
                 'error' => $e->getMessage(),
             ];
         }
+    },
+    
+    'GET /api/debug' => function() {
+        $envFile = __DIR__ . '/.env';
+        if (!file_exists($envFile)) {
+            $envFile = __DIR__ . '/.env.production';
+        }
+        
+        return [
+            'cwd' => getcwd(),
+            'backend_dir' => __DIR__,
+            'env_file_checked' => $envFile,
+            'env_file_exists' => file_exists($envFile),
+            'env_file_readable' => is_readable($envFile),
+            'env_vars' => [
+                'DB_HOST' => $_ENV['DB_HOST'] ?? 'NOT SET',
+                'DB_PORT' => $_ENV['DB_PORT'] ?? 'NOT SET',
+                'DB_DATABASE' => $_ENV['DB_DATABASE'] ?? 'NOT SET',
+                'DB_USERNAME' => $_ENV['DB_USERNAME'] ?? 'NOT SET',
+            ],
+            'getenv_DB_HOST' => getenv('DB_HOST') ?: 'NOT SET',
+            '_ENV_keys' => array_keys($_ENV),
+        ];
     },
     
     'POST /api/auth/login' => function() use ($pdo, $body) {
