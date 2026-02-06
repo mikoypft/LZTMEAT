@@ -110,7 +110,6 @@ export function TransferPage() {
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
-      setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
       
       // Enrich transfers with product data (sku, unit, etc.)
@@ -168,7 +167,7 @@ export function TransferPage() {
       setInventory(inventoryData);
       setUsers(usersData);
       
-      console.log("Transfers with defaults:", transfersWithDefaults);
+      console.log("Enriched transfers:", enrichedTransfers);
       console.log("Products with stock loaded:", productsWithStock);
       console.log("Inventory data:", inventoryData);
 
@@ -656,7 +655,7 @@ export function TransferPage() {
                                 setSelectedTransfer(transfer);
                                 setReceiveData({
                                   quantityReceived:
-                                    transfer.quantity.toString(),
+                                    String(transfer.quantity || 0),
                                   discrepancyReason: "",
                                   receivedBy: "",
                                 });
@@ -787,7 +786,7 @@ export function TransferPage() {
                   onClick={() => {
                     setShowReceiveModal(false);
                     setReceiveData({
-                      quantityReceived: selectedTransfer.quantity,
+                      quantityReceived: String(selectedTransfer.quantity || 0),
                       discrepancyReason: "",
                       receivedBy: "",
                     });
