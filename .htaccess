@@ -1,5 +1,6 @@
 # Set index.html as the default file
-DirectoryIndex index.html index.php
+# For production, serve dist/index.html which has the built asset references
+DirectoryIndex dist/index.html index.php
 
 # Enable mod_rewrite
 RewriteEngine On
