@@ -31,7 +31,7 @@ composer.lock               # Composer lock file (optional - team preference)
 # ============================================================================
 # BUILD OUTPUTS & CACHE
 # ============================================================================
-dist/                       # Frontend build output
+# dist/                       # EXCEPTION: dist/ IS committed for production
 build/                      # Alternative build directory
 backend/bootstrap/cache/    # Laravel compiled cache
 .vite/                      # Vite cache directory
