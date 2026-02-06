@@ -1697,6 +1697,66 @@ $routes = [
             return ['error' => 'Failed to update discount settings: ' . $e->getMessage()];
         }
     },
+    
+    'GET /api/history' => function() use ($pdo) {
+        try {
+            // Create table if it doesn't exist
+            $pdo->exec("CREATE TABLE IF NOT EXISTS system_history (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                action VARCHAR(255) NOT NULL,
+                entity VARCHAR(255),
+                entity_id VARCHAR(255),
+                details JSON,
+                user_id BIGINT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX(created_at),
+                INDEX(entity)
+            )");
+            
+            // Get query parameters for pagination
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+            $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+            $limit = min($limit, 200); // Max 200 per request
+            
+            // Get total count
+            $countStmt = $pdo->query('SELECT COUNT(*) as count FROM system_history');
+            $count = $countStmt->fetch()['count'];
+            
+            // Get history records
+            $stmt = $pdo->query("
+                SELECT sh.*, u.name as user_name 
+                FROM system_history sh
+                LEFT JOIN users u ON sh.user_id = u.id
+                ORDER BY sh.created_at DESC
+                LIMIT $limit OFFSET $offset
+            ");
+            
+            $records = $stmt->fetchAll();
+            
+            return [
+                'history' => array_map(function($record) {
+                    return [
+                        'id' => (int)$record['id'],
+                        'action' => $record['action'],
+                        'entity' => $record['entity'],
+                        'entityId' => $record['entity_id'],
+                        'details' => $record['details'] ? json_decode($record['details'], true) : null,
+                        'userId' => $record['user_id'] ? (int)$record['user_id'] : null,
+                        'userName' => $record['user_name'],
+                        'createdAt' => $record['created_at'],
+                        'updatedAt' => $record['updated_at'],
+                    ];
+                }, $records),
+                'total' => (int)$count,
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get history: ' . $e->getMessage()];
+        }
+    },
 ];
 
 // Find and execute route
