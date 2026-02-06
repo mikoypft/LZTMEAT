@@ -17,9 +17,11 @@ import {
   updateTransferStatus,
   receiveTransfer,
   getAllUsers,
+  getInventory,
   type Product,
   type TransferRequest,
   type AllUser,
+  type InventoryRecord,
 } from "@/utils/api";
 import { toast } from "sonner";
 
@@ -67,6 +69,7 @@ export function TransferPage() {
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [inventory, setInventory] = useState<InventoryRecord[]>([]);
   const [users, setUsers] = useState<AllUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -94,12 +97,13 @@ export function TransferPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [transfersData, storesData, productsData, usersData] =
+      const [transfersData, storesData, productsData, usersData, inventoryData] =
         await Promise.all([
           getTransfers(),
           getStores(),
           getProducts(),
           getAllUsers(),
+          getInventory(),
         ]);
       // Sort transfers by createdAt in descending order (newest first)
       const sortedTransfers = transfersData.sort(
@@ -109,6 +113,7 @@ export function TransferPage() {
       setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
       setProducts(productsData);
+      setInventory(inventoryData);
       setUsers(usersData);
 
       // Set default locations if stores exist
@@ -248,6 +253,18 @@ export function TransferPage() {
     }
   };
 
+  const getProductStock = (productId: string | number, location?: string): number => {
+    const records = inventory.filter(
+      (inv) => inv.productId === String(productId)
+    );
+    if (location) {
+      const record = records.find((inv) => inv.location === location);
+      return record ? record.quantity : 0;
+    }
+    // If no location specified, return total stock across all locations
+    return records.reduce((total, inv) => total + inv.quantity, 0);
+  };
+
   const getStatusColor = (status: Transfer["status"]) => {
     switch (status) {
       case "completed":
@@ -346,11 +363,14 @@ export function TransferPage() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Product</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} ({product.sku})
-                      </option>
-                    ))}
+                    {products.map((product) => {
+                      const stock = getProductStock(product.id, newTransfer.from || undefined);
+                      return (
+                        <option key={product.id} value={product.id}>
+                          {product.name} ({stock} {product.unit})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
