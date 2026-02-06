@@ -1,8 +1,7 @@
 # ============================================================================
-# PRODUCTION CRITICAL FILES (Never commit these - local development only)
+# PRODUCTION CRITICAL FILES
 # ============================================================================
-.env.production              # Production database credentials
-backend/.env.production      # Backend production configuration
+# NOTE: .env.production files ARE tracked - needed for Plesk deployment (no SSH)
 # NOTE: .htaccess IS tracked - it MUST be deployed for Apache routing to work
 PLESK_DEPLOYMENT.md          # Deployment notes and Plesk settings
 

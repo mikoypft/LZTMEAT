@@ -92,7 +92,9 @@ if (str_starts_with($path, '/api')) {
         $app = require_once __DIR__ . '/backend/bootstrap/app.php';
         $app->handleRequest(\Illuminate\Http\Request::capture());
     } elseif (file_exists($standaloneApi)) {
-        // Fallback to standalone PHP API
+        // Fallback to standalone PHP API (no composer needed)
+        // The standalone API will auto-detect .env or .env.production
+        chdir(__DIR__ . '/backend');
         require $standaloneApi;
     } else {
         http_response_code(500);

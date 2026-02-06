@@ -18,8 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Load environment variables
+// Load environment variables (check .env first, then .env.production as fallback)
 $envFile = __DIR__ . '/.env';
+if (!file_exists($envFile)) {
+    $envFile = __DIR__ . '/.env.production';
+}
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
