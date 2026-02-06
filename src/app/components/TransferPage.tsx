@@ -113,6 +113,23 @@ export function TransferPage() {
       setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
       
+      // Ensure all transfers have proper fields with defaults
+      const transfersWithDefaults = sortedTransfers.map((t) => ({
+        ...t,
+        productName: t.productName || "",
+        sku: t.sku || "",
+        unit: t.unit || "",
+        quantityReceived: t.quantityReceived !== undefined ? t.quantityReceived : null,
+        discrepancy: t.discrepancy !== undefined ? t.discrepancy : null,
+        transferredBy: t.transferredBy || "-",
+        receivedBy: t.receivedBy || null,
+        status: t.status || "in-transit",
+        date: t.date || "",
+        time: t.time || "",
+      }));
+      
+      setTransfers(transfersWithDefaults);
+      
       // Combine products with inventory data for easier access
       const productsWithStock = productsData.map((product: Product) => {
         // For now, calculate total stock across all locations
@@ -143,6 +160,7 @@ export function TransferPage() {
       setInventory(inventoryData);
       setUsers(usersData);
       
+      console.log("Transfers with defaults:", transfersWithDefaults);
       console.log("Products with stock loaded:", productsWithStock);
       console.log("Inventory data:", inventoryData);
 
@@ -202,6 +220,13 @@ export function TransferPage() {
       // Ensure the transfer has all required fields with defaults
       const transferWithDefaults = {
         ...createdTransfer,
+        productName: createdTransfer.productName || product.name,
+        sku: createdTransfer.sku || product.sku || "",
+        unit: createdTransfer.unit || product.unit || "kg",
+        quantityReceived: createdTransfer.quantityReceived || null,
+        discrepancy: createdTransfer.discrepancy || null,
+        transferredBy: createdTransfer.transferredBy || newTransfer.requestedBy || "-",
+        receivedBy: createdTransfer.receivedBy || null,
         status: createdTransfer.status || "in-transit",
         date: createdTransfer.date || new Date().toISOString().split("T")[0],
         time: createdTransfer.time || new Date().toLocaleTimeString("en-US", { hour12: false }),
