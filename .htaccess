@@ -1,6 +1,5 @@
-# Set index.html as the default file
-# For production, serve dist/index.html which has the built asset references
-DirectoryIndex dist/index.html index.php
+# Set index files (for non-rewritten requests)
+DirectoryIndex index.php
 
 # Enable mod_rewrite
 RewriteEngine On
@@ -20,11 +19,11 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(api/.*)$ backend/public/index.php/$1 [QSA,L]
 
-# Route all other non-existent files/dirs to dist/index.html for React Router (SPA)
+# Route root and all other non-existent files/dirs to dist/index.html for React Router (SPA)
 # dist/index.html contains the built asset references for production
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ dist/index.html [QSA,L]
+RewriteRule ^(.*)$ dist/index.html [L]
 
 # ============================================================================
 # MIME TYPES - CRITICAL FOR MODULE LOADING
