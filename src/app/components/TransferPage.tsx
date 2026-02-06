@@ -383,7 +383,14 @@ export function TransferPage() {
                     <option value="">Select Product</option>
                     {products && products.length > 0 ? (
                       products.map((product) => {
-                        const stock = (product as any).stock || 0;
+                        // Get stock for selected location if available, otherwise total
+                        let stock = (product as any).stock || 0;
+                        if (newTransfer.from) {
+                          const locationSpecificStock = inventory.find(
+                            (inv) => String(inv.productId) === String(product.id) && inv.location === newTransfer.from
+                          );
+                          stock = locationSpecificStock ? Number(locationSpecificStock.quantity) || 0 : 0;
+                        }
                         const displayUnit = product.unit || "units";
                         return (
                           <option key={product.id} value={product.id}>
