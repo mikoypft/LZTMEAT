@@ -85,6 +85,23 @@ backups/                    # Database backups
 *.db
 
 # ============================================================================
+# BACKEND DEBUG & TEST SCRIPTS (Local development only - not in production)
+# ============================================================================
+backend/check_*.php         # Database check scripts
+backend/test_*.php          # Test utility scripts
+backend/reset_*.php         # Reset/cleanup scripts
+backend/populate_*.php      # Data population scripts
+backend/debug_*.php         # Debug utility scripts
+backend/sync_*.php          # Sync utility scripts
+backend/show_*.php          # Display utility scripts
+backend/list_*.php          # List utility scripts
+backend/create_new_prod.php # Development utility
+backend/describe_*.php      # Description utility scripts
+backend/fix_*.php           # Fix utility scripts
+backend/add_*.php           # Add utility scripts
+backend/update_*.php        # Update utility scripts
+
+# ============================================================================
 # MISC
 # ============================================================================
 .env.*.local
