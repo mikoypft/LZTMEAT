@@ -197,7 +197,17 @@ export function TransferPage() {
 
     try {
       const createdTransfer = await createTransfer(transferData);
-      setTransfers([createdTransfer, ...transfers]);
+      console.log("Created transfer response:", createdTransfer);
+      
+      // Ensure the transfer has all required fields with defaults
+      const transferWithDefaults = {
+        ...createdTransfer,
+        status: createdTransfer.status || "in-transit",
+        date: createdTransfer.date || new Date().toISOString().split("T")[0],
+        time: createdTransfer.time || new Date().toLocaleTimeString("en-US", { hour12: false }),
+      };
+      
+      setTransfers([transferWithDefaults, ...transfers]);
       setCurrentPage(1);
       setNewTransfer({
         productId: "",
@@ -581,12 +591,13 @@ export function TransferPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          {getStatusIcon(transfer.status)}
+                          {transfer.status && getStatusIcon(transfer.status)}
                           <span
-                            className={`px-3 py-1 rounded-full text-xs ${getStatusColor(transfer.status)}`}
+                            className={`px-3 py-1 rounded-full text-xs ${transfer.status ? getStatusColor(transfer.status) : "bg-gray-100 text-gray-700"}`}
                           >
-                            {transfer.status.charAt(0).toUpperCase() +
-                              transfer.status.slice(1)}
+                            {transfer.status 
+                              ? transfer.status.charAt(0).toUpperCase() + transfer.status.slice(1)
+                              : "Unknown"}
                           </span>
                         </div>
                       </td>
