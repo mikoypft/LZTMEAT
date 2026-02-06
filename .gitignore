@@ -1,40 +1,88 @@
-# Environment and Configuration Files (Production)
-.env.production
-backend/.env.production
-backend/.env
+# ============================================================================
+# PRODUCTION CRITICAL FILES (Never commit these - local development only)
+# ============================================================================
+.env.production              # Production database credentials
+backend/.env.production      # Backend production configuration
+.htaccess                    # Plesk/Apache server configuration
+PLESK_DEPLOYMENT.md          # Deployment notes and Plesk settings
 
-# Server/Plesk Configuration
-.htaccess
-PLESK_DEPLOYMENT.md
+# ============================================================================
+# LOCAL DEVELOPMENT ENVIRONMENT FILES
+# ============================================================================
+.env                         # Local backend environment (development)
+.env.local                   # Local root environment variables
+.env.development.local       # Development-specific env
+.env.test.local              # Test environment
+backend/.env.example         # Keep example, ignore actual env
 
-# Cache and Temporary Files
-backend/bootstrap/cache/
-node_modules/
-dist/
-.vite/
+# ============================================================================
+# DEPENDENCIES & PACKAGE MANAGERS
+# ============================================================================
+node_modules/               # NPM packages
+backend/vendor/             # Composer packages
+package-lock.json           # NPM lock file (if not shared)
+composer.lock               # Composer lock file (optional - team preference)
 
-# Logs and Output
-*.log
-backend/history_output.txt
-backend_server.log
+# ============================================================================
+# BUILD OUTPUTS & CACHE
+# ============================================================================
+dist/                       # Frontend build output
+build/                      # Alternative build directory
+backend/bootstrap/cache/    # Laravel compiled cache
+.vite/                      # Vite cache directory
+.next/                      # Next.js cache (if used)
+out/                        # Alternative output
 
-# IDE and OS
+# ============================================================================
+# LOGS & TEMPORARY FILES
+# ============================================================================
+*.log                       # All log files
+backend/storage/            # Laravel storage (logs, sessions)
+backend/storage/logs/       # Laravel logs specifically
+backend/history_output.txt  # Debug output
+backend_server.log          # Server debug log
+*.tmp                       # Temporary files
+
+# ============================================================================
+# IDE & EDITOR FILES
+# ============================================================================
+.vscode/                    # VS Code workspace settings
+.idea/                      # JetBrains IDE
+*.swp                       # Vim swap files
+*.swo                       # Vim backup files
+*~                          # Backup files
+.DS_Store                   # macOS system files
+Thumbs.db                   # Windows thumbnail cache
+
+# ============================================================================
+# OS SPECIFIC
+# ============================================================================
 .DS_Store
-.idea/
-.vscode/
-*.swp
-*.swo
+.AppleDouble
+.LSOverride
+Thumbs.db
+*.lnk
 
-# Development Environment
-.env.local
-.env.development.local
-.env.test.local
+# ============================================================================
+# TESTS & COVERAGE
+# ============================================================================
+coverage/
+.coverage
+.pytest_cache/
 
-# Backups (keep out of version control)
-backups/
-*.sql
-*.backup
+# ============================================================================
+# DATABASE & BACKUPS (Keep these in separate location, not in repo)
+# ============================================================================
+backups/                    # Database backups
+*.sql                       # SQL dump files
+*.backup                    # Backup files
+*.sqlite
+*.db
 
-# Build artifacts
-build/
-out/
+# ============================================================================
+# MISC
+# ============================================================================
+.env.*.local
+.DS_Store
+.vuepress/dist
+dist
