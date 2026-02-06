@@ -254,15 +254,22 @@ export function TransferPage() {
   };
 
   const getProductStock = (productId: string | number, location?: string): number => {
+    const prodId = String(productId);
     const records = inventory.filter(
-      (inv) => inv.productId === String(productId)
+      (inv) => String(inv.productId) === prodId
     );
+    
     if (location) {
       const record = records.find((inv) => inv.location === location);
-      return record ? record.quantity : 0;
+      return record ? Math.round(Number(record.quantity) || 0) : 0;
     }
+    
     // If no location specified, return total stock across all locations
-    return records.reduce((total, inv) => total + inv.quantity, 0);
+    const total = records.reduce((total, inv) => {
+      const qty = Number(inv.quantity) || 0;
+      return total + qty;
+    }, 0);
+    return Math.round(total);
   };
 
   const getStatusColor = (status: Transfer["status"]) => {
@@ -363,14 +370,21 @@ export function TransferPage() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Product</option>
-                    {products.map((product) => {
-                      const stock = getProductStock(product.id, newTransfer.from || undefined);
-                      return (
-                        <option key={product.id} value={product.id}>
-                          {product.name} ({stock} {product.unit})
-                        </option>
-                      );
-                    })}
+                    {products && products.length > 0 ? (
+                      products.map((product) => {
+                        const stock = inventory && inventory.length > 0 
+                          ? getProductStock(product.id, newTransfer.from || undefined)
+                          : 0;
+                        const displayUnit = product.unit || "units";
+                        return (
+                          <option key={product.id} value={product.id}>
+                            {product.name} - Stock: {stock} {displayUnit}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <option disabled>No products available</option>
+                    )}
                   </select>
                 </div>
                 <div>
