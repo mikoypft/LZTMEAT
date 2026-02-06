@@ -5,12 +5,16 @@
  * A lightweight API server that directly handles requests
  */
 
+// Debug mode - always show errors
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
 // Set CORS headers for all requests
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Access-Control-Allow-Credentials: true');
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -18,19 +22,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Log the request for debugging
+$logFile = __DIR__ . '/api_requests.log';
+$logMsg = date('Y-m-d H:i:s') . " - " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI'] . "\n";
+error_log($logMsg, 3, $logFile);
+
 // Load environment variables (check .env first, then .env.production as fallback)
 $envFile = __DIR__ . '/.env';
 if (!file_exists($envFile)) {
     $envFile = __DIR__ . '/.env.production';
 }
+
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+        // Skip comments
+        if (strpos($line, '#') === 0) continue;
+        
+        if (strpos($line, '=') !== false) {
             list($key, $value) = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
+            $key = trim($key);
+            $value = trim($value);
+            // Remove quotes if present
+            $value = trim($value, '"\'');
+            $_ENV[$key] = $value;
         }
     }
+    // Also set as global variables for backwards compatibility
+    foreach ($_ENV as $key => $value) {
+        if (strpos($key, 'DB_') === 0) {
+            putenv("$key=$value");
+        }
+    }
+} else {
+    // Log warning - no env file found
+    error_log(date('Y-m-d H:i:s') . " - WARNING: No .env or .env.production found in " . __DIR__, 3, __DIR__ . '/env_not_found.log');
 }
 
 // Database configuration
@@ -53,25 +79,30 @@ try {
     );
 } catch (PDOException $e) {
     http_response_code(500);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     
     // Log error to file for debugging
     $logFile = __DIR__ . '/database_error.log';
     $errorMsg = date('Y-m-d H:i:s') . " - PDO Error: " . $e->getMessage() . "\n";
     $errorMsg .= "Host: $dbHost, Port: $dbPort, Database: $dbName, User: $dbUser\n";
-    $errorMsg .= "Env file: " . (file_exists('.env') ? '.env' : (file_exists('.env.production') ? '.env.production' : 'NONE FOUND')) . "\n";
+    $errorMsg .= "Env file checked: " . (file_exists('.env') ? '.env' : (file_exists('.env.production') ? '.env.production' : 'NONE FOUND')) . "\n";
+    $errorMsg .= "CWD: " . getcwd() . "\n";
     error_log($errorMsg, 3, $logFile);
     
-    echo json_encode([
+    // Return error response
+    $response = [
         'error' => 'Database connection failed',
         'message' => $e->getMessage(),
+        'code' => $e->getCode(),
         'details' => [
             'host' => $dbHost,
             'port' => $dbPort,
             'database' => $dbName,
             'user' => $dbUser,
         ]
-    ]);
+    ];
+    
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
