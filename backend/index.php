@@ -53,7 +53,25 @@ try {
     );
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+    header('Content-Type: application/json');
+    
+    // Log error to file for debugging
+    $logFile = __DIR__ . '/database_error.log';
+    $errorMsg = date('Y-m-d H:i:s') . " - PDO Error: " . $e->getMessage() . "\n";
+    $errorMsg .= "Host: $dbHost, Port: $dbPort, Database: $dbName, User: $dbUser\n";
+    $errorMsg .= "Env file: " . (file_exists('.env') ? '.env' : (file_exists('.env.production') ? '.env.production' : 'NONE FOUND')) . "\n";
+    error_log($errorMsg, 3, $logFile);
+    
+    echo json_encode([
+        'error' => 'Database connection failed',
+        'message' => $e->getMessage(),
+        'details' => [
+            'host' => $dbHost,
+            'port' => $dbPort,
+            'database' => $dbName,
+            'user' => $dbUser,
+        ]
+    ]);
     exit;
 }
 
