@@ -92,6 +92,24 @@ $routes = [
         ];
     },
     
+    'GET /api/health' => function() use ($pdo) {
+        try {
+            $result = $pdo->query('SELECT 1')->fetch();
+            return [
+                'status' => 'healthy',
+                'database' => 'connected',
+                'timestamp' => date('Y-m-d H:i:s'),
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return [
+                'status' => 'unhealthy',
+                'database' => 'disconnected',
+                'error' => $e->getMessage(),
+            ];
+        }
+    },
+    
     'POST /api/auth/login' => function() use ($pdo, $body) {
         $username = $body['username'] ?? '';
         $password = $body['password'] ?? '';
