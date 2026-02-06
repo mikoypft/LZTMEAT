@@ -15,8 +15,12 @@ class Transfer extends Model
         'from',
         'to',
         'quantity',
+        'quantity_received',
         'status',
         'requested_by',
+        'discrepancy_reason',
+        'received_by',
+        'received_at',
     ];
 
     public function product(): BelongsTo

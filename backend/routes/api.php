@@ -77,6 +77,7 @@ Route::delete('/production/{id}', [ProductionController::class, 'destroy']);
 Route::get('/transfers', [TransferController::class, 'index']);
 Route::post('/transfers', [TransferController::class, 'store']);
 Route::put('/transfers/{id}', [TransferController::class, 'updateStatus']);
+Route::post('/transfers/{id}/receive', [TransferController::class, 'receiveTransfer']);
 
 // Stores endpoints
 Route::get('/stores', [StoreController::class, 'index']);

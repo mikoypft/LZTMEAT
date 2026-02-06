@@ -34,6 +34,7 @@ import { EmployeesPage } from "@/app/components/EmployeesPage";
 import { SuppliersPage } from "@/app/components/SuppliersPage";
 import { HistoryPage } from "@/app/components/HistoryPage";
 import { DiscountsPage } from "@/app/components/DiscountsPage";
+import { ReportsPage } from "@/app/components/ReportsPage";
 import TransactionsPage from "@/app/components/TransactionsPage";
 import { refreshSession } from "@/utils/api";
 
@@ -45,6 +46,7 @@ type Page =
   | "ingredients"
   | "transfer"
   | "sales"
+  | "reports"
   | "categories"
   | "stores"
   | "employees"
@@ -304,6 +306,12 @@ export default function App() {
           permission: "sales",
         },
         {
+          id: "reports" as Page,
+          icon: BarChart3,
+          label: "Reports",
+          permission: "reports",
+        },
+        {
           id: "history" as Page,
           icon: History,
           label: "History",
@@ -357,6 +365,12 @@ export default function App() {
           id: "sales" as Page,
           icon: Receipt,
           label: "Sales",
+          roles: ["STORE"],
+        },
+        {
+          id: "reports" as Page,
+          icon: BarChart3,
+          label: "Reports",
           roles: ["STORE"],
         },
         {
@@ -455,6 +469,12 @@ export default function App() {
         id: "sales" as Page,
         icon: Receipt,
         label: "Sales",
+        roles: ["ADMIN", "STORE"],
+      },
+      {
+        id: "reports" as Page,
+        icon: BarChart3,
+        label: "Reports",
         roles: ["ADMIN", "STORE"],
       },
       { id: "stores" as Page, icon: Store, label: "Stores", roles: ["ADMIN"] },
@@ -749,6 +769,9 @@ export default function App() {
                 userRole={currentUser.role}
                 currentUser={currentUser}
               />
+            )}
+            {currentPage === "reports" && (
+              <ReportsPage currentUser={currentUser} />
             )}
             {currentPage === "categories" && <CategoriesPage />}
             {currentPage === "stores" && <StoresManagementPage />}

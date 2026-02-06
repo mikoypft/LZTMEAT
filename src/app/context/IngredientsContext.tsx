@@ -90,7 +90,7 @@ export function IngredientsProvider({ children }: { children: ReactNode }) {
     }
 
     if (ingredient.stock < quantity) {
-      alert(
+      console.warn(
         `Insufficient stock for ${ingredient.name}. Available: ${ingredient.stock} ${ingredient.unit}, Required: ${quantity} ${ingredient.unit}`,
       );
       return false;

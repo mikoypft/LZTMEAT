@@ -475,9 +475,12 @@ export function InventoryPage({
   const lowStockItems = inventory.filter(
     (item) => item.totalStock < item.minStockLevel,
   );
-  const reorderItems = inventory.filter(
-    (item) => item.totalStock <= item.reorderPoint,
-  );
+  const reorderItems = inventory.filter((item) => {
+    // Check if any store's stock is below reorder point
+    return Object.values(item.storeStocks).some(
+      (stock) => stock <= item.reorderPoint,
+    );
+  });
   const totalValue = inventory.reduce((sum, item) => sum + item.totalStock, 0);
 
   const stockByLocation = inventory.map((item) => {
@@ -729,20 +732,6 @@ export function InventoryPage({
             Encode Product
           </button>
           <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
-          <button
-            onClick={generateReorderReport}
-            className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
-          >
-            <FileText className="w-4 h-4" />
-            Reorder Report ({reorderItems.length})
-          </button>
-          <button
             onClick={() => setShowReorderReport(!showReorderReport)}
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm"
           >
@@ -826,27 +815,46 @@ export function InventoryPage({
           <h2 className="mb-4">Stock Distribution by Location</h2>
           <div className="overflow-x-auto">
             <ResponsiveContainer width="100%" height={300} minWidth={300}>
-              <BarChart data={stockByLocation}>
+              <BarChart
+                data={stockByLocation}
+                margin={{ top: 20, right: 30, left: 0, bottom: 80 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="name"
                   angle={-45}
                   textAnchor="end"
-                  height={100}
+                  height={80}
                 />
                 <YAxis />
                 <Tooltip />
-                <Legend />
-                <Bar dataKey="Production" fill="#dc2626" />
+                <Bar dataKey="Production" fill="#3b82f6" />
                 {storeLocations.map((store, index) => (
                   <Bar
                     key={store.id}
                     dataKey={store.name}
-                    fill={["#ef4444", "#f87171", "#fca5a5"][index % 3]}
+                    fill={
+                      ["#10b981", "#f59e0b", "#8b5cf6", "#ec4899"][index % 4]
+                    }
                   />
                 ))}
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          {/* Legend below chart */}
+          <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-500 rounded"></div>
+              <span className="text-sm">Production</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <span className="text-sm">Main Store</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-amber-500 rounded"></div>
+              <span className="text-sm">Branch Store</span>
+            </div>
           </div>
         </div>
 
@@ -1248,65 +1256,99 @@ export function InventoryPage({
             {/* Report Items */}
             {reorderItems.length > 0 ? (
               <div className="space-y-3">
-                {reorderItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`p-4 border rounded-lg ${
-                      item.totalStock < item.minStockLevel
-                        ? "bg-red-50 border-red-300"
-                        : "bg-orange-50 border-orange-300"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-semibold text-base">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          SKU: {item.sku}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-xs font-bold px-2 py-1 rounded ${
-                          item.totalStock < item.minStockLevel
-                            ? "bg-red-600 text-white"
-                            : "bg-orange-600 text-white"
-                        }`}
-                      >
-                        {item.totalStock < item.minStockLevel
-                          ? "CRITICAL"
-                          : "LOW"}
-                      </span>
-                    </div>
+                {reorderItems.map((item) => {
+                  // Find stores with low stock
+                  const lowStores = storeLocations.filter(
+                    (store) =>
+                      (item.storeStocks[store.name] || 0) <= item.reorderPoint,
+                  );
 
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Current Stock</p>
-                        <p className="font-semibold">
-                          {item.totalStock} {item.unit}
-                        </p>
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-4 border rounded-lg ${
+                        item.totalStock < item.minStockLevel
+                          ? "bg-red-50 border-red-300"
+                          : "bg-orange-50 border-orange-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-semibold text-base">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            SKU: {item.sku}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-2 py-1 rounded ${
+                            item.totalStock < item.minStockLevel
+                              ? "bg-red-600 text-white"
+                              : "bg-orange-600 text-white"
+                          }`}
+                        >
+                          {item.totalStock < item.minStockLevel
+                            ? "CRITICAL"
+                            : "LOW"}
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Reorder Point</p>
-                        <p className="font-semibold">
-                          {item.reorderPoint} {item.unit}
+
+                      {/* Low Stock Stores - Now at Top */}
+                      <div className="mb-3 p-2 bg-white/50 rounded border border-current/20">
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">
+                          Low Stock Store:
                         </p>
+                        <div className="flex flex-wrap gap-2">
+                          {lowStores.map((store) => (
+                            <span
+                              key={store.id}
+                              className="inline-block bg-orange-200 text-orange-900 text-xs px-2 py-1 rounded font-medium"
+                            >
+                              {store.name}: {item.storeStocks[store.name] || 0}{" "}
+                              {item.unit}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Min Level</p>
-                        <p className="font-semibold">
-                          {item.minStockLevel} {item.unit}
-                        </p>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Reorder Point</p>
+                          <p className="font-semibold">
+                            {item.reorderPoint} {item.unit}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Min Level</p>
+                          <p className="font-semibold">
+                            {item.minStockLevel} {item.unit}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-muted-foreground">
+                            Recommended Order
+                          </p>
+                          <p className="font-semibold">
+                            {item.reorderQuantity} {item.unit}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">
-                          Recommended Order
-                        </p>
-                        <p className="font-semibold">
-                          {item.reorderQuantity} {item.unit}
-                        </p>
+
+                      {/* Transfer Stock Button */}
+                      <div className="mt-4">
+                        <button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setShowAdjustmentModal(true);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Transfer Stock
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -1666,16 +1708,12 @@ function EncodeProductModal({
     category: "",
     unit: "kg",
     price: 0,
-    storeLocation: "",
-    initialQuantity: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
 
   useEffect(() => {
     loadCategories();
-    loadStoreLocations();
   }, []);
 
   const loadCategories = async () => {
@@ -1688,19 +1726,6 @@ function EncodeProductModal({
     } catch (error) {
       console.error("Error loading categories:", error);
       toast.error("Failed to load categories");
-    }
-  };
-
-  const loadStoreLocations = async () => {
-    try {
-      const storesData = await getStores();
-      setStoreLocations(storesData);
-      if (storesData.length > 0 && !formData.storeLocation) {
-        setFormData((prev) => ({ ...prev, storeLocation: storesData[0].name }));
-      }
-    } catch (error) {
-      console.error("Error loading store locations:", error);
-      toast.error("Failed to load store locations");
     }
   };
 
@@ -1734,15 +1759,8 @@ function EncodeProductModal({
         image: null,
       });
 
-      // Create inventory record for the selected store with initial quantity
-      await addInventory(
-        newProduct.id,
-        formData.storeLocation,
-        formData.initialQuantity,
-      );
-
       toast.success(
-        `Product added to ${formData.storeLocation} with ${formData.initialQuantity} ${formData.unit}`,
+        `Product "${formData.name}" has been created. Add stock via Production or transfer from other locations.`,
       );
       onAddProduct();
       onClose();
@@ -1839,51 +1857,6 @@ function EncodeProductModal({
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-2">Store Location</label>
-              {storeLocations.length > 0 ? (
-                <select
-                  value={formData.storeLocation}
-                  onChange={(e) =>
-                    setFormData({ ...formData, storeLocation: e.target.value })
-                  }
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                >
-                  <option value="">Select Store Location</option>
-                  {storeLocations.map((store) => (
-                    <option key={store.id} value={store.name}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                  No store locations available. Please create store locations
-                  first.
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm mb-2">Initial Quantity</label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={formData.initialQuantity}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    initialQuantity: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
           </div>
 
           <div className="flex gap-2 pt-4">

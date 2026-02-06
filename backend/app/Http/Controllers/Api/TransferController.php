@@ -23,10 +23,14 @@ class TransferController extends Controller
                 'from' => $t->from,
                 'to' => $t->to,
                 'quantity' => $t->quantity,
+                'quantityReceived' => $t->quantity_received,
+                'discrepancy' => $t->quantity_received ? $t->quantity - $t->quantity_received : null,
+                'discrepancyReason' => $t->discrepancy_reason,
                 'date' => $t->created_at->toDateString(),
                 'time' => $t->created_at->format('H:i'),
                 'status' => strtolower(str_replace(' ', '-', $t->status)),
                 'transferredBy' => $t->requested_by,
+                'receivedBy' => $t->received_by,
                 'createdAt' => $t->created_at->toIso8601String(),
                 'updatedAt' => $t->updated_at->toIso8601String(),
             ]),
@@ -49,7 +53,7 @@ class TransferController extends Controller
             'to' => $request->to,
             'quantity' => $request->quantity,
             'requested_by' => $request->transferredBy,
-            'status' => 'Pending',
+            'status' => 'In Transit',
         ]);
 
         $transfer->load('product');
@@ -64,10 +68,14 @@ class TransferController extends Controller
                 'from' => $transfer->from,
                 'to' => $transfer->to,
                 'quantity' => $transfer->quantity,
+                'quantityReceived' => $transfer->quantity_received,
+                'discrepancy' => null,
+                'discrepancyReason' => $transfer->discrepancy_reason,
                 'date' => $transfer->created_at->toDateString(),
                 'time' => $transfer->created_at->format('H:i'),
                 'status' => strtolower(str_replace(' ', '-', $transfer->status)),
                 'transferredBy' => $transfer->requested_by,
+                'receivedBy' => $transfer->received_by,
                 'createdAt' => $transfer->created_at->toIso8601String(),
                 'updatedAt' => $transfer->updated_at->toIso8601String(),
             ],
@@ -150,6 +158,95 @@ class TransferController extends Controller
         }
         
         $transfer->update(['status' => $status]);
+        
+        $transfer->load('product');
+        
+        return response()->json([
+            'transfer' => [
+                'id' => $transfer->id,
+                'productId' => $transfer->product_id,
+                'productName' => $transfer->product->name,
+                'sku' => $transfer->product->sku,
+                'unit' => $transfer->product->unit,
+                'from' => $transfer->from,
+                'to' => $transfer->to,
+                'quantity' => $transfer->quantity,
+                'quantityReceived' => $transfer->quantity_received,
+                'discrepancy' => $transfer->quantity_received ? $transfer->quantity - $transfer->quantity_received : null,
+                'discrepancyReason' => $transfer->discrepancy_reason,
+                'date' => $transfer->created_at->toDateString(),
+                'time' => $transfer->created_at->format('H:i'),
+                'status' => strtolower(str_replace(' ', '-', $transfer->status)),
+                'transferredBy' => $transfer->requested_by,
+                'receivedBy' => $transfer->received_by,
+                'createdAt' => $transfer->created_at->toIso8601String(),
+                'updatedAt' => $transfer->updated_at->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function receiveTransfer(Request $request, $id)
+    {
+        $request->validate([
+            'quantityReceived' => 'required|numeric|min:0',
+            'discrepancyReason' => 'nullable|string|in:damaged,evaporation,measurement-error,theft,other',
+            'receivedBy' => 'required|string',
+        ]);
+
+        $transfer = Transfer::findOrFail($id);
+        
+        // Only allow receiving if status is "In Transit"
+        if (strtolower(str_replace(' ', '-', $transfer->status)) !== 'in-transit') {
+            return response()->json(['error' => 'Transfer must be in transit to receive'], 400);
+        }
+
+        $quantityReceived = $request->quantityReceived;
+        $originalQuantity = $transfer->quantity;
+        $discrepancy = $originalQuantity - $quantityReceived;
+
+        $productId = $transfer->product_id;
+        $toLocation = $transfer->to;
+
+        \Log::info("Processing transfer receipt", [
+            'transfer_id' => $id,
+            'quantity_sent' => $originalQuantity,
+            'quantity_received' => $quantityReceived,
+            'discrepancy' => $discrepancy,
+            'discrepancy_reason' => $request->discrepancyReason,
+        ]);
+
+        // Update inventory at destination with only the received quantity
+        $destInventory = Inventory::where('product_id', $productId)
+            ->where('location', $toLocation)
+            ->first();
+
+        if ($destInventory) {
+            $newQty = $destInventory->quantity + $quantityReceived;
+            $destInventory->quantity = $newQty;
+            $destInventory->save();
+            \Log::info("Updated destination inventory", [
+                'new_qty' => $newQty,
+            ]);
+        } else {
+            // Create new inventory entry if it doesn't exist
+            Inventory::create([
+                'product_id' => $productId,
+                'location' => $toLocation,
+                'quantity' => $quantityReceived
+            ]);
+            \Log::info("Created new destination inventory", [
+                'qty' => $quantityReceived,
+            ]);
+        }
+
+        // Update transfer with received details
+        $transfer->update([
+            'status' => 'Completed',
+            'quantity_received' => $quantityReceived,
+            'discrepancy_reason' => $request->discrepancyReason,
+            'received_by' => $request->receivedBy,
+            'received_at' => now(),
+        ]);
 
         $transfer->load('product');
 
@@ -163,13 +260,19 @@ class TransferController extends Controller
                 'from' => $transfer->from,
                 'to' => $transfer->to,
                 'quantity' => $transfer->quantity,
+                'quantityReceived' => $transfer->quantity_received,
+                'discrepancy' => $discrepancy,
+                'discrepancyReason' => $transfer->discrepancy_reason,
                 'date' => $transfer->created_at->toDateString(),
                 'time' => $transfer->created_at->format('H:i'),
                 'status' => strtolower(str_replace(' ', '-', $transfer->status)),
                 'transferredBy' => $transfer->requested_by,
+                'receivedBy' => $transfer->received_by,
                 'createdAt' => $transfer->created_at->toIso8601String(),
                 'updatedAt' => $transfer->updated_at->toIso8601String(),
             ],
         ]);
     }
 }
+
+

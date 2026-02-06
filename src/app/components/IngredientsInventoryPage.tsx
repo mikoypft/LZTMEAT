@@ -884,7 +884,7 @@ function StockAdjustmentModal({
     e.preventDefault();
     const qty = parseFloat(quantity);
     if (!quantity || qty <= 0 || !reason) {
-      alert("Please enter quantity and reason");
+      toast.error("Please enter quantity and reason");
       return;
     }
     setIsAdjusting(true);
@@ -1082,7 +1082,7 @@ function AddIngredientModal({
       reorder <= 0 ||
       !supplierId
     ) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
     const newIngredient = {

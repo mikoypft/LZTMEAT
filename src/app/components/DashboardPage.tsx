@@ -89,7 +89,7 @@ const COLORS = [
 export function DashboardPage({ userRole, userName }: DashboardPageProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<
     "today" | "week" | "month"
-  >("week");
+  >("today");
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalRevenue: 0,
@@ -242,16 +242,42 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
         0,
       );
 
-      // Calculate low stock items
-      const MIN_STOCK_THRESHOLD = 50;
-      const inventoryByProduct = new Map<string, number>();
+      // Calculate low stock items - Per-store basis
+      // Default reorder point threshold
+      const REORDER_POINT = 100;
+
+      // Group inventory by productId to check per-store status
+      const inventoryByProductAndLocation = new Map<
+        string,
+        { [location: string]: number }
+      >();
       inventory.forEach((inv: InventoryRecord) => {
-        const current = inventoryByProduct.get(inv.productId) || 0;
-        inventoryByProduct.set(inv.productId, current + inv.quantity);
+        if (!inventoryByProductAndLocation.has(inv.productId)) {
+          inventoryByProductAndLocation.set(inv.productId, {});
+        }
+        inventoryByProductAndLocation.get(inv.productId)![inv.location] =
+          inv.quantity;
       });
-      const lowStockCount = Array.from(inventoryByProduct.values()).filter(
-        (qty) => qty < MIN_STOCK_THRESHOLD,
-      ).length;
+
+      // Count products where any non-production location has stock below reorder point
+      let lowStockCount = 0;
+      inventoryByProductAndLocation.forEach((locations) => {
+        const hasLowStock = Object.entries(locations).some(
+          ([location, quantity]) => {
+            // Skip production facilities
+            if (
+              location === "Production" ||
+              location === "Production Facility"
+            ) {
+              return false;
+            }
+            return quantity <= REORDER_POINT;
+          },
+        );
+        if (hasLowStock) {
+          lowStockCount++;
+        }
+      });
 
       // Sales by day
       const salesByDay =

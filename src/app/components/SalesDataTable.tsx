@@ -1,6 +1,5 @@
 import {
   Filter,
-  Download,
   Eye,
   Edit2,
   ChevronDown,
@@ -12,7 +11,6 @@ import {
   updateSale,
   getSales,
   getStores,
-  exportDailyReportPDF,
   exportDailyReportCSV,
   type Sale,
   type StoreLocation,
@@ -341,8 +339,14 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
 
           const totalVal = parseFloat(String(sale.total)) || 0;
           const subtotalVal = parseFloat(String(sale.subtotal)) || 0;
-          const discountVal =
+          let discountVal =
             parseFloat(String(sale.globalDiscount || sale.discount)) || 0;
+
+          // If discount is 0 but subtotal > total, calculate from the difference
+          if (discountVal === 0 && subtotalVal > totalVal) {
+            discountVal = subtotalVal - totalVal;
+          }
+
           const taxVal = parseFloat(String(sale.tax)) || 0;
 
           const transformed = {
@@ -354,7 +358,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
               minute: "2-digit",
             }),
             store: sale.location || "Unknown Store",
-            customer: String(sale.customer || "Walk-in Customer"),
+            customer: sale.customer?.name || "Walk-in Customer",
             items: itemsArray.length,
             subtotal: subtotalVal,
             discount: discountVal,
@@ -467,64 +471,6 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   console.log("Total sales calculated:", totalSales);
   console.log("Total transactions:", totalTransactions);
   console.log("Average transaction value:", avgTransactionValue);
-
-  // Export to CSV
-  const exportToCSV = () => {
-    const headers = [
-      "Transaction ID",
-      "Date",
-      "Time",
-      "Store",
-      "Customer",
-      "Items",
-      "Subtotal",
-      "Discount",
-      "Tax",
-      "Total",
-      "Payment Method",
-      "Cashier",
-      "Status",
-    ];
-    const rows = filteredSales.map((sale) => [
-      sale.transactionId,
-      sale.date,
-      sale.time,
-      sale.store,
-      sale.customer,
-      sale.items,
-      (Number(sale.subtotal) || 0).toFixed(2),
-      (Number(sale.discount) || 0).toFixed(2),
-      (Number(sale.tax) || 0).toFixed(2),
-      (Number(sale.total) || 0).toFixed(2),
-      sale.paymentMethod,
-      sale.cashier,
-      sale.status,
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.join(","))
-      .join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales-report-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-  };
-
-  // Export to PDF Daily Report
-  const handleExportPDF = async () => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      toast.promise(exportDailyReportPDF(today), {
-        loading: "Generating PDF report...",
-        success: "PDF report downloaded successfully!",
-        error: "Failed to generate PDF report",
-      });
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-    }
-  };
 
   // Export Daily Report to CSV (server-side)
   const handleExportDailyCSV = async () => {
@@ -782,6 +728,9 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
               <p className="text-2xl lg:text-3xl text-orange-600 mb-1">
                 ₱{(Number(totalDiscount) || 0).toFixed(2)}
               </p>
+              <p className="text-xs lg:text-sm text-muted-foreground">
+                Total Discount
+              </p>
             </div>
           </div>
 
@@ -798,21 +747,6 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                   className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <button
-                onClick={exportToCSV}
-                className="flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export CSV</span>
-              </button>
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                title="Download daily sales report as PDF"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export PDF</span>
-              </button>
             </div>
 
             <div className="flex flex-wrap gap-2">

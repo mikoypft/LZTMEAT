@@ -9,6 +9,7 @@ import {
   FileText,
 } from "lucide-react";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { toast } from "sonner";
 
 interface Transaction {
   id: string;
@@ -65,13 +66,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
 
   const handleAddTransaction = async () => {
     if (!amount || !description || !category) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -104,12 +105,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         setDescription("");
         setCategory("");
         setReference("");
+        toast.success("Transaction added successfully");
       } else {
-        alert("Failed to add transaction");
+        toast.error("Failed to add transaction");
       }
     } catch (error) {
       console.error("Error adding transaction:", error);
-      alert("Error adding transaction");
+      toast.error("Error adding transaction");
     }
   };
 

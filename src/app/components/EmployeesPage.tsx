@@ -33,7 +33,17 @@ import {
 
 // Available permissions for Employee role
 const AVAILABLE_PERMISSIONS = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    description: "View dashboard and analytics",
+  },
   { id: "pos", label: "Point of Sale", description: "Access POS system" },
+  {
+    id: "production",
+    label: "Production",
+    description: "Manage production records",
+  },
   {
     id: "inventory",
     label: "Inventory",
@@ -44,9 +54,32 @@ const AVAILABLE_PERMISSIONS = [
     label: "Categories",
     description: "Manage product categories",
   },
-  { id: "ingredients", label: "Ingredients", description: "View ingredients" },
+  {
+    id: "ingredients",
+    label: "Ingredients",
+    description: "View and manage ingredients",
+  },
+  {
+    id: "transfer",
+    label: "Transfer",
+    description: "Manage inventory transfers",
+  },
   { id: "sales", label: "Sales", description: "View sales reports" },
+  { id: "reports", label: "Reports", description: "Generate and view reports" },
+  { id: "stores", label: "Stores", description: "Manage store locations" },
+  {
+    id: "employees",
+    label: "Users",
+    description: "Manage users and employees",
+  },
+  { id: "suppliers", label: "Suppliers", description: "Manage suppliers" },
+  { id: "discounts", label: "Discounts", description: "Manage discounts" },
   { id: "history", label: "History", description: "View history logs" },
+  {
+    id: "transactions",
+    label: "Transactions",
+    description: "View transactions",
+  },
 ];
 
 export function EmployeesPage() {

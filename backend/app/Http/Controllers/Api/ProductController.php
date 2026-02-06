@@ -34,9 +34,18 @@ class ProductController extends Controller
             'image' => 'nullable|string',
         ]);
 
+        // Find category by name
+        $category = \App\Models\Category::where('name', $request->category)->first();
+        
+        if (!$category) {
+            return response()->json([
+                'error' => 'Category not found'
+            ], 422);
+        }
+
         $product = Product::create([
             'name' => $request->name,
-            'category_id' => $request->category,
+            'category_id' => $category->id,
             'price' => $request->price,
             'unit' => $request->unit,
             'image' => $request->image,

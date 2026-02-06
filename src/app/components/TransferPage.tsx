@@ -15,8 +15,11 @@ import {
   getTransfers,
   createTransfer,
   updateTransferStatus,
+  receiveTransfer,
+  getAllUsers,
   type Product,
   type TransferRequest,
+  type AllUser,
 } from "@/utils/api";
 import { toast } from "sonner";
 
@@ -25,6 +28,9 @@ interface Transfer {
   productName: string;
   sku: string;
   quantity: number;
+  quantityReceived?: number;
+  discrepancy?: number;
+  discrepancyReason?: string;
   unit: string;
   from: string;
   to: string;
@@ -32,6 +38,7 @@ interface Transfer {
   time: string;
   status: "pending" | "in-transit" | "completed" | "cancelled" | "rejected";
   transferredBy: string;
+  receivedBy?: string;
 }
 
 const PRODUCTS: Product[] = [
@@ -60,8 +67,18 @@ export function TransferPage() {
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<AllUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] =
+    useState<TransferRequest | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [receiveData, setReceiveData] = useState({
+    quantityReceived: "",
+    discrepancyReason: "",
+    receivedBy: "",
+  });
   const [newTransfer, setNewTransfer] = useState({
     productId: "",
     quantity: "",
@@ -77,14 +94,22 @@ export function TransferPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [transfersData, storesData, productsData] = await Promise.all([
-        getTransfers(),
-        getStores(),
-        getProducts(),
-      ]);
-      setTransfers(transfersData);
+      const [transfersData, storesData, productsData, usersData] =
+        await Promise.all([
+          getTransfers(),
+          getStores(),
+          getProducts(),
+          getAllUsers(),
+        ]);
+      // Sort transfers by createdAt in descending order (newest first)
+      const sortedTransfers = transfersData.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
       setProducts(productsData);
+      setUsers(usersData);
 
       // Set default locations if stores exist
       if (storesData.length > 0) {
@@ -110,12 +135,12 @@ export function TransferPage() {
       !newTransfer.quantity ||
       !newTransfer.requestedBy
     ) {
-      alert("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (newTransfer.from === newTransfer.to) {
-      alert("Source and destination must be different");
+      toast.error("Source and destination must be different");
       return;
     }
 
@@ -123,7 +148,7 @@ export function TransferPage() {
       (p) => p.id === Number(newTransfer.productId),
     );
     if (!product) {
-      alert("Product not found");
+      toast.error("Product not found");
       return;
     }
 
@@ -138,6 +163,7 @@ export function TransferPage() {
     try {
       const createdTransfer = await createTransfer(transferData);
       setTransfers([createdTransfer, ...transfers]);
+      setCurrentPage(1);
       setNewTransfer({
         productId: "",
         quantity: "",
@@ -160,6 +186,50 @@ export function TransferPage() {
       toast.success("Transfer status updated successfully");
     } catch (error) {
       toast.error("Failed to update transfer status");
+    }
+  };
+
+  const handleReceiveTransfer = async () => {
+    if (!selectedTransfer) return;
+
+    if (!receiveData.quantityReceived || !receiveData.receivedBy) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const updatedTransfer = await receiveTransfer(
+        selectedTransfer.id,
+        parseFloat(receiveData.quantityReceived),
+        receiveData.discrepancyReason || undefined,
+        receiveData.receivedBy,
+      );
+
+      setTransfers(
+        transfers.map((t) =>
+          t.id === selectedTransfer.id ? updatedTransfer : t,
+        ),
+      );
+
+      const discrepancy = updatedTransfer.discrepancy;
+      if (discrepancy && discrepancy > 0) {
+        toast.warning(
+          `Transfer received with ${discrepancy} ${selectedTransfer.unit} discrepancy (${receiveData.discrepancyReason || "not specified"})`,
+        );
+      } else {
+        toast.success("Transfer received successfully");
+      }
+
+      setShowReceiveModal(false);
+      setSelectedTransfer(null);
+      setReceiveData({
+        quantityReceived: "",
+        discrepancyReason: "",
+        receivedBy: "",
+      });
+    } catch (error) {
+      console.error("Receive error:", error);
+      toast.error("Failed to receive transfer");
     }
   };
 
@@ -193,7 +263,6 @@ export function TransferPage() {
     }
   };
 
-  const pendingCount = transfers.filter((t) => t.status === "pending").length;
   const inTransitCount = transfers.filter(
     (t) => t.status === "in-transit",
   ).length;
@@ -202,11 +271,18 @@ export function TransferPage() {
     (t) => t.status === "completed" && t.date === today,
   ).length;
 
+  // Pagination logic
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(transfers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransfers = transfers.slice(startIndex, endIndex);
+
   return (
     <div className="h-full overflow-auto bg-muted/30">
       <div className="container mx-auto p-6 space-y-6">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="bg-primary/10 p-3 rounded-lg">
@@ -215,16 +291,6 @@ export function TransferPage() {
             </div>
             <p className="text-3xl text-primary mb-1">{transfers.length}</p>
             <p className="text-sm text-muted-foreground">Total Transfers</p>
-          </div>
-
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-            <p className="text-3xl text-yellow-600 mb-1">{pendingCount}</p>
-            <p className="text-sm text-muted-foreground">Pending</p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border">
@@ -343,8 +409,7 @@ export function TransferPage() {
                 </div>
                 <div>
                   <label className="block text-sm mb-2">Transferred By</label>
-                  <input
-                    type="text"
+                  <select
                     value={newTransfer.requestedBy}
                     onChange={(e) =>
                       setNewTransfer({
@@ -352,9 +417,18 @@ export function TransferPage() {
                         requestedBy: e.target.value,
                       })
                     }
-                    placeholder="Enter name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+                  >
+                    <option value="">Select a user</option>
+                    {users.map((user) => (
+                      <option
+                        key={user.id}
+                        value={user.fullName || user.username}
+                      >
+                        {user.fullName || user.username}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="mt-4 flex gap-2 justify-end">
@@ -383,18 +457,21 @@ export function TransferPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4">Product</th>
                     <th className="text-left py-3 px-4">SKU</th>
-                    <th className="text-right py-3 px-4">Quantity</th>
+                    <th className="text-right py-3 px-4">Qty Sent</th>
+                    <th className="text-right py-3 px-4">Qty Received</th>
+                    <th className="text-right py-3 px-4">Discrepancy</th>
                     <th className="text-left py-3 px-4">From</th>
                     <th className="text-center py-3 px-4"></th>
                     <th className="text-left py-3 px-4">To</th>
                     <th className="text-left py-3 px-4">Date & Time</th>
                     <th className="text-left py-3 px-4">Transferred By</th>
+                    <th className="text-left py-3 px-4">Received By</th>
                     <th className="text-left py-3 px-4">Status</th>
                     <th className="text-left py-3 px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transfers.map((transfer) => (
+                  {paginatedTransfers.map((transfer) => (
                     <tr
                       key={transfer.id}
                       className="border-b border-border hover:bg-muted/50"
@@ -405,6 +482,32 @@ export function TransferPage() {
                       </td>
                       <td className="py-3 px-4 text-right text-primary">
                         {transfer.quantity} {transfer.unit}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {transfer.quantityReceived !== undefined &&
+                        transfer.quantityReceived !== null ? (
+                          <span className="text-green-600 font-medium">
+                            {transfer.quantityReceived} {transfer.unit}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {transfer.discrepancy !== undefined &&
+                        transfer.discrepancy !== null &&
+                        transfer.discrepancy !== 0 ? (
+                          <span className="text-orange-600 font-medium">
+                            {transfer.discrepancy > 0 ? "-" : "+"}
+                            {Math.abs(transfer.discrepancy)} {transfer.unit}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">
@@ -424,6 +527,9 @@ export function TransferPage() {
                       </td>
                       <td className="py-3 px-4">{transfer.transferredBy}</td>
                       <td className="py-3 px-4">
+                        {transfer.receivedBy || "-"}
+                      </td>
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(transfer.status)}
                           <span
@@ -435,28 +541,74 @@ export function TransferPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <select
-                          value={transfer.status}
-                          onChange={(e) =>
-                            updateStatus(
-                              transfer.id,
-                              e.target.value as Transfer["status"],
-                            )
-                          }
-                          className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="in-transit">In Transit</option>
-                          <option value="completed">Completed</option>
-                          <option value="rejected">Rejected</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
+                        <div className="flex items-center gap-2">
+                          {transfer.status === "in-transit" ? (
+                            <button
+                              onClick={() => {
+                                setSelectedTransfer(transfer);
+                                setReceiveData({
+                                  quantityReceived:
+                                    transfer.quantity.toString(),
+                                  discrepancyReason: "",
+                                  receivedBy: "",
+                                });
+                                setShowReceiveModal(true);
+                              }}
+                              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                            >
+                              Receive
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages} • Showing{" "}
+                  {paginatedTransfers.length} of {transfers.length} transfers
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 border border-border rounded text-sm hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={`px-3 py-2 rounded text-sm ${
+                          currentPage === i + 1
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border hover:bg-muted"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 border border-border rounded text-sm hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -511,16 +663,166 @@ export function TransferPage() {
                 </div>
                 <span className="text-xl text-blue-600">{inTransitCount}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-yellow-600" />
-                  <span>Pending</span>
-                </div>
-                <span className="text-xl text-yellow-600">{pendingCount}</span>
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Receive Transfer Modal */}
+        {showReceiveModal && selectedTransfer && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Receive Transfer - {selectedTransfer.productName}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowReceiveModal(false);
+                    setReceiveData({
+                      quantityReceived: selectedTransfer.quantity,
+                      discrepancyReason: "",
+                      receivedBy: "",
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReceiveTransfer();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Original Quantity Sent
+                  </label>
+                  <input
+                    type="number"
+                    value={selectedTransfer.quantity}
+                    disabled
+                    className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quantity sent from {selectedTransfer.fromLocation}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity Received *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={receiveData.quantityReceived}
+                    onChange={(e) =>
+                      setReceiveData({
+                        ...receiveData,
+                        quantityReceived: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                  {receiveData.quantityReceived !==
+                    selectedTransfer.quantity && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      Discrepancy:{" "}
+                      {(
+                        selectedTransfer.quantity - receiveData.quantityReceived
+                      ).toFixed(2)}{" "}
+                      unit(s)
+                    </p>
+                  )}
+                </div>
+
+                {receiveData.quantityReceived < selectedTransfer.quantity && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reason for Discrepancy
+                    </label>
+                    <select
+                      value={receiveData.discrepancyReason}
+                      onChange={(e) =>
+                        setReceiveData({
+                          ...receiveData,
+                          discrepancyReason: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select a reason</option>
+                      <option value="damaged">Damaged</option>
+                      <option value="evaporation">
+                        Evaporation/Weight Loss
+                      </option>
+                      <option value="measurement-error">
+                        Measurement Error
+                      </option>
+                      <option value="theft">Missing/Stolen</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Received By (Name) *
+                  </label>
+                  <select
+                    value={receiveData.receivedBy}
+                    onChange={(e) =>
+                      setReceiveData({
+                        ...receiveData,
+                        receivedBy: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select a user</option>
+                    {users.map((user) => (
+                      <option
+                        key={user.id}
+                        value={user.fullName || user.username}
+                      >
+                        {user.fullName || user.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReceiveModal(false);
+                      setReceiveData({
+                        quantityReceived: selectedTransfer.quantity,
+                        discrepancyReason: "",
+                        receivedBy: "",
+                      });
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                  >
+                    Confirm Receipt
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

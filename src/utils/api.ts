@@ -652,10 +652,14 @@ export interface TransferRequest {
   from: string;
   to: string;
   quantity: number;
+  quantityReceived?: number;
+  discrepancy?: number;
+  discrepancyReason?: string;
   date: string;
   time: string;
   status: "pending" | "in-transit" | "completed" | "cancelled" | "rejected";
   transferredBy: string;
+  receivedBy?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -689,6 +693,26 @@ export async function updateTransferStatus(
     {
       method: "PUT",
       body: JSON.stringify({ status }),
+    },
+  );
+  return data.transfer;
+}
+
+export async function receiveTransfer(
+  id: string,
+  quantityReceived: number,
+  discrepancyReason?: string,
+  receivedBy?: string,
+): Promise<TransferRequest> {
+  const data = await apiRequest<{ transfer: TransferRequest }>(
+    `/transfers/${id}/receive`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        quantityReceived,
+        discrepancyReason,
+        receivedBy,
+      }),
     },
   );
   return data.transfer;

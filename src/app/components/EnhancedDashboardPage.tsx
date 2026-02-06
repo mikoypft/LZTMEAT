@@ -117,7 +117,7 @@ export function EnhancedDashboardPage({
 }: DashboardPageProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<
     "today" | "week" | "month"
-  >("week");
+  >("today");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<ComprehensiveMetrics>({
     totalRevenue: 0,
@@ -157,6 +157,29 @@ export function EnhancedDashboardPage({
     loadComprehensiveData();
   }, [selectedPeriod]);
 
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate = new Date();
+
+    if (selectedPeriod === "today") {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (selectedPeriod === "week") {
+      startDate.setDate(now.getDate() - 7);
+    } else if (selectedPeriod === "month") {
+      startDate.setDate(now.getDate() - 30);
+    }
+
+    return startDate;
+  };
+
+  const filterByDateRange = (items: any[], dateField = "timestamp") => {
+    const startDate = getDateRange();
+    return items.filter((item) => {
+      const itemDate = new Date(item[dateField] || item.date || item.createdAt);
+      return itemDate >= startDate;
+    });
+  };
+
   const loadComprehensiveData = async () => {
     try {
       setLoading(true);
@@ -177,13 +200,21 @@ export function EnhancedDashboardPage({
         getCategories(),
       ]);
 
+      // Filter data by selected period
+      const filteredSales = filterByDateRange(sales, "timestamp");
+      const filteredProduction = filterByDateRange(
+        productionRecords,
+        "timestamp",
+      );
+      const filteredTransfers = filterByDateRange(transfers, "createdAt");
+
       // Calculate comprehensive metrics
-      const totalRevenue = sales.reduce(
+      const totalRevenue = filteredSales.reduce(
         (sum, sale) => sum + (Number(sale.total) || 0),
         0,
       );
-      const totalOrders = sales.length;
-      const totalProduction = productionRecords.reduce(
+      const totalOrders = filteredSales.length;
+      const totalProduction = filteredProduction.reduce(
         (sum, record) => sum + record.quantity,
         0,
       );
@@ -199,33 +230,56 @@ export function EnhancedDashboardPage({
         return sum + (product ? inv.quantity * product.price : 0);
       }, 0);
 
-      // Low stock calculation - More accurate
-      const MIN_STOCK_THRESHOLD = 50;
-      const CRITICAL_STOCK_THRESHOLD = 20;
+      // Low stock calculation - Per-store basis
+      // Default reorder point threshold
+      const REORDER_POINT = 100;
 
-      // Aggregate inventory by product across all locations
+      // Group inventory by productId to check per-store status
+      const inventoryByProductAndLocation = new Map<
+        string,
+        { [location: string]: number }
+      >();
+      inventory.forEach((inv: InventoryRecord) => {
+        if (!inventoryByProductAndLocation.has(inv.productId)) {
+          inventoryByProductAndLocation.set(inv.productId, {});
+        }
+        inventoryByProductAndLocation.get(inv.productId)![inv.location] =
+          inv.quantity;
+      });
+
+      // Count products where any non-production location has stock below reorder point
+      let lowStockCount = 0;
+      inventoryByProductAndLocation.forEach((locations) => {
+        const hasLowStock = Object.entries(locations).some(
+          ([location, quantity]) => {
+            // Skip production facilities
+            if (
+              location === "Production" ||
+              location === "Production Facility"
+            ) {
+              return false;
+            }
+            return quantity <= REORDER_POINT;
+          },
+        );
+        if (hasLowStock) {
+          lowStockCount++;
+        }
+      });
+
+      // Create inventoryByProduct map for alert generation (total across all locations)
       const inventoryByProduct = new Map<string, number>();
       inventory.forEach((inv: InventoryRecord) => {
         const current = inventoryByProduct.get(inv.productId) || 0;
         inventoryByProduct.set(inv.productId, current + inv.quantity);
       });
 
-      // Count only products that have inventory records and are below threshold
-      let lowStockCount = 0;
-      inventoryByProduct.forEach((totalQty, productId) => {
-        const product = products.find((p: Product) => p.id === productId);
-        // Only count if product exists and total quantity is below threshold
-        if (product && totalQty < MIN_STOCK_THRESHOLD) {
-          lowStockCount++;
-        }
-      });
-
       // Transfer metrics
-      const pendingTransfers = transfers.filter(
-        (t: TransferRequest) => t.status === "pending",
+      const pendingTransfers = filteredTransfers.filter(
+        (t: TransferRequest) => t.status === "in-transit",
       ).length;
       const today = new Date().toISOString().split("T")[0];
-      const completedTransfersToday = transfers.filter(
+      const completedTransfersToday = filteredTransfers.filter(
         (t: TransferRequest) =>
           t.status === "completed" &&
           new Date(t.updatedAt || t.createdAt).toISOString().split("T")[0] ===
@@ -251,35 +305,51 @@ export function EnhancedDashboardPage({
 
       // Generate chart data
       setChartData({
-        salesByDay: generateSalesByDay(sales),
-        productionByDay: generateProductionByDay(productionRecords),
-        categoryDistribution: generateCategoryDistribution(products, sales),
-        topProducts: generateTopProducts(products, sales),
+        salesByDay: generateSalesByDay(filteredSales, selectedPeriod),
+        productionByDay: generateProductionByDay(
+          filteredProduction,
+          selectedPeriod,
+        ),
+        categoryDistribution: generateCategoryDistribution(
+          products,
+          filteredSales,
+        ),
+        topProducts: generateTopProducts(products, filteredSales),
         inventoryByLocation: generateInventoryByLocation(inventory),
         revenueVsProduction: generateRevenueVsProduction(
-          sales,
-          productionRecords,
+          filteredSales,
+          filteredProduction,
         ),
       });
 
       // Generate alerts
       setAlerts(
-        generateAlerts(inventory, transfers, products, inventoryByProduct),
+        generateAlerts(
+          inventory,
+          filteredTransfers,
+          products,
+          inventoryByProduct,
+        ),
       );
 
       // Generate recent activity
       setRecentActivity(
-        generateRecentActivity(sales, productionRecords, transfers, inventory),
+        generateRecentActivity(
+          filteredSales,
+          filteredProduction,
+          filteredTransfers,
+          inventory,
+        ),
       );
 
       // Generate low stock details
       setLowStockDetails(generateLowStockDetails(products, inventoryByProduct));
 
       // Generate recent transfers
-      setRecentTransfers(transfers.slice(-5).reverse());
+      setRecentTransfers(filteredTransfers.slice(-5).reverse());
 
       // Generate recent sales - show last 10 sales from all stores
-      const sortedSales = [...sales].sort((a, b) => {
+      const sortedSales = [...filteredSales].sort((a, b) => {
         const dateA = new Date(a.timestamp || a.date).getTime();
         const dateB = new Date(b.timestamp || b.date).getTime();
         return dateB - dateA; // Most recent first
@@ -293,13 +363,34 @@ export function EnhancedDashboardPage({
     }
   };
 
-  const generateSalesByDay = (sales: Sale[]) => {
+  const generateSalesByDay = (
+    sales: Sale[],
+    period: "today" | "week" | "month",
+  ) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
+    let daysCount = 7;
+
+    if (period === "today") {
+      daysCount = 1;
+    } else if (period === "week") {
+      daysCount = 7;
+    } else if (period === "month") {
+      daysCount = 30;
+    }
+
+    const last7Days = Array.from({ length: daysCount }, (_, i) => {
       const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
+      date.setDate(date.getDate() - (daysCount - 1 - i));
       return {
-        name: days[date.getDay()],
+        name:
+          daysCount === 1
+            ? "Today"
+            : daysCount === 7
+              ? days[date.getDay()]
+              : date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                }),
         date: date.toISOString().split("T")[0],
         sales: 0,
         orders: 0,
@@ -325,13 +416,34 @@ export function EnhancedDashboardPage({
     }));
   };
 
-  const generateProductionByDay = (records: ProductionRecord[]) => {
+  const generateProductionByDay = (
+    records: ProductionRecord[],
+    period: "today" | "week" | "month",
+  ) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
+    let daysCount = 7;
+
+    if (period === "today") {
+      daysCount = 1;
+    } else if (period === "week") {
+      daysCount = 7;
+    } else if (period === "month") {
+      daysCount = 30;
+    }
+
+    const last7Days = Array.from({ length: daysCount }, (_, i) => {
       const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
+      date.setDate(date.getDate() - (daysCount - 1 - i));
       return {
-        name: days[date.getDay()],
+        name:
+          daysCount === 1
+            ? "Today"
+            : daysCount === 7
+              ? days[date.getDay()]
+              : date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                }),
         date: date.toISOString().split("T")[0],
         produced: 0,
       };
@@ -492,14 +604,14 @@ export function EnhancedDashboardPage({
       }
     });
 
-    // Pending transfer alerts
-    const pendingTransfers = transfers.filter((t) => t.status === "pending");
+    // In transit transfer alerts
+    const pendingTransfers = transfers.filter((t) => t.status === "in-transit");
     if (pendingTransfers.length > 0) {
       alerts.push({
         id: "pending-transfers",
         type: "info",
-        title: "Pending Transfers",
-        message: `${pendingTransfers.length} transfer(s) waiting for approval`,
+        title: "In Transit Transfers",
+        message: `${pendingTransfers.length} transfer(s) awaiting receipt`,
         time: "10 min ago",
         action: "Review",
       });
@@ -745,7 +857,7 @@ export function EnhancedDashboardPage({
           <div className="bg-card rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">
-                Pending Transfers
+                In Transit Transfers
               </span>
               <Truck className="w-4 h-4 text-primary" />
             </div>
@@ -998,40 +1110,42 @@ export function EnhancedDashboardPage({
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-card rounded-lg p-6 border border-border">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button
-              onClick={() => onNavigate?.("pos")}
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
-            >
-              <Plus className="w-6 h-6" />
-              <span className="text-sm font-medium">New Sale</span>
-            </button>
-            <button
-              onClick={() => onNavigate?.("production")}
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
-            >
-              <Factory className="w-6 h-6" />
-              <span className="text-sm font-medium">Record Production</span>
-            </button>
-            <button
-              onClick={() => onNavigate?.("transfer")}
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
-            >
-              <Truck className="w-6 h-6" />
-              <span className="text-sm font-medium">Create Transfer</span>
-            </button>
-            <button
-              onClick={() => onNavigate?.("inventory")}
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
-            >
-              <FileText className="w-6 h-6" />
-              <span className="text-sm font-medium">View Inventory</span>
-            </button>
+        {/* Quick Actions - Only for Admin */}
+        {userRole === "ADMIN" && (
+          <div className="bg-card rounded-lg p-6 border border-border">
+            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button
+                onClick={() => onNavigate?.("pos")}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="text-sm font-medium">New Sale</span>
+              </button>
+              <button
+                onClick={() => onNavigate?.("production")}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
+              >
+                <Factory className="w-6 h-6" />
+                <span className="text-sm font-medium">Record Production</span>
+              </button>
+              <button
+                onClick={() => onNavigate?.("transfer")}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
+              >
+                <Truck className="w-6 h-6" />
+                <span className="text-sm font-medium">Create Transfer</span>
+              </button>
+              <button
+                onClick={() => onNavigate?.("inventory")}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:bg-primary hover:text-primary-foreground transition-colors group"
+              >
+                <FileText className="w-6 h-6" />
+                <span className="text-sm font-medium">View Inventory</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Transfer History */}
         <div className="bg-card rounded-lg border border-border">

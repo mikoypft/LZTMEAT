@@ -9,11 +9,16 @@ PLESK_DEPLOYMENT.md          # Deployment notes and Plesk settings
 # ============================================================================
 # LOCAL DEVELOPMENT ENVIRONMENT FILES
 # ============================================================================
-.env                         # Local backend environment (development)
+.env                         # Local root environment (development)
 .env.local                   # Local root environment variables
 .env.development.local       # Development-specific env
 .env.test.local              # Test environment
-backend/.env.example         # Keep example, ignore actual env
+backend/.env                 # Backend environment (NEVER commit - contains credentials)
+backend/.env.development     # Backend development environment
+backend/.env.test            # Backend test environment
+backend/.env.*.local         # All local backend env files
+# NOTE: .env.example files ARE tracked for developer reference
+!/backend/.env.example       # Keep example (developers copy to .env)
 
 # ============================================================================
 # DEPENDENCIES & PACKAGE MANAGERS
