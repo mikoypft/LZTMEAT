@@ -1,8 +1,12 @@
 # Set index.html as the default file
 DirectoryIndex index.html index.php
 
-# Let real files and directories pass through
+# Enable mod_rewrite
 RewriteEngine On
+RewriteBase /
+
+# CRITICAL: Let real files and directories pass through FIRST
+# This ensures /assets/index-*.js, /assets/index-*.css etc. are actually served
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
@@ -12,39 +16,50 @@ RewriteRule ^ - [L]
 # Route /api calls to Laravel backend
 RewriteRule ^api(/|$)(.*) backend/public/index.php/$2 [QSA,L]
 
-# Route all other requests to index.html for React Router (SPA)
+# Route all other non-existent files/dirs to index.html for React Router (SPA)
 # This allows client-side routing to work properly
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ /index.html [QSA,L]
+RewriteRule ^ index.html [QSA,L]
 
-# MIME types for assets - CRITICAL FOR MODULE LOADING
+# ============================================================================
+# MIME TYPES - CRITICAL FOR MODULE LOADING
+# ============================================================================
+
+# Standard MIME types
 AddType application/javascript js
+AddType application/javascript mjs
 AddType text/css css
 AddType image/svg+xml svg
 AddType font/woff woff
 AddType font/woff2 woff2
 AddType application/json json
+AddType text/html html
 
-# Ensure JavaScript files are served as modules
+# ============================================================================
+# HTTP HEADERS - FORCE CORRECT CONTENT TYPES
+# ============================================================================
+
 <IfModule mod_headers.c>
-  <FilesMatch "\.js$">
+  # CRITICAL: Force JavaScript MIME type for all .js and .mjs files
+  <FilesMatch "\.(js|mjs)$">
     Header set Content-Type "application/javascript; charset=utf-8"
     Header set Access-Control-Allow-Origin "*"
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   
   <FilesMatch "\.css$">
     Header set Content-Type "text/css; charset=utf-8"
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   
-  # Cache control for versioned assets
-  <FilesMatch "\.(js|css|jpg|jpeg|png|gif|ico|woff|woff2|ttf|eot|svg)$">
-    Header set Cache-Control "max-age=31536000, public, immutable"
+  <FilesMatch "\.(jpg|jpeg|png|gif|ico|webp|woff|woff2|ttf|eot|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   
-  # Don't cache HTML
+  # Don't cache HTML - always check for updates
   <FilesMatch "\.html$">
-    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
     Header set Expires "0"
   </FilesMatch>
@@ -55,7 +70,10 @@ AddType application/json json
   Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
-# Compression for text-based files
+# ============================================================================
+# COMPRESSION
+# ============================================================================
+
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/plain
   AddOutputFilterByType DEFLATE text/html
@@ -63,7 +81,9 @@ AddType application/json json
   AddOutputFilterByType DEFLATE text/css
   AddOutputFilterByType DEFLATE text/javascript
   AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/rss+xml
   AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
   AddOutputFilterByType DEFLATE application/json
 </IfModule>
 
