@@ -112,9 +112,39 @@ export function TransferPage() {
       );
       setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
-      setProducts(productsData);
+      
+      // Combine products with inventory data for easier access
+      const productsWithStock = productsData.map((product: Product) => {
+        // For now, calculate total stock across all locations
+        const invRecords = inventoryData.filter(
+          (inv: InventoryRecord) => String(inv.productId) === String(product.id)
+        );
+        const totalStock = invRecords.reduce((sum, inv) => sum + (Number(inv.quantity) || 0), 0);
+        return {
+          ...product,
+          stock: totalStock,
+        };
+      });
+      
+      // Also create a location-specific version for when "from" location is selected
+      const createProductsForLocation = (location: string) => {
+        return productsData.map((product: Product) => {
+          const inv = inventoryData.find(
+            (i: InventoryRecord) => String(i.productId) === String(product.id) && i.location === location
+          );
+          return {
+            ...product,
+            stock: inv ? Number(inv.quantity) || 0 : 0,
+          };
+        });
+      };
+      
+      setProducts(productsWithStock);
       setInventory(inventoryData);
       setUsers(usersData);
+      
+      console.log("Products with stock loaded:", productsWithStock);
+      console.log("Inventory data:", inventoryData);
 
       // Set default locations if stores exist
       if (storesData.length > 0) {
@@ -253,25 +283,6 @@ export function TransferPage() {
     }
   };
 
-  const getProductStock = (productId: string | number, location?: string): number => {
-    const prodId = String(productId);
-    const records = inventory.filter(
-      (inv) => String(inv.productId) === prodId
-    );
-    
-    if (location) {
-      const record = records.find((inv) => inv.location === location);
-      return record ? Math.round(Number(record.quantity) || 0) : 0;
-    }
-    
-    // If no location specified, return total stock across all locations
-    const total = records.reduce((total, inv) => {
-      const qty = Number(inv.quantity) || 0;
-      return total + qty;
-    }, 0);
-    return Math.round(total);
-  };
-
   const getStatusColor = (status: Transfer["status"]) => {
     switch (status) {
       case "completed":
@@ -372,9 +383,7 @@ export function TransferPage() {
                     <option value="">Select Product</option>
                     {products && products.length > 0 ? (
                       products.map((product) => {
-                        const stock = inventory && inventory.length > 0 
-                          ? getProductStock(product.id, newTransfer.from || undefined)
-                          : 0;
+                        const stock = (product as any).stock || 0;
                         const displayUnit = product.unit || "units";
                         return (
                           <option key={product.id} value={product.id}>
