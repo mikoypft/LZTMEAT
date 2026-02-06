@@ -77,7 +77,11 @@ try {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]
     );
+    $dbConnected = true;
+    $dbError = null;
 } catch (PDOException $e) {
+    $dbConnected = false;
+    $dbError = $e->getMessage();
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     
@@ -123,7 +127,22 @@ $routes = [
         ];
     },
     
-    'GET /api/health' => function() use ($pdo) {
+    'GET /api/health' => function() use ($pdo, $dbConnected, $dbError, $dbHost, $dbPort, $dbName, $dbUser) {
+        if (!$dbConnected) {
+            http_response_code(500);
+            return [
+                'status' => 'unhealthy',
+                'database' => 'disconnected',
+                'error' => $dbError,
+                'config' => [
+                    'host' => $dbHost,
+                    'port' => $dbPort,
+                    'database' => $dbName,
+                    'user' => $dbUser,
+                ]
+            ];
+        }
+        
         try {
             $result = $pdo->query('SELECT 1')->fetch();
             return [
@@ -135,7 +154,7 @@ $routes = [
             http_response_code(500);
             return [
                 'status' => 'unhealthy',
-                'database' => 'disconnected',
+                'database' => 'error',
                 'error' => $e->getMessage(),
             ];
         }
