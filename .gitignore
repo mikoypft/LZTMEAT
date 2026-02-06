@@ -1,0 +1,40 @@
+# Environment and Configuration Files (Production)
+.env.production
+backend/.env.production
+backend/.env
+
+# Server/Plesk Configuration
+.htaccess
+PLESK_DEPLOYMENT.md
+
+# Cache and Temporary Files
+backend/bootstrap/cache/
+node_modules/
+dist/
+.vite/
+
+# Logs and Output
+*.log
+backend/history_output.txt
+backend_server.log
+
+# IDE and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Development Environment
+.env.local
+.env.development.local
+.env.test.local
+
+# Backups (keep out of version control)
+backups/
+*.sql
+*.backup
+
+# Build artifacts
+build/
+out/
