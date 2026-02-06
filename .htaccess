@@ -12,12 +12,60 @@ RewriteRule ^ - [L]
 # Route /api calls to Laravel backend
 RewriteRule ^api(/|$)(.*) backend/public/index.php/$2 [QSA,L]
 
-# MIME types for assets
+# Route all other requests to index.html for React Router (SPA)
+# This allows client-side routing to work properly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [QSA,L]
+
+# MIME types for assets - CRITICAL FOR MODULE LOADING
 AddType application/javascript js
 AddType text/css css
 AddType image/svg+xml svg
 AddType font/woff woff
 AddType font/woff2 woff2
+AddType application/json json
+
+# Ensure JavaScript files are served as modules
+<IfModule mod_headers.c>
+  <FilesMatch "\.js$">
+    Header set Content-Type "application/javascript; charset=utf-8"
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+  
+  <FilesMatch "\.css$">
+    Header set Content-Type "text/css; charset=utf-8"
+  </FilesMatch>
+  
+  # Cache control for versioned assets
+  <FilesMatch "\.(js|css|jpg|jpeg|png|gif|ico|woff|woff2|ttf|eot|svg)$">
+    Header set Cache-Control "max-age=31536000, public, immutable"
+  </FilesMatch>
+  
+  # Don't cache HTML
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  
+  # Security headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Compression for text-based files
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/json
+</IfModule>
 
 
 
