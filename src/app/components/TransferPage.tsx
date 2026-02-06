@@ -113,22 +113,30 @@ export function TransferPage() {
       setTransfers(sortedTransfers);
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
       
-      // Ensure all transfers have proper fields with defaults
-      const transfersWithDefaults = sortedTransfers.map((t) => ({
-        ...t,
-        productName: t.productName || "",
-        sku: t.sku || "",
-        unit: t.unit || "",
-        quantityReceived: t.quantityReceived !== undefined ? t.quantityReceived : null,
-        discrepancy: t.discrepancy !== undefined ? t.discrepancy : null,
-        transferredBy: t.transferredBy || "-",
-        receivedBy: t.receivedBy || null,
-        status: t.status || "in-transit",
-        date: t.date || "",
-        time: t.time || "",
-      }));
+      // Enrich transfers with product data (sku, unit, etc.)
+      const enrichedTransfers = sortedTransfers.map((t) => {
+        // Find matching product to get sku, unit, and other details
+        const matchedProduct = productsData.find(
+          (p: Product) => String(p.id) === String(t.productId)
+        );
+        
+        return {
+          ...t,
+          productName: t.productName || matchedProduct?.name || "",
+          sku: t.sku || matchedProduct?.sku || "",
+          unit: t.unit || matchedProduct?.unit || "kg",
+          quantity: t.quantity || 0,
+          quantityReceived: t.quantityReceived !== undefined ? t.quantityReceived : null,
+          discrepancy: t.discrepancy !== undefined ? t.discrepancy : null,
+          transferredBy: t.transferredBy || "-",
+          receivedBy: t.receivedBy || null,
+          status: t.status || "in-transit",
+          date: t.date || "",
+          time: t.time || "",
+        };
+      });
       
-      setTransfers(transfersWithDefaults);
+      setTransfers(enrichedTransfers);
       
       // Combine products with inventory data for easier access
       const productsWithStock = productsData.map((product: Product) => {
@@ -275,16 +283,30 @@ export function TransferPage() {
         receiveData.receivedBy,
       );
 
+      // Get the matched product for enrichment
+      const matchedProduct = products.find(
+        (p: Product) => String(p.id) === String(selectedTransfer.productId)
+      );
+
+      // Enrich the updated transfer with product data
+      const enrichedUpdatedTransfer = {
+        ...updatedTransfer,
+        productName: updatedTransfer.productName || matchedProduct?.name || "",
+        sku: updatedTransfer.sku || matchedProduct?.sku || "",
+        unit: updatedTransfer.unit || matchedProduct?.unit || "kg",
+      };
+
       setTransfers(
         transfers.map((t) =>
-          t.id === selectedTransfer.id ? updatedTransfer : t,
+          t.id === selectedTransfer.id ? enrichedUpdatedTransfer : t,
         ),
       );
 
       const discrepancy = updatedTransfer.discrepancy;
+      const unit = enrichedUpdatedTransfer.unit || "kg";
       if (discrepancy && discrepancy > 0) {
         toast.warning(
-          `Transfer received with ${discrepancy} ${selectedTransfer.unit} discrepancy (${receiveData.discrepancyReason || "not specified"})`,
+          `Transfer received with ${discrepancy} ${unit} discrepancy (${receiveData.discrepancyReason || "not specified"})`,
         );
       } else {
         toast.success("Transfer received successfully");
