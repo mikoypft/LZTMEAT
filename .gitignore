@@ -107,4 +107,4 @@ backend/update_*.php        # Update utility scripts
 .env.*.local
 .DS_Store
 .vuepress/dist
-dist
+# dist is tracked for production deployment

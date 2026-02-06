@@ -19,11 +19,11 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(api/.*)$ backend/public/index.php/$1 [QSA,L]
 
-# Route all other non-existent files/dirs to index.html for React Router (SPA)
-# This allows client-side routing to work properly
+# Route all other non-existent files/dirs to dist/index.html for React Router (SPA)
+# dist/index.html contains the built asset references for production
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.html [QSA,L]
+RewriteRule ^ dist/index.html [QSA,L]
 
 # ============================================================================
 # MIME TYPES - CRITICAL FOR MODULE LOADING
