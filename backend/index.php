@@ -1597,6 +1597,106 @@ $routes = [
             return ['error' => 'Failed to verify password: ' . $e->getMessage()];
         }
     },
+    
+    'GET /api/discount-settings' => function() use ($pdo) {
+        try {
+            // Create table if it doesn't exist
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discount_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                wholesale_min_units INT NOT NULL DEFAULT 10,
+                discount_type VARCHAR(50) NOT NULL DEFAULT 'percentage',
+                wholesale_discount_percent DECIMAL(5, 2) DEFAULT 0,
+                wholesale_discount_amount DECIMAL(12, 2) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Get or create default setting
+            $stmt = $pdo->query('SELECT * FROM discount_settings ORDER BY id LIMIT 1');
+            $setting = $stmt->fetch();
+            
+            if (!$setting) {
+                // Insert default setting if none exists
+                $pdo->exec("INSERT INTO discount_settings (wholesale_min_units, discount_type, wholesale_discount_percent) 
+                           VALUES (10, 'percentage', 0)");
+                $stmt = $pdo->query('SELECT * FROM discount_settings ORDER BY id LIMIT 1');
+                $setting = $stmt->fetch();
+            }
+            
+            return [
+                'settings' => [
+                    'id' => (int)$setting['id'],
+                    'wholesaleMinUnits' => (int)$setting['wholesale_min_units'],
+                    'discountType' => $setting['discount_type'],
+                    'wholesaleDiscountPercent' => (float)$setting['wholesale_discount_percent'],
+                    'wholesaleDiscountAmount' => $setting['wholesale_discount_amount'] ? (float)$setting['wholesale_discount_amount'] : null,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get discount settings: ' . $e->getMessage()];
+        }
+    },
+    
+    'PUT /api/discount-settings' => function() use ($pdo, $body) {
+        try {
+            // Create table if it doesn't exist
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discount_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                wholesale_min_units INT NOT NULL DEFAULT 10,
+                discount_type VARCHAR(50) NOT NULL DEFAULT 'percentage',
+                wholesale_discount_percent DECIMAL(5, 2) DEFAULT 0,
+                wholesale_discount_amount DECIMAL(12, 2) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            
+            // Get the first setting or create if doesn't exist
+            $stmt = $pdo->query('SELECT id FROM discount_settings LIMIT 1');
+            $existing = $stmt->fetch();
+            
+            if (!$existing) {
+                // Insert default setting if none exists
+                $pdo->exec("INSERT INTO discount_settings (wholesale_min_units, discount_type, wholesale_discount_percent) 
+                           VALUES (10, 'percentage', 0)");
+                $existing = $pdo->query('SELECT id FROM discount_settings LIMIT 1')->fetch();
+            }
+            
+            // Update the setting
+            $stmt = $pdo->prepare('UPDATE discount_settings SET 
+                wholesale_min_units = ?,
+                discount_type = ?,
+                wholesale_discount_percent = ?,
+                wholesale_discount_amount = ?
+                WHERE id = ?');
+            
+            $stmt->execute([
+                $body['wholesaleMinUnits'] ?? 10,
+                $body['discountType'] ?? 'percentage',
+                $body['wholesaleDiscountPercent'] ?? 0,
+                $body['wholesaleDiscountAmount'] ?? null,
+                $existing['id']
+            ]);
+            
+            // Fetch and return updated setting
+            $stmt = $pdo->prepare('SELECT * FROM discount_settings WHERE id = ?');
+            $stmt->execute([$existing['id']]);
+            $setting = $stmt->fetch();
+            
+            return [
+                'settings' => [
+                    'id' => (int)$setting['id'],
+                    'wholesaleMinUnits' => (int)$setting['wholesale_min_units'],
+                    'discountType' => $setting['discount_type'],
+                    'wholesaleDiscountPercent' => (float)$setting['wholesale_discount_percent'],
+                    'wholesaleDiscountAmount' => $setting['wholesale_discount_amount'] ? (float)$setting['wholesale_discount_amount'] : null,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update discount settings: ' . $e->getMessage()];
+        }
+    },
 ];
 
 // Find and execute route
