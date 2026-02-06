@@ -64,6 +64,16 @@ $dbName = !empty($_ENV['DB_DATABASE']) ? trim($_ENV['DB_DATABASE']) : (getenv('D
 $dbUser = !empty($_ENV['DB_USERNAME']) ? trim($_ENV['DB_USERNAME']) : (getenv('DB_USERNAME') ?: 'lztmeat');
 $dbPass = !empty($_ENV['DB_PASSWORD']) ? trim($_ENV['DB_PASSWORD']) : (getenv('DB_PASSWORD') ?: 'Lztmeat@2026');
 
+// EMERGENCY OVERRIDE: Force production credentials on Plesk if old values detected
+// This happens when env file isn't being read properly
+if ($dbUser === 'root' || $dbName === 'lzt_meat' || empty($dbPass)) {
+    $dbHost = 'localhost';
+    $dbPort = '3306';
+    $dbName = 'lztmeat_admin';
+    $dbUser = 'lztmeat';
+    $dbPass = 'Lztmeat@2026';
+}
+
 // Log what env was loaded for debugging
 error_log(date('Y-m-d H:i:s') . " - Backend API starting\n" .
           "Env loaded: $envLoaded from: $envFile\n" .
