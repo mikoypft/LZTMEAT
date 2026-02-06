@@ -12,18 +12,11 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Route /api calls to Laravel backend
+# All requests to non-existent files/dirs go to root index.php
+# index.php handles all routing (API, static files, SPA)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} ^/api
-RewriteRule ^api/(.*)$ backend/public/index.php/$1 [QSA,L]
-
-# Route all other non-existent files/dirs to dist/index.html for React Router (SPA)
-# BUT: only if NOT an API route (to prevent double-processing)
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/api
-RewriteRule ^ dist/index.html [QSA,L]
+RewriteRule ^ index.php [QSA,L]
 
 # ============================================================================
 # MIME TYPES - CRITICAL FOR MODULE LOADING
