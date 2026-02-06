@@ -3,7 +3,7 @@
 # ============================================================================
 .env.production              # Production database credentials
 backend/.env.production      # Backend production configuration
-.htaccess                    # Plesk/Apache server configuration
+# NOTE: .htaccess IS tracked - it MUST be deployed for Apache routing to work
 PLESK_DEPLOYMENT.md          # Deployment notes and Plesk settings
 
 # ============================================================================
