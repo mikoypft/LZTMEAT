@@ -616,7 +616,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
 
     // Create sale record - backend will handle inventory deduction
     try {
-      await createSale({
+      const salePayload = {
         transactionId: transactionId,
         date: now.toISOString(),
         location: selectedStore?.name || "Unknown Store",
@@ -644,7 +644,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         total: total,
         paymentMethod: method,
         salesType: salesType,
-      });
+      };
+      
+      console.log("Sale payload:", salePayload);
+      console.log("Global discount amount:", globalDiscountAmount);
+      console.log("Wholesale discount amount:", totalWholesaleDiscount);
+      
+      await createSale(salePayload);
 
       toast.success(`Sale recorded successfully at ${selectedStore?.name}!`);
 
