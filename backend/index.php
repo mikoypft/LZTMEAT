@@ -962,19 +962,29 @@ $routes = [
                 $stmt->execute([$productId, 'Production Facility', $quantity, $quantity]);
             }
             
-            // Deduct initial ingredients from inventory
+            // Deduct initial ingredients from inventory (don't fail if deduction fails)
             if (!empty($body['initialIngredients']) && is_array($body['initialIngredients'])) {
                 foreach ($body['initialIngredients'] as $ing) {
                     $ingredientId = $ing['ingredientId'] ?? null;
                     $ingredientQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
                     
                     if ($ingredientId && $ingredientQty > 0) {
-                        $stmt = $pdo->prepare('
-                            INSERT INTO inventory (product_id, location, quantity, created_at) 
-                            VALUES (?, ?, ?, NOW())
-                            ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
-                        ');
-                        $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                        try {
+                            // First verify the ingredient exists in products table
+                            $checkStmt = $pdo->prepare('SELECT id FROM products WHERE id = ?');
+                            $checkStmt->execute([$ingredientId]);
+                            if ($checkStmt->rowCount() > 0) {
+                                $stmt = $pdo->prepare('
+                                    INSERT INTO inventory (product_id, location, quantity, created_at) 
+                                    VALUES (?, ?, ?, NOW())
+                                    ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                                ');
+                                $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                            }
+                        } catch (Exception $ingredientError) {
+                            // Log error but continue - don't fail the entire production creation
+                            error_log('Ingredient deduction failed for ID ' . $ingredientId . ': ' . $ingredientError->getMessage());
+                        }
                     }
                 }
             }
@@ -1053,27 +1063,32 @@ $routes = [
                 }
             }
             
-            // Deduct additional ingredients if provided
+            // Deduct additional ingredients if provided (don't fail if deduction fails)
             if (!empty($body['additionalIngredients']) && is_array($body['additionalIngredients'])) {
                 foreach ($body['additionalIngredients'] as $ing) {
                     $ingredientCode = $ing['code'] ?? null;
                     $ingredientQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
                     
                     if ($ingredientCode && $ingredientQty > 0) {
-                        // The code is a selection from the ingredients dropdown, we need to find the product id
-                        // Format is typically "ING-###" or similar, try to find the product
-                        $stmt = $pdo->prepare('SELECT id FROM products WHERE LOWER(name) LIKE ? LIMIT 1');
-                        $stmt->execute(['%' . $ingredientCode . '%']);
-                        $ingredientProduct = $stmt->fetch();
-                        
-                        if ($ingredientProduct) {
-                            $ingredientId = $ingredientProduct['id'];
-                            $stmt = $pdo->prepare('
-                                INSERT INTO inventory (product_id, location, quantity, created_at) 
-                                VALUES (?, ?, ?, NOW())
-                                ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
-                            ');
-                            $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                        try {
+                            // The code is a selection from the ingredients dropdown, we need to find the product id
+                            // Format is typically "ING-###" or similar, try to find the product
+                            $stmt = $pdo->prepare('SELECT id FROM products WHERE LOWER(name) LIKE ? LIMIT 1');
+                            $stmt->execute(['%' . $ingredientCode . '%']);
+                            $ingredientProduct = $stmt->fetch();
+                            
+                            if ($ingredientProduct) {
+                                $ingredientId = $ingredientProduct['id'];
+                                $stmt = $pdo->prepare('
+                                    INSERT INTO inventory (product_id, location, quantity, created_at) 
+                                    VALUES (?, ?, ?, NOW())
+                                    ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                                ');
+                                $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                            }
+                        } catch (Exception $ingredientError) {
+                            // Log error but continue - don't fail the production update
+                            error_log('Additional ingredient deduction failed for code ' . $ingredientCode . ': ' . $ingredientError->getMessage());
                         }
                     }
                 }
