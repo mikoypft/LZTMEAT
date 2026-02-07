@@ -327,14 +327,12 @@ export function TransferPage() {
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case "in-transit":
         return <Clock className="w-5 h-5 text-blue-600" />;
-      case "pending":
-        return <Clock className="w-5 h-5 text-yellow-600" />;
       case "cancelled":
         return <XCircle className="w-5 h-5 text-red-600" />;
       case "rejected":
         return <XCircle className="w-5 h-5 text-orange-600" />;
       default:
-        return <Clock className="w-5 h-5 text-yellow-600" />;
+        return <Clock className="w-5 h-5 text-blue-600" />;
     }
   };
 
@@ -345,14 +343,12 @@ export function TransferPage() {
         return "bg-green-100 text-green-700";
       case "in-transit":
         return "bg-blue-100 text-blue-700";
-      case "pending":
-        return "bg-yellow-100 text-yellow-700";
       case "cancelled":
         return "bg-red-100 text-red-700";
       case "rejected":
         return "bg-orange-100 text-orange-700";
       default:
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-blue-100 text-blue-700";
     }
   };
 
