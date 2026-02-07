@@ -1065,7 +1065,7 @@ $routes = [
                     'date' => substr($t['created_at'], 0, 10),
                     'time' => substr($t['created_at'], 11, 5),
                     'status' => strtolower(str_replace(' ', '-', $t['status'])),
-                    'transferredBy' => $t['requested_by'],
+                    'transferredBy' => $t['transferred_by'] ?? $t['requested_by'],
                     'receivedBy' => $t['received_by'],
                     'createdAt' => $t['created_at'],
                 ];
@@ -1074,7 +1074,7 @@ $routes = [
     },
     
     'POST /api/transfers' => function() use ($pdo, $body) {
-        $stmt = $pdo->prepare('INSERT INTO transfers (product_id, `from`, `to`, quantity, status, requested_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
+        $stmt = $pdo->prepare('INSERT INTO transfers (product_id, `from`, `to`, quantity, status, requested_by, transferred_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
         $stmt->execute([
             $body['productId'] ?? null,
             $body['from'] ?? '',
@@ -1082,6 +1082,7 @@ $routes = [
             $body['quantity'] ?? 0,
             $body['status'] ?? 'In Transit',
             $body['requestedBy'] ?? '',
+            $body['transferredBy'] ?? $body['requestedBy'] ?? '',
         ]);
         
         $transferId = $pdo->lastInsertId();
@@ -1112,7 +1113,7 @@ $routes = [
                     'date' => substr($t['created_at'], 0, 10),
                     'time' => substr($t['created_at'], 11, 5),
                     'status' => strtolower(str_replace(' ', '-', $t['status'])),
-                    'transferredBy' => $t['requested_by'],
+                    'transferredBy' => $t['transferred_by'] ?? $t['requested_by'],
                     'receivedBy' => $t['received_by'],
                     'createdAt' => $t['created_at'],
                 ]
@@ -1211,7 +1212,7 @@ $routes = [
                     'date' => substr($updatedTransfer['created_at'], 0, 10),
                     'time' => substr($updatedTransfer['created_at'], 11, 5),
                     'status' => strtolower(str_replace(' ', '-', $updatedTransfer['status'])),
-                    'transferredBy' => $updatedTransfer['requested_by'],
+                    'transferredBy' => $updatedTransfer['transferred_by'] ?? $updatedTransfer['requested_by'],
                     'receivedBy' => $updatedTransfer['received_by'],
                     'createdAt' => $updatedTransfer['created_at'],
                     'updatedAt' => $updatedTransfer['updated_at'],
@@ -1290,7 +1291,7 @@ $routes = [
                     'date' => substr($updatedTransfer['created_at'], 0, 10),
                     'time' => substr($updatedTransfer['created_at'], 11, 5),
                     'status' => strtolower(str_replace(' ', '-', $updatedTransfer['status'])),
-                    'transferredBy' => $updatedTransfer['requested_by'],
+                    'transferredBy' => $updatedTransfer['transferred_by'] ?? $updatedTransfer['requested_by'],
                     'receivedBy' => $updatedTransfer['received_by'],
                     'createdAt' => $updatedTransfer['created_at'],
                     'updatedAt' => $updatedTransfer['updated_at'],
