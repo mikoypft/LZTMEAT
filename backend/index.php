@@ -937,36 +937,70 @@ $routes = [
             $initialIngredientsJson = json_encode($body['initialIngredients']);
         }
         
-        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, initial_ingredients, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
-        $stmt->execute([
-            $body['productId'] ?? null,
-            $body['quantity'] ?? 0,
-            $body['batchNumber'] ?? '',
-            $body['operator'] ?? '',
-            $body['status'] ?? 'in-progress',
-            $initialIngredientsJson,
-        ]);
-        
-        $id = $pdo->lastInsertId();
-        
-        // Fetch the created record
-        $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
-        $stmt->execute([$id]);
-        $r = $stmt->fetch();
-        
-        return [
-            'record' => [
-                'id' => (string)$r['id'],
-                'productId' => (string)$r['product_id'],
-                'productName' => $r['product_name'] ?? 'Unknown Product',
-                'quantity' => (float)$r['quantity'],
-                'batchNumber' => $r['batch_number'],
-                'operator' => $r['operator'],
-                'status' => $r['status'] ?? 'in-progress',
-                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
-                'timestamp' => $r['created_at'],
-            ]
-        ];
+        try {
+            $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, initial_ingredients, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
+            $stmt->execute([
+                $body['productId'] ?? null,
+                $body['quantity'] ?? 0,
+                $body['batchNumber'] ?? '',
+                $body['operator'] ?? '',
+                $body['status'] ?? 'in-progress',
+                $initialIngredientsJson,
+            ]);
+            
+            $id = $pdo->lastInsertId();
+            $productId = $body['productId'] ?? null;
+            $quantity = $body['quantity'] ?? 0;
+            
+            // Add produced quantity to Production Facility inventory
+            if ($productId && $quantity > 0) {
+                $stmt = $pdo->prepare('
+                    INSERT INTO inventory (product_id, location, quantity, created_at) 
+                    VALUES (?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE quantity = quantity + ?, updated_at = NOW()
+                ');
+                $stmt->execute([$productId, 'Production Facility', $quantity, $quantity]);
+            }
+            
+            // Deduct ingredients from inventory
+            if (!empty($body['initialIngredients']) && is_array($body['initialIngredients'])) {
+                foreach ($body['initialIngredients'] as $ing) {
+                    $ingredientId = $ing['ingredientId'] ?? null;
+                    $ingredientQty = $ing['quantity'] ?? 0;
+                    
+                    if ($ingredientId && $ingredientQty > 0) {
+                        $stmt = $pdo->prepare('
+                            INSERT INTO inventory (product_id, location, quantity, created_at) 
+                            VALUES (?, ?, ?, NOW())
+                            ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                        ');
+                        $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                    }
+                }
+            }
+            
+            // Fetch the created record
+            $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
+            $stmt->execute([$id]);
+            $r = $stmt->fetch();
+            
+            return [
+                'record' => [
+                    'id' => (string)$r['id'],
+                    'productId' => (string)$r['product_id'],
+                    'productName' => $r['product_name'] ?? 'Unknown Product',
+                    'quantity' => (float)$r['quantity'],
+                    'batchNumber' => $r['batch_number'],
+                    'operator' => $r['operator'],
+                    'status' => $r['status'] ?? 'in-progress',
+                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                    'timestamp' => $r['created_at'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to create production record: ' . $e->getMessage()];
+        }
     },
     
     'PUT /api/production/{id}' => function() use ($pdo, $body) {
