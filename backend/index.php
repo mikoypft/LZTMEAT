@@ -1158,12 +1158,20 @@ $routes = [
             $toLocation = $transfer['to'];
             
             // Update inventory at source location (decrease)
-            $stmt = $pdo->prepare('UPDATE inventory SET quantity = quantity - ? WHERE product_id = ? AND location = ?');
-            $stmt->execute([$quantityReceived, $productId, $fromLocation]);
+            $stmt = $pdo->prepare('
+                INSERT INTO inventory (product_id, location, quantity, created_at) 
+                VALUES (?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+            ');
+            $stmt->execute([$productId, $fromLocation, -$quantityReceived, $quantityReceived]);
             
             // Update inventory at destination location (increase)
-            $stmt = $pdo->prepare('UPDATE inventory SET quantity = quantity + ? WHERE product_id = ? AND location = ?');
-            $stmt->execute([$quantityReceived, $productId, $toLocation]);
+            $stmt = $pdo->prepare('
+                INSERT INTO inventory (product_id, location, quantity, created_at) 
+                VALUES (?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE quantity = quantity + ?, updated_at = NOW()
+            ');
+            $stmt->execute([$productId, $toLocation, $quantityReceived, $quantityReceived]);
             
             // Update transfer with receipt details
             $stmt = $pdo->prepare('
