@@ -760,8 +760,10 @@ $routes = [
                     tax,
                     total, 
                     payment_method,
-                    sales_type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sales_type,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
             
             // Build customer object for JSON
@@ -773,7 +775,7 @@ $routes = [
             // Build items array for JSON
             $itemsData = json_encode($body['items']);
             
-            error_log('Sales endpoint - globalDiscount: ' . ($body['globalDiscount'] ?? 0) . ', wholesaleDiscount: ' . ($body['wholesaleDiscount'] ?? 0));
+            error_log('Sales endpoint - globalDiscount: ' . ($body['globalDiscount'] ?? 0) . ', wholesaleDiscount: ' . ($body['wholesaleDiscount'] ?? 0) . ', subtotal: ' . ($body['subtotal'] ?? 0));
             
             $stmt->execute([
                 $body['transactionId'] ?? '',

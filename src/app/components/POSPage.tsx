@@ -1355,12 +1355,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                   </span>
                 </div>
               )}
-              {receiptData.tax > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax:</span>
-                  <span>₱{receiptData.tax.toFixed(2)}</span>
-                </div>
-              )}
             </div>
 
             <div className="bg-primary/10 rounded-lg p-4 mb-6">
