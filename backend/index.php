@@ -1075,6 +1075,174 @@ $routes = [
         return ['transfer' => ['id' => (string)$pdo->lastInsertId()]];
     },
     
+    'POST /api/transfers/{id}/receive' => function() use ($pdo, $body) {
+        // Extract transfer ID from URI
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/transfers\/(\d+)\/receive/', $uri, $matches);
+        $transferId = $matches[1] ?? null;
+        
+        if (!$transferId) {
+            http_response_code(400);
+            return ['error' => 'Transfer ID is required'];
+        }
+        
+        try {
+            // Get the transfer
+            $stmt = $pdo->prepare('SELECT * FROM transfers WHERE id = ?');
+            $stmt->execute([$transferId]);
+            $transfer = $stmt->fetch();
+            
+            if (!$transfer) {
+                http_response_code(404);
+                return ['error' => 'Transfer not found'];
+            }
+            
+            // Check status
+            if ($transfer['status'] !== 'In Transit' && $transfer['status'] !== 'Pending') {
+                http_response_code(400);
+                return ['error' => 'Transfer must be in transit to receive'];
+            }
+            
+            // Update transfer with receipt details
+            $stmt = $pdo->prepare('
+                UPDATE transfers 
+                SET status = ?, 
+                    quantity_received = ?, 
+                    discrepancy_reason = ?, 
+                    received_by = ?, 
+                    received_at = NOW() 
+                WHERE id = ?
+            ');
+            
+            $stmt->execute([
+                'Completed',
+                $body['quantityReceived'] ?? null,
+                $body['discrepancyReason'] ?? null,
+                $body['receivedBy'] ?? null,
+                $transferId
+            ]);
+            
+            // Fetch updated transfer with product details
+            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name, p.sku, p.unit FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
+            $stmt->execute([$transferId]);
+            $updatedTransfer = $stmt->fetch();
+            
+            if (!$updatedTransfer) {
+                http_response_code(404);
+                return ['error' => 'Transfer not found after update'];
+            }
+            
+            $quantityReceived = $body['quantityReceived'] ?? 0;
+            $originalQuantity = $updatedTransfer['quantity'];
+            $discrepancy = $originalQuantity - $quantityReceived;
+            
+            return [
+                'transfer' => [
+                    'id' => (string)$updatedTransfer['id'],
+                    'productId' => (string)$updatedTransfer['product_id'],
+                    'productName' => $updatedTransfer['product_name'],
+                    'sku' => $updatedTransfer['sku'],
+                    'unit' => $updatedTransfer['unit'],
+                    'from' => $updatedTransfer['from'],
+                    'to' => $updatedTransfer['to'],
+                    'quantity' => (float)$updatedTransfer['quantity'],
+                    'quantityReceived' => (float)$quantityReceived,
+                    'discrepancy' => $discrepancy,
+                    'discrepancyReason' => $updatedTransfer['discrepancy_reason'],
+                    'date' => substr($updatedTransfer['created_at'], 0, 10),
+                    'time' => substr($updatedTransfer['created_at'], 11, 5),
+                    'status' => strtolower(str_replace(' ', '-', $updatedTransfer['status'])),
+                    'transferredBy' => $updatedTransfer['requested_by'],
+                    'receivedBy' => $updatedTransfer['received_by'],
+                    'createdAt' => $updatedTransfer['created_at'],
+                    'updatedAt' => $updatedTransfer['updated_at'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to process transfer receipt: ' . $e->getMessage()];
+        }
+    },
+    
+    'PUT /api/transfers/{id}' => function() use ($pdo, $body) {
+        // Extract transfer ID from URI
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/transfers\/(\d+)(?:\/|$)/', $uri, $matches);
+        $transferId = $matches[1] ?? null;
+        
+        if (!$transferId) {
+            http_response_code(400);
+            return ['error' => 'Transfer ID is required'];
+        }
+        
+        try {
+            // Get the transfer
+            $stmt = $pdo->prepare('SELECT * FROM transfers WHERE id = ?');
+            $stmt->execute([$transferId]);
+            $transfer = $stmt->fetch();
+            
+            if (!$transfer) {
+                http_response_code(404);
+                return ['error' => 'Transfer not found'];
+            }
+            
+            // Map status from kebab-case to proper case
+            $statusMap = [
+                'pending' => 'Pending',
+                'in-transit' => 'In Transit',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
+                'rejected' => 'Rejected'
+            ];
+            
+            $newStatus = $statusMap[$body['status']] ?? $body['status'];
+            
+            // Update transfer status
+            $stmt = $pdo->prepare('UPDATE transfers SET status = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([$newStatus, $transferId]);
+            
+            // Fetch updated transfer
+            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name, p.sku, p.unit FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
+            $stmt->execute([$transferId]);
+            $updatedTransfer = $stmt->fetch();
+            
+            if (!$updatedTransfer) {
+                http_response_code(404);
+                return ['error' => 'Transfer not found after update'];
+            }
+            
+            $quantityReceived = $updatedTransfer['quantity_received'] ?? 0;
+            $originalQuantity = $updatedTransfer['quantity'];
+            $discrepancy = $quantityReceived > 0 ? $originalQuantity - $quantityReceived : null;
+            
+            return [
+                'transfer' => [
+                    'id' => (string)$updatedTransfer['id'],
+                    'productId' => (string)$updatedTransfer['product_id'],
+                    'productName' => $updatedTransfer['product_name'],
+                    'sku' => $updatedTransfer['sku'],
+                    'unit' => $updatedTransfer['unit'],
+                    'from' => $updatedTransfer['from'],
+                    'to' => $updatedTransfer['to'],
+                    'quantity' => (float)$updatedTransfer['quantity'],
+                    'quantityReceived' => $quantityReceived ? (float)$quantityReceived : null,
+                    'discrepancy' => $discrepancy,
+                    'discrepancyReason' => $updatedTransfer['discrepancy_reason'],
+                    'date' => substr($updatedTransfer['created_at'], 0, 10),
+                    'time' => substr($updatedTransfer['created_at'], 11, 5),
+                    'status' => strtolower(str_replace(' ', '-', $updatedTransfer['status'])),
+                    'transferredBy' => $updatedTransfer['requested_by'],
+                    'receivedBy' => $updatedTransfer['received_by'],
+                    'createdAt' => $updatedTransfer['created_at'],
+                    'updatedAt' => $updatedTransfer['updated_at'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update transfer: ' . $e->getMessage()];
+        }
+    },
+    
     'GET /api/suppliers' => function() use ($pdo) {
         $stmt = $pdo->query('SELECT * FROM suppliers ORDER BY name');
         $suppliers = $stmt->fetchAll();
