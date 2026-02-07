@@ -616,20 +616,20 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
 
     // Create sale record - backend will handle inventory deduction
     try {
-      // Log all variables BEFORE calculation
-      console.log("BEFORE CALCULATION:");
-      console.log("subtotal state:", subtotal);
-      console.log("globalDiscount state:", globalDiscount);
-      console.log("totalWholesaleDiscount state:", totalWholesaleDiscount);
+      // CRITICAL: Calculate discount amounts BEFORE sending
+      // globalDiscount is a percentage (0-100), convert to actual amount in pesos
+      const globalDiscountPercentage = parseFloat(String(globalDiscount)) || 0;
+      const globalDiscountAmount = Math.round((subtotal * globalDiscountPercentage / 100) * 100) / 100; // Round to 2 decimals
       
-      const calculatedGlobalDiscountAmount = (subtotal * globalDiscount) / 100;
-      const calculatedWholesaleDiscountAmount = totalWholesaleDiscount;
+      // wholesaleDiscount is already a calculated amount, not a percentage
+      const wholesaleDiscountAmount = parseFloat(String(totalWholesaleDiscount)) || 0;
       
-      // Log all variables AFTER calculation
-      console.log("AFTER CALCULATION:");
-      console.log("calculatedGlobalDiscountAmount:", calculatedGlobalDiscountAmount);
-      console.log("Math:", subtotal, "*", globalDiscount, "/ 100 =", calculatedGlobalDiscountAmount);
-      console.log("calculatedWholesaleDiscountAmount:", calculatedWholesaleDiscountAmount);
+      console.log("=== DISCOUNT CALCULATION ===");
+      console.log("globalDiscount (%):", globalDiscountPercentage);
+      console.log("subtotal:", subtotal);
+      console.log("globalDiscountAmount (₱):", globalDiscountAmount);
+      console.log("wholesaleDiscountAmount (₱):", wholesaleDiscountAmount);
+      console.log("===========================");
       
       const salePayload = {
         transactionId: transactionId,
@@ -653,20 +653,20 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           discount: item.discount,
         })),
         subtotal: subtotal,
-        globalDiscount: calculatedGlobalDiscountAmount,
-        wholesaleDiscount: calculatedWholesaleDiscountAmount,
+        globalDiscount: globalDiscountAmount,
+        wholesaleDiscount: wholesaleDiscountAmount,
         tax: tax,
         total: total,
         paymentMethod: method,
         salesType: salesType,
       };
       
-      console.log("PAYLOAD BEING SENT:");
-      console.log("Full payload:", salePayload);
-      console.log("Discount in payload - globalDiscount:", salePayload.globalDiscount);
-      console.log("Discount in payload - wholesaleDiscount:", salePayload.wholesaleDiscount);
-      console.log("Subtotal in payload:", salePayload.subtotal);
-      console.log("Total in payload:", salePayload.total);
+      console.log("=== PAYLOAD VERIFICATION ===");
+      console.log("Sending globalDiscount:", salePayload.globalDiscount);
+      console.log("Sending wholesaleDiscount:", salePayload.wholesaleDiscount);
+      console.log("Sending subtotal:", salePayload.subtotal);
+      console.log("Sending total:", salePayload.total);
+      console.log("===========================");
       
       await createSale(salePayload);
 
@@ -684,9 +684,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           total: calculateItemTotal(item),
         })),
         subtotal: subtotal,
-        globalDiscount: calculatedGlobalDiscountAmount,
-        globalDiscountPercent: globalDiscount,
-        wholesaleDiscount: calculatedWholesaleDiscountAmount,
+        globalDiscount: globalDiscountAmount,
+        globalDiscountPercent: globalDiscountPercentage,
+        wholesaleDiscount: wholesaleDiscountAmount,
         tax: tax,
         total: total,
       });
