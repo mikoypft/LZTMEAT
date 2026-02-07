@@ -696,17 +696,33 @@ $routes = [
                 $itemStmt->execute([$s['id']]);
                 $items = $itemStmt->fetchAll();
                 
+                // Decode customer JSON
+                $customer = null;
+                if (!empty($s['customer'])) {
+                    $customer = json_decode($s['customer'], true);
+                }
+                
+                // Get store location if store_id exists
+                $location = null;
+                if (!empty($s['store_id'])) {
+                    $storeStmt = $pdo->prepare('SELECT name FROM stores WHERE id = ?');
+                    $storeStmt->execute([$s['store_id']]);
+                    $store = $storeStmt->fetch();
+                    $location = $store ? $store['name'] : null;
+                }
+                
                 return [
                     'id' => (string)$s['id'],
                     'transactionId' => $s['transaction_id'],
                     'date' => $s['created_at'],
                     'timestamp' => $s['created_at'],
-                    'location' => $s['location'],
-                    'customerName' => $s['customer_name'],
-                    'customerPhone' => $s['customer_phone'],
-                    'customerEmail' => $s['customer_email'],
+                    'location' => $location,
+                    'customerName' => $customer['name'] ?? null,
+                    'customerPhone' => $customer['phone'] ?? null,
+                    'customerEmail' => $customer['email'] ?? null,
                     'subtotal' => (float)$s['subtotal'],
-                    'globalDiscount' => (float)$s['global_discount'],
+                    'globalDiscount' => (float)($s['global_discount'] ?? 0),
+                    'wholesaleDiscount' => (float)($s['wholesale_discount'] ?? 0),
                     'tax' => (float)$s['tax'],
                     'total' => (float)$s['total'],
                     'paymentMethod' => $s['payment_method'],
@@ -719,6 +735,7 @@ $routes = [
                             'productName' => $item['product_name'],
                             'quantity' => (float)$item['quantity'],
                             'unitPrice' => (float)$item['unit_price'],
+                            'price' => (float)$item['unit_price'],
                             'discount' => (float)$item['discount'],
                             'total' => (float)$item['total'],
                         ];
