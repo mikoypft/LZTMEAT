@@ -962,7 +962,7 @@ $routes = [
                 $stmt->execute([$productId, 'Production Facility', $quantity, $quantity]);
             }
             
-            // Deduct initial ingredients from inventory (don't fail if deduction fails)
+            // Deduct initial ingredients from ingredients table (don't fail if deduction fails)
             if (!empty($body['initialIngredients']) && is_array($body['initialIngredients'])) {
                 foreach ($body['initialIngredients'] as $ing) {
                     $ingredientId = $ing['ingredientId'] ?? null;
@@ -970,17 +970,13 @@ $routes = [
                     
                     if ($ingredientId && $ingredientQty > 0) {
                         try {
-                            // First verify the ingredient exists in products table
-                            $checkStmt = $pdo->prepare('SELECT id FROM products WHERE id = ?');
-                            $checkStmt->execute([$ingredientId]);
-                            if ($checkStmt->rowCount() > 0) {
-                                $stmt = $pdo->prepare('
-                                    INSERT INTO inventory (product_id, location, quantity, created_at) 
-                                    VALUES (?, ?, ?, NOW())
-                                    ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
-                                ');
-                                $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
-                            }
+                            // Deduct from the ingredients table stock column
+                            $stmt = $pdo->prepare('
+                                UPDATE ingredients 
+                                SET stock = stock - ?, updated_at = NOW()
+                                WHERE id = ?
+                            ');
+                            $stmt->execute([$ingredientQty, $ingredientId]);
                         } catch (Exception $ingredientError) {
                             // Log error but continue - don't fail the entire production creation
                             error_log('Ingredient deduction failed for ID ' . $ingredientId . ': ' . $ingredientError->getMessage());
@@ -1071,20 +1067,20 @@ $routes = [
                     
                     if ($ingredientCode && $ingredientQty > 0) {
                         try {
-                            // The code is a selection from the ingredients dropdown, we need to find the product id
-                            // Format is typically "ING-###" or similar, try to find the product
-                            $stmt = $pdo->prepare('SELECT id FROM products WHERE LOWER(name) LIKE ? LIMIT 1');
-                            $stmt->execute(['%' . $ingredientCode . '%']);
-                            $ingredientProduct = $stmt->fetch();
+                            // Search in the ingredients table by code or name
+                            $stmt = $pdo->prepare('SELECT id FROM ingredients WHERE code = ? OR LOWER(name) LIKE ? LIMIT 1');
+                            $stmt->execute([$ingredientCode, '%' . $ingredientCode . '%']);
+                            $ingredient = $stmt->fetch();
                             
-                            if ($ingredientProduct) {
-                                $ingredientId = $ingredientProduct['id'];
+                            if ($ingredient) {
+                                $ingredientId = $ingredient['id'];
+                                // Deduct from the ingredients table stock column
                                 $stmt = $pdo->prepare('
-                                    INSERT INTO inventory (product_id, location, quantity, created_at) 
-                                    VALUES (?, ?, ?, NOW())
-                                    ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                                    UPDATE ingredients 
+                                    SET stock = stock - ?, updated_at = NOW()
+                                    WHERE id = ?
                                 ');
-                                $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                                $stmt->execute([$ingredientQty, $ingredientId]);
                             }
                         } catch (Exception $ingredientError) {
                             // Log error but continue - don't fail the production update
