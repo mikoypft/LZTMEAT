@@ -522,9 +522,11 @@ export interface Sale {
   items: SaleItem[];
   subtotal: number;
   globalDiscount: number;
+  wholesaleDiscount?: number;
   tax: number;
   total: number;
   paymentMethod: string;
+  salesType?: "retail" | "wholesale";
   timestamp?: string;
 }
 

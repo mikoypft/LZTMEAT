@@ -181,6 +181,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     items: any[];
     subtotal: number;
     globalDiscount: number;
+    wholesaleDiscount: number;
     tax: number;
     total: number;
   } | null>(null);
@@ -637,6 +638,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         })),
         subtotal: subtotal,
         globalDiscount: globalDiscount,
+        wholesaleDiscount: wholesaleDiscount,
         tax: tax,
         total: total,
         paymentMethod: method,
@@ -658,6 +660,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         })),
         subtotal: subtotal,
         globalDiscount: globalDiscount,
+        wholesaleDiscount: wholesaleDiscount,
         tax: tax,
         total: total,
       });
@@ -1324,7 +1327,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               {receiptData.globalDiscount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Discount ({receiptData.globalDiscount}%):
+                    Global Discount ({receiptData.globalDiscount}%):
                   </span>
                   <span className="text-orange-600">
                     -₱
@@ -1333,6 +1336,22 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                       100
                     ).toFixed(2)}
                   </span>
+                </div>
+              )}
+              {receiptData.wholesaleDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Wholesale Discount:
+                  </span>
+                  <span className="text-orange-600">
+                    -₱{receiptData.wholesaleDiscount.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {receiptData.tax > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax:</span>
+                  <span>₱{receiptData.tax.toFixed(2)}</span>
                 </div>
               )}
             </div>

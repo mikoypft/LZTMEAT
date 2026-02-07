@@ -735,7 +735,18 @@ $routes = [
                 return ['error' => 'Store ID is required'];
             }
             
-            // Create sales record with only the columns that exist in the table
+            // Ensure wholesale_discount column exists
+            try {
+                $stmt = $pdo->query("SHOW COLUMNS FROM sales LIKE 'wholesale_discount'");
+                if ($stmt->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE sales ADD COLUMN wholesale_discount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER global_discount");
+                }
+            } catch (Exception $e) {
+                // Log but continue
+                error_log('Could not add wholesale_discount column: ' . $e->getMessage());
+            }
+            
+            // Create sales record with wholesale discount column
             $stmt = $pdo->prepare('
                 INSERT INTO sales (
                     transaction_id, 
@@ -745,11 +756,12 @@ $routes = [
                     items,
                     subtotal,
                     global_discount,
+                    wholesale_discount,
                     tax,
                     total, 
                     payment_method,
                     sales_type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ');
             
             // Build customer object for JSON
@@ -769,6 +781,7 @@ $routes = [
                 $itemsData,
                 $body['subtotal'] ?? 0,
                 $body['globalDiscount'] ?? 0,
+                $body['wholesaleDiscount'] ?? 0,
                 $body['tax'] ?? 0,
                 $body['total'] ?? 0,
                 $body['paymentMethod'] ?? 'Cash',
