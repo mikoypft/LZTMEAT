@@ -1103,6 +1103,20 @@ $routes = [
                 return ['error' => 'Transfer must be in transit to receive'];
             }
             
+            $quantityReceived = $body['quantityReceived'] ?? $transfer['quantity'];
+            $originalQuantity = $transfer['quantity'];
+            $productId = $transfer['product_id'];
+            $fromLocation = $transfer['from'];
+            $toLocation = $transfer['to'];
+            
+            // Update inventory at source location (decrease)
+            $stmt = $pdo->prepare('UPDATE inventory SET quantity = quantity - ? WHERE product_id = ? AND location = ?');
+            $stmt->execute([$quantityReceived, $productId, $fromLocation]);
+            
+            // Update inventory at destination location (increase)
+            $stmt = $pdo->prepare('UPDATE inventory SET quantity = quantity + ? WHERE product_id = ? AND location = ?');
+            $stmt->execute([$quantityReceived, $productId, $toLocation]);
+            
             // Update transfer with receipt details
             $stmt = $pdo->prepare('
                 UPDATE transfers 
@@ -1116,7 +1130,7 @@ $routes = [
             
             $stmt->execute([
                 'Completed',
-                $body['quantityReceived'] ?? null,
+                $quantityReceived,
                 $body['discrepancyReason'] ?? null,
                 $body['receivedBy'] ?? null,
                 $transferId
@@ -1132,8 +1146,6 @@ $routes = [
                 return ['error' => 'Transfer not found after update'];
             }
             
-            $quantityReceived = $body['quantityReceived'] ?? 0;
-            $originalQuantity = $updatedTransfer['quantity'];
             $discrepancy = $originalQuantity - $quantityReceived;
             
             return [
