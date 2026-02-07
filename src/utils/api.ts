@@ -578,6 +578,7 @@ export interface ProductionRecord {
   operator: string;
   status?: "in-progress" | "completed" | "quality-check";
   ingredientsUsed?: IngredientUsed[];
+  initialIngredients?: any[];
   notes?: string;
   timestamp: string;
 }

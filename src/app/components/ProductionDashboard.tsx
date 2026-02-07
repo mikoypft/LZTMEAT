@@ -227,12 +227,14 @@ export function ProductionDashboard() {
             batchNumber: record.batchNumber,
             status: record.status || "completed",
             ingredientsUsed:
-              record.ingredientsUsed?.map((ing: any) => ({
-                code: ing.ingredientId,
-                name: ing.ingredientName,
-                quantity: ing.quantity,
-                unit: "kg",
-              })) || [],
+              (record.initialIngredients && Array.isArray(record.initialIngredients))
+                ? record.initialIngredients.map((ing: any) => ({
+                    code: ing.ingredientId || ing.code || "",
+                    name: ing.ingredientName || ing.name || "",
+                    quantity: ing.quantity || 0,
+                    unit: ing.unit || "kg",
+                  }))
+                : [],
           };
         },
       );
@@ -478,7 +480,7 @@ export function ProductionDashboard() {
         quantity: producedWeight,
         batchNumber: newProduction.batchNumber,
         operator: "Current User",
-        ingredientsUsed: ingredientsUsedAPI,
+        initialIngredients: ingredientsUsedAPI,
       };
 
       console.log("Creating production with payload:", productionPayload);
