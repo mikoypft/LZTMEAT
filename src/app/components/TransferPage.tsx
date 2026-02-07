@@ -43,28 +43,6 @@ interface Transfer {
   receivedBy?: string;
 }
 
-const PRODUCTS: Product[] = [
-  { name: "Longanisa (Sweet)", sku: "SAU-001", unit: "KG" },
-  { name: "Longanisa (Spicy)", sku: "SAU-002", unit: "KG" },
-  { name: "Tocino (Pork)", sku: "CUR-001", unit: "KG" },
-  { name: "Tapa (Beef)", sku: "CUR-002", unit: "KG" },
-  { name: "Chorizo de Bilbao", sku: "SAU-003", unit: "KG" },
-  { name: "Shanghai (Spring Rolls)", sku: "RTC-001", unit: "KG" },
-  { name: "Embutido (Meatloaf)", sku: "PRO-001", unit: "KG" },
-  { name: "Filipino Hotdog", sku: "SAU-004", unit: "KG" },
-  { name: "Ham (Sliced)", sku: "PRO-002", unit: "KG" },
-  { name: "Bacon (Smoked)", sku: "PRO-003", unit: "KG" },
-  { name: "Ground Pork", sku: "GRD-001", unit: "KG" },
-  { name: "Ground Beef", sku: "GRD-002", unit: "KG" },
-];
-
-const LOCATIONS: StoreLocation[] = [
-  "Production Facility",
-  "Store 1",
-  "Store 2",
-  "Store 3",
-];
-
 export function TransferPage() {
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
@@ -343,11 +321,14 @@ export function TransferPage() {
   };
 
   const getStatusIcon = (status: Transfer["status"]) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase() || "";
+    switch (normalizedStatus) {
       case "completed":
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case "in-transit":
         return <Clock className="w-5 h-5 text-blue-600" />;
+      case "pending":
+        return <Clock className="w-5 h-5 text-yellow-600" />;
       case "cancelled":
         return <XCircle className="w-5 h-5 text-red-600" />;
       case "rejected":
@@ -358,11 +339,14 @@ export function TransferPage() {
   };
 
   const getStatusColor = (status: Transfer["status"]) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase() || "";
+    switch (normalizedStatus) {
       case "completed":
         return "bg-green-100 text-green-700";
       case "in-transit":
         return "bg-blue-100 text-blue-700";
+      case "pending":
+        return "bg-yellow-100 text-yellow-700";
       case "cancelled":
         return "bg-red-100 text-red-700";
       case "rejected":

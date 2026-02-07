@@ -1046,15 +1046,27 @@ $routes = [
         
         return [
             'transfers' => array_map(function($t) {
+                $quantityReceived = $t['quantity_received'] ?? null;
+                $originalQuantity = $t['quantity'];
+                $discrepancy = $quantityReceived ? $originalQuantity - $quantityReceived : null;
+                
                 return [
                     'id' => (string)$t['id'],
                     'productId' => (string)$t['product_id'],
                     'productName' => $t['product_name'] ?? 'Unknown Product',
+                    'sku' => $t['sku'] ?? '',
+                    'unit' => $t['unit'] ?? 'kg',
                     'from' => $t['from'],
                     'to' => $t['to'],
                     'quantity' => (float)$t['quantity'],
-                    'status' => $t['status'],
-                    'requestedBy' => $t['requested_by'],
+                    'quantityReceived' => $quantityReceived ? (float)$quantityReceived : null,
+                    'discrepancy' => $discrepancy,
+                    'discrepancyReason' => $t['discrepancy_reason'],
+                    'date' => substr($t['created_at'], 0, 10),
+                    'time' => substr($t['created_at'], 11, 5),
+                    'status' => strtolower(str_replace(' ', '-', $t['status'])),
+                    'transferredBy' => $t['requested_by'],
+                    'receivedBy' => $t['received_by'],
                     'createdAt' => $t['created_at'],
                 ];
             }, $transfers),
@@ -1068,11 +1080,46 @@ $routes = [
             $body['from'] ?? '',
             $body['to'] ?? '',
             $body['quantity'] ?? 0,
-            $body['status'] ?? 'Pending',
+            $body['status'] ?? 'In Transit',
             $body['requestedBy'] ?? '',
         ]);
         
-        return ['transfer' => ['id' => (string)$pdo->lastInsertId()]];
+        $transferId = $pdo->lastInsertId();
+        
+        // Fetch the created transfer with full details
+        $stmt = $pdo->prepare('SELECT t.*, p.name as product_name FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
+        $stmt->execute([$transferId]);
+        $t = $stmt->fetch();
+        
+        if ($t) {
+            $quantityReceived = $t['quantity_received'] ?? null;
+            $originalQuantity = $t['quantity'];
+            $discrepancy = $quantityReceived ? $originalQuantity - $quantityReceived : null;
+            
+            return [
+                'transfer' => [
+                    'id' => (string)$t['id'],
+                    'productId' => (string)$t['product_id'],
+                    'productName' => $t['product_name'] ?? 'Unknown Product',
+                    'sku' => $t['sku'] ?? '',
+                    'unit' => $t['unit'] ?? 'kg',
+                    'from' => $t['from'],
+                    'to' => $t['to'],
+                    'quantity' => (float)$t['quantity'],
+                    'quantityReceived' => $quantityReceived ? (float)$quantityReceived : null,
+                    'discrepancy' => $discrepancy,
+                    'discrepancyReason' => $t['discrepancy_reason'],
+                    'date' => substr($t['created_at'], 0, 10),
+                    'time' => substr($t['created_at'], 11, 5),
+                    'status' => strtolower(str_replace(' ', '-', $t['status'])),
+                    'transferredBy' => $t['requested_by'],
+                    'receivedBy' => $t['received_by'],
+                    'createdAt' => $t['created_at'],
+                ]
+            ];
+        }
+        
+        return ['error' => 'Failed to retrieve created transfer'];
     },
     
     'POST /api/transfers/{id}/receive' => function() use ($pdo, $body) {
