@@ -239,6 +239,9 @@ export function TransferPage() {
       // Ensure the transfer has all required fields with defaults
       const transferWithDefaults = {
         ...createdTransfer,
+        quantity: createdTransfer.quantity || parseFloat(newTransfer.quantity),
+        from: createdTransfer.from || newTransfer.from,
+        to: createdTransfer.to || newTransfer.to,
         productName: createdTransfer.productName || product.name,
         sku: createdTransfer.sku || product.sku || "",
         unit: createdTransfer.unit || product.unit || "kg",
