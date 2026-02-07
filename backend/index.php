@@ -652,6 +652,8 @@ $routes = [
         $endDate = $_GET['endDate'] ?? null;
         $location = $_GET['location'] ?? null;
         
+        error_log('[Sales API] Params: startDate=' . ($startDate ?? 'NULL') . ', endDate=' . ($endDate ?? 'NULL') . ', location=' . ($location ?? 'NULL'));
+        
         $query = 'SELECT s.* FROM sales s';
         $params = [];
         $where = [];
@@ -672,9 +674,15 @@ $routes = [
         }
         
         $query .= ' ORDER BY s.created_at DESC LIMIT 500';
+        
+        error_log('[Sales API] Query: ' . $query);
+        error_log('[Sales API] Params: ' . json_encode($params));
+        
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);
         $sales = $stmt->fetchAll();
+        
+        error_log('[Sales API] Result count: ' . count($sales));
         
         return [
             'sales' => array_map(function($s) use ($pdo) {
@@ -928,8 +936,35 @@ $routes = [
     },
     
     'GET /api/production' => function() use ($pdo) {
-        $stmt = $pdo->query('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id ORDER BY pr.created_at DESC LIMIT 100');
+        $startDate = $_GET['startDate'] ?? null;
+        $endDate = $_GET['endDate'] ?? null;
+        
+        error_log('[Production API] Params: startDate=' . ($startDate ?? 'NULL') . ', endDate=' . ($endDate ?? 'NULL'));
+        
+        $query = 'SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id';
+        $params = [];
+        $where = [];
+        
+        if ($startDate && $endDate) {
+            $where[] = 'DATE(pr.created_at) BETWEEN ? AND ?';
+            $params[] = $startDate;
+            $params[] = $endDate;
+        }
+        
+        if (!empty($where)) {
+            $query .= ' WHERE ' . implode(' AND ', $where);
+        }
+        
+        $query .= ' ORDER BY pr.created_at DESC LIMIT 100';
+        
+        error_log('[Production API] Query: ' . $query);
+        error_log('[Production API] Params: ' . json_encode($params));
+        
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
         $records = $stmt->fetchAll();
+        
+        error_log('[Production API] Result count: ' . count($records));
         
         return [
             'records' => array_map(function($r) {
