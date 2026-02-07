@@ -916,10 +916,6 @@ $routes = [
         
         return [
             'records' => array_map(function($r) {
-                $ingredientsUsed = null;
-                if (!empty($r['ingredients_used'])) {
-                    $ingredientsUsed = json_decode($r['ingredients_used'], true);
-                }
                 return [
                     'id' => (string)$r['id'],
                     'productId' => (string)$r['product_id'],
@@ -928,7 +924,6 @@ $routes = [
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
-                    'ingredientsUsed' => $ingredientsUsed,
                     'notes' => $r['notes'],
                     'timestamp' => $r['created_at'],
                 ];
@@ -937,19 +932,13 @@ $routes = [
     },
     
     'POST /api/production' => function() use ($pdo, $body) {
-        $ingredientsJson = null;
-        if (!empty($body['ingredientsUsed'])) {
-            $ingredientsJson = json_encode($body['ingredientsUsed']);
-        }
-        
-        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, ingredients_used, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
+        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
         $stmt->execute([
             $body['productId'] ?? null,
             $body['quantity'] ?? 0,
             $body['batchNumber'] ?? '',
             $body['operator'] ?? '',
             $body['status'] ?? 'in-progress',
-            $ingredientsJson,
             $body['notes'] ?? null,
         ]);
         
