@@ -815,7 +815,8 @@ $routes = [
                     $itemTotal
                 ]);
                 
-                // Deduct from inventory
+                // Deduct from inventory - use location from body or default to "Main Store"
+                $location = $body['location'] ?? $body['storeId'] ?? 'Main Store';
                 $invStmt = $pdo->prepare('
                     UPDATE inventory 
                     SET quantity = quantity - ? 
@@ -825,7 +826,7 @@ $routes = [
                 $invStmt->execute([
                     $item['quantity'],
                     $item['productId'],
-                    $body['location']
+                    $location
                 ]);
                 
                 // Check if update affected any rows
@@ -839,7 +840,7 @@ $routes = [
                     try {
                         $createInvStmt->execute([
                             $item['productId'],
-                            $body['location'],
+                            $location,
                             -$item['quantity']
                         ]);
                     } catch (Exception $e) {
