@@ -962,23 +962,6 @@ $routes = [
                 $stmt->execute([$productId, 'Production Facility', $quantity, $quantity]);
             }
             
-            // Deduct ingredients from inventory
-            if (!empty($body['initialIngredients']) && is_array($body['initialIngredients'])) {
-                foreach ($body['initialIngredients'] as $ing) {
-                    $ingredientId = $ing['ingredientId'] ?? null;
-                    $ingredientQty = $ing['quantity'] ?? 0;
-                    
-                    if ($ingredientId && $ingredientQty > 0) {
-                        $stmt = $pdo->prepare('
-                            INSERT INTO inventory (product_id, location, quantity, created_at) 
-                            VALUES (?, ?, ?, NOW())
-                            ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
-                        ');
-                        $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
-                    }
-                }
-            }
-            
             // Fetch the created record
             $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
             $stmt->execute([$id]);
