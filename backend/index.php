@@ -1067,10 +1067,23 @@ $routes = [
                     
                     if ($ingredientCode && $ingredientQty > 0) {
                         try {
-                            // Search in the ingredients table by code or name
-                            $stmt = $pdo->prepare('SELECT id FROM ingredients WHERE code = ? OR LOWER(name) LIKE ? LIMIT 1');
-                            $stmt->execute([$ingredientCode, '%' . $ingredientCode . '%']);
-                            $ingredient = $stmt->fetch();
+                            // The code field contains the ingredient ID from the frontend
+                            // Try searching by ID first (if it's numeric), then by code or name
+                            $ingredient = null;
+                            
+                            if (is_numeric($ingredientCode)) {
+                                // Search by ID first
+                                $stmt = $pdo->prepare('SELECT id FROM ingredients WHERE id = ? LIMIT 1');
+                                $stmt->execute([$ingredientCode]);
+                                $ingredient = $stmt->fetch();
+                            }
+                            
+                            // If not found by ID, try by code or name
+                            if (!$ingredient) {
+                                $stmt = $pdo->prepare('SELECT id FROM ingredients WHERE code = ? OR LOWER(name) LIKE ? LIMIT 1');
+                                $stmt->execute([$ingredientCode, '%' . $ingredientCode . '%']);
+                                $ingredient = $stmt->fetch();
+                            }
                             
                             if ($ingredient) {
                                 $ingredientId = $ingredient['id'];
