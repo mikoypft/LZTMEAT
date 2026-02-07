@@ -775,7 +775,12 @@ $routes = [
             // Build items array for JSON
             $itemsData = json_encode($body['items']);
             
-            error_log('Sales endpoint - globalDiscount: ' . ($body['globalDiscount'] ?? 0) . ', wholesaleDiscount: ' . ($body['wholesaleDiscount'] ?? 0) . ', subtotal: ' . ($body['subtotal'] ?? 0));
+            error_log(date('Y-m-d H:i:s') . ' | Sales endpoint received:');
+            error_log('  globalDiscount: ' . ($body['globalDiscount'] ?? 'MISSING') . ' (type: ' . gettype($body['globalDiscount'] ?? null) . ')');
+            error_log('  wholesaleDiscount: ' . ($body['wholesaleDiscount'] ?? 'MISSING') . ' (type: ' . gettype($body['wholesaleDiscount'] ?? null) . ')');
+            error_log('  subtotal: ' . ($body['subtotal'] ?? 'MISSING'));
+            error_log('  total: ' . ($body['total'] ?? 'MISSING'));
+            error_log('  Full body: ' . json_encode($body));
             
             $stmt->execute([
                 $body['transactionId'] ?? '',

@@ -616,8 +616,20 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
 
     // Create sale record - backend will handle inventory deduction
     try {
+      // Log all variables BEFORE calculation
+      console.log("BEFORE CALCULATION:");
+      console.log("subtotal state:", subtotal);
+      console.log("globalDiscount state:", globalDiscount);
+      console.log("totalWholesaleDiscount state:", totalWholesaleDiscount);
+      
       const calculatedGlobalDiscountAmount = (subtotal * globalDiscount) / 100;
       const calculatedWholesaleDiscountAmount = totalWholesaleDiscount;
+      
+      // Log all variables AFTER calculation
+      console.log("AFTER CALCULATION:");
+      console.log("calculatedGlobalDiscountAmount:", calculatedGlobalDiscountAmount);
+      console.log("Math:", subtotal, "*", globalDiscount, "/ 100 =", calculatedGlobalDiscountAmount);
+      console.log("calculatedWholesaleDiscountAmount:", calculatedWholesaleDiscountAmount);
       
       const salePayload = {
         transactionId: transactionId,
@@ -649,9 +661,12 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         salesType: salesType,
       };
       
-      console.log("Sale payload:", salePayload);
-      console.log("Calculated global discount amount:", calculatedGlobalDiscountAmount);
-      console.log("Calculated wholesale discount amount:", calculatedWholesaleDiscountAmount);
+      console.log("PAYLOAD BEING SENT:");
+      console.log("Full payload:", salePayload);
+      console.log("Discount in payload - globalDiscount:", salePayload.globalDiscount);
+      console.log("Discount in payload - wholesaleDiscount:", salePayload.wholesaleDiscount);
+      console.log("Subtotal in payload:", salePayload.subtotal);
+      console.log("Total in payload:", salePayload.total);
       
       await createSale(salePayload);
 
