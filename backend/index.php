@@ -924,6 +924,7 @@ $routes = [
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
+                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
                     'timestamp' => $r['created_at'],
                 ];
             }, $records),
@@ -931,13 +932,19 @@ $routes = [
     },
     
     'POST /api/production' => function() use ($pdo, $body) {
-        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
+        $initialIngredientsJson = null;
+        if (!empty($body['initialIngredients'])) {
+            $initialIngredientsJson = json_encode($body['initialIngredients']);
+        }
+        
+        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, initial_ingredients, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
         $stmt->execute([
             $body['productId'] ?? null,
             $body['quantity'] ?? 0,
             $body['batchNumber'] ?? '',
             $body['operator'] ?? '',
             $body['status'] ?? 'in-progress',
+            $initialIngredientsJson,
         ]);
         
         $id = $pdo->lastInsertId();
@@ -956,6 +963,7 @@ $routes = [
                 'batchNumber' => $r['batch_number'],
                 'operator' => $r['operator'],
                 'status' => $r['status'] ?? 'in-progress',
+                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
                 'timestamp' => $r['created_at'],
             ]
         ];
@@ -994,6 +1002,7 @@ $routes = [
                 'batchNumber' => $r['batch_number'],
                 'operator' => $r['operator'],
                 'status' => $r['status'] ?? 'in-progress',
+                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
                 'timestamp' => $r['created_at'],
             ]
         ];
