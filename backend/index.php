@@ -962,6 +962,23 @@ $routes = [
                 $stmt->execute([$productId, 'Production Facility', $quantity, $quantity]);
             }
             
+            // Deduct initial ingredients from inventory
+            if (!empty($body['initialIngredients']) && is_array($body['initialIngredients'])) {
+                foreach ($body['initialIngredients'] as $ing) {
+                    $ingredientId = $ing['ingredientId'] ?? null;
+                    $ingredientQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    
+                    if ($ingredientId && $ingredientQty > 0) {
+                        $stmt = $pdo->prepare('
+                            INSERT INTO inventory (product_id, location, quantity, created_at) 
+                            VALUES (?, ?, ?, NOW())
+                            ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                        ');
+                        $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                    }
+                }
+            }
+            
             // Fetch the created record
             $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
             $stmt->execute([$id]);
@@ -994,42 +1011,100 @@ $routes = [
             return ['error' => 'Production ID is required'];
         }
         
-        // Update status and quantity if provided
-        $updateFields = ['status = ?'];
-        $params = [$body['status'] ?? 'in-progress'];
-        
-        if (isset($body['quantity']) && $body['quantity'] !== null) {
-            $updateFields[] = 'quantity = ?';
-            $params[] = $body['quantity'];
+        try {
+            // Get current production record to know the original quantity
+            $stmt = $pdo->prepare('SELECT * FROM production_records WHERE id = ?');
+            $stmt->execute([$id]);
+            $currentRecord = $stmt->fetch();
+            
+            if (!$currentRecord) {
+                return ['error' => 'Production record not found'];
+            }
+            
+            $originalQuantity = $currentRecord['quantity'];
+            $actualQuantity = $body['quantity'] ?? $originalQuantity;
+            $productId = $currentRecord['product_id'];
+            
+            // Update status and quantity if provided
+            $updateFields = ['status = ?'];
+            $params = [$body['status'] ?? 'in-progress'];
+            
+            if (isset($body['quantity']) && $body['quantity'] !== null) {
+                $updateFields[] = 'quantity = ?';
+                $params[] = $body['quantity'];
+            }
+            
+            $params[] = $id;
+            
+            $stmt = $pdo->prepare('UPDATE production_records SET ' . implode(', ', $updateFields) . ', updated_at = NOW() WHERE id = ?');
+            $stmt->execute($params);
+            
+            // If status is completed and actual quantity differs from original, adjust inventory
+            if ($body['status'] === 'completed' && $actualQuantity !== $originalQuantity) {
+                $quantityDifference = $actualQuantity - $originalQuantity;
+                
+                if ($productId && $quantityDifference !== 0) {
+                    $stmt = $pdo->prepare('
+                        INSERT INTO inventory (product_id, location, quantity, created_at) 
+                        VALUES (?, ?, ?, NOW())
+                        ON DUPLICATE KEY UPDATE quantity = quantity + ?, updated_at = NOW()
+                    ');
+                    $stmt->execute([$productId, 'Production Facility', $quantityDifference, $quantityDifference]);
+                }
+            }
+            
+            // Deduct additional ingredients if provided
+            if (!empty($body['additionalIngredients']) && is_array($body['additionalIngredients'])) {
+                foreach ($body['additionalIngredients'] as $ing) {
+                    $ingredientCode = $ing['code'] ?? null;
+                    $ingredientQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    
+                    if ($ingredientCode && $ingredientQty > 0) {
+                        // The code is a selection from the ingredients dropdown, we need to find the product id
+                        // Format is typically "ING-###" or similar, try to find the product
+                        $stmt = $pdo->prepare('SELECT id FROM products WHERE LOWER(name) LIKE ? LIMIT 1');
+                        $stmt->execute(['%' . $ingredientCode . '%']);
+                        $ingredientProduct = $stmt->fetch();
+                        
+                        if ($ingredientProduct) {
+                            $ingredientId = $ingredientProduct['id'];
+                            $stmt = $pdo->prepare('
+                                INSERT INTO inventory (product_id, location, quantity, created_at) 
+                                VALUES (?, ?, ?, NOW())
+                                ON DUPLICATE KEY UPDATE quantity = quantity - ?, updated_at = NOW()
+                            ');
+                            $stmt->execute([$ingredientId, 'Production Facility', -$ingredientQty, $ingredientQty]);
+                        }
+                    }
+                }
+            }
+            
+            // Fetch updated record
+            $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
+            $stmt->execute([$id]);
+            $r = $stmt->fetch();
+            
+            if (!$r) {
+                return ['error' => 'Production record not found'];
+            }
+            
+            return [
+                'record' => [
+                    'id' => (string)$r['id'],
+                    'productId' => (string)$r['product_id'],
+                    'productName' => $r['product_name'] ?? 'Unknown Product',
+                    'quantity' => (float)$r['quantity'],
+                    'batchNumber' => $r['batch_number'],
+                    'operator' => $r['operator'],
+                    'status' => $r['status'] ?? 'in-progress',
+                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                    'timestamp' => $r['created_at'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update production: ' . $e->getMessage()];
         }
-        
-        $params[] = $id;
-        
-        $stmt = $pdo->prepare('UPDATE production_records SET ' . implode(', ', $updateFields) . ', updated_at = NOW() WHERE id = ?');
-        $stmt->execute($params);
-        
-        // Fetch updated record
-        $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
-        $stmt->execute([$id]);
-        $r = $stmt->fetch();
-        
-        if (!$r) {
-            return ['error' => 'Production record not found'];
-        }
-        
-        return [
-            'record' => [
-                'id' => (string)$r['id'],
-                'productId' => (string)$r['product_id'],
-                'productName' => $r['product_name'] ?? 'Unknown Product',
-                'quantity' => (float)$r['quantity'],
-                'batchNumber' => $r['batch_number'],
-                'operator' => $r['operator'],
-                'status' => $r['status'] ?? 'in-progress',
-                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
-                'timestamp' => $r['created_at'],
-            ]
-        ];
     },
     
     'PATCH /api/production/{id}' => function() use ($pdo, $body) {
