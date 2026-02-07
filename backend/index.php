@@ -773,6 +773,8 @@ $routes = [
             // Build items array for JSON
             $itemsData = json_encode($body['items']);
             
+            error_log('Sales endpoint - globalDiscount: ' . ($body['globalDiscount'] ?? 0) . ', wholesaleDiscount: ' . ($body['wholesaleDiscount'] ?? 0));
+            
             $stmt->execute([
                 $body['transactionId'] ?? '',
                 $body['userId'] ?? null,
