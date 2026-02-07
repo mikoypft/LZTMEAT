@@ -924,7 +924,6 @@ $routes = [
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
-                    'notes' => $r['notes'],
                     'timestamp' => $r['created_at'],
                 ];
             }, $records),
@@ -932,14 +931,13 @@ $routes = [
     },
     
     'POST /api/production' => function() use ($pdo, $body) {
-        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())');
+        $stmt = $pdo->prepare('INSERT INTO production_records (product_id, quantity, batch_number, operator, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())');
         $stmt->execute([
             $body['productId'] ?? null,
             $body['quantity'] ?? 0,
             $body['batchNumber'] ?? '',
             $body['operator'] ?? '',
             $body['status'] ?? 'in-progress',
-            $body['notes'] ?? null,
         ]);
         
         $id = $pdo->lastInsertId();
@@ -948,11 +946,6 @@ $routes = [
         $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
         $stmt->execute([$id]);
         $r = $stmt->fetch();
-        
-        $ingredientsUsed = null;
-        if (!empty($r['ingredients_used'])) {
-            $ingredientsUsed = json_decode($r['ingredients_used'], true);
-        }
         
         return [
             'record' => [
@@ -963,8 +956,6 @@ $routes = [
                 'batchNumber' => $r['batch_number'],
                 'operator' => $r['operator'],
                 'status' => $r['status'] ?? 'in-progress',
-                'ingredientsUsed' => $ingredientsUsed,
-                'notes' => $r['notes'],
                 'timestamp' => $r['created_at'],
             ]
         ];
@@ -994,11 +985,6 @@ $routes = [
             return ['error' => 'Production record not found'];
         }
         
-        $ingredientsUsed = null;
-        if (!empty($r['ingredients_used'])) {
-            $ingredientsUsed = json_decode($r['ingredients_used'], true);
-        }
-        
         return [
             'record' => [
                 'id' => (string)$r['id'],
@@ -1008,8 +994,6 @@ $routes = [
                 'batchNumber' => $r['batch_number'],
                 'operator' => $r['operator'],
                 'status' => $r['status'] ?? 'in-progress',
-                'ingredientsUsed' => $ingredientsUsed,
-                'notes' => $r['notes'],
                 'timestamp' => $r['created_at'],
             ]
         ];
