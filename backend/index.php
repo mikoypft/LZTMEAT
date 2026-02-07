@@ -969,6 +969,52 @@ $routes = [
         ];
     },
     
+    'PUT /api/production/{id}' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $id = substr($uri, strrpos($uri, '/') + 1);
+        
+        if (empty($id)) {
+            return ['error' => 'Production ID is required'];
+        }
+        
+        // Update status and quantity if provided
+        $updateFields = ['status = ?'];
+        $params = [$body['status'] ?? 'in-progress'];
+        
+        if (isset($body['quantity']) && $body['quantity'] !== null) {
+            $updateFields[] = 'quantity = ?';
+            $params[] = $body['quantity'];
+        }
+        
+        $params[] = $id;
+        
+        $stmt = $pdo->prepare('UPDATE production_records SET ' . implode(', ', $updateFields) . ', updated_at = NOW() WHERE id = ?');
+        $stmt->execute($params);
+        
+        // Fetch updated record
+        $stmt = $pdo->prepare('SELECT pr.*, p.name as product_name FROM production_records pr LEFT JOIN products p ON pr.product_id = p.id WHERE pr.id = ?');
+        $stmt->execute([$id]);
+        $r = $stmt->fetch();
+        
+        if (!$r) {
+            return ['error' => 'Production record not found'];
+        }
+        
+        return [
+            'record' => [
+                'id' => (string)$r['id'],
+                'productId' => (string)$r['product_id'],
+                'productName' => $r['product_name'] ?? 'Unknown Product',
+                'quantity' => (float)$r['quantity'],
+                'batchNumber' => $r['batch_number'],
+                'operator' => $r['operator'],
+                'status' => $r['status'] ?? 'in-progress',
+                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                'timestamp' => $r['created_at'],
+            ]
+        ];
+    },
+    
     'PATCH /api/production/{id}' => function() use ($pdo, $body) {
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
