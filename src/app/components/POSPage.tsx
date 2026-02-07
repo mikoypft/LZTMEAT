@@ -181,6 +181,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     items: any[];
     subtotal: number;
     globalDiscount: number;
+    globalDiscountPercent?: number;
     wholesaleDiscount: number;
     tax: number;
     total: number;
@@ -637,8 +638,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           discount: item.discount,
         })),
         subtotal: subtotal,
-        globalDiscount: globalDiscount,
-        wholesaleDiscount: wholesaleDiscount,
+        globalDiscount: globalDiscountAmount,
+        wholesaleDiscount: totalWholesaleDiscount,
         tax: tax,
         total: total,
         paymentMethod: method,
@@ -659,8 +660,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           total: calculateItemTotal(item),
         })),
         subtotal: subtotal,
-        globalDiscount: globalDiscount,
-        wholesaleDiscount: wholesaleDiscount,
+        globalDiscount: globalDiscountAmount,
+        globalDiscountPercent: globalDiscount,
+        wholesaleDiscount: totalWholesaleDiscount,
         tax: tax,
         total: total,
       });
@@ -1327,14 +1329,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               {receiptData.globalDiscount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Global Discount ({receiptData.globalDiscount}%):
+                    Global Discount ({receiptData.globalDiscountPercent || 0}%):
                   </span>
                   <span className="text-orange-600">
-                    -₱
-                    {(
-                      (receiptData.subtotal * receiptData.globalDiscount) /
-                      100
-                    ).toFixed(2)}
+                    -₱{receiptData.globalDiscount.toFixed(2)}
                   </span>
                 </div>
               )}
