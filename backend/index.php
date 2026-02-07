@@ -1123,7 +1123,7 @@ $routes = [
             ]);
             
             // Fetch updated transfer with product details
-            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name, p.sku, p.unit FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
+            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
             $stmt->execute([$transferId]);
             $updatedTransfer = $stmt->fetch();
             
@@ -1141,8 +1141,8 @@ $routes = [
                     'id' => (string)$updatedTransfer['id'],
                     'productId' => (string)$updatedTransfer['product_id'],
                     'productName' => $updatedTransfer['product_name'],
-                    'sku' => $updatedTransfer['sku'],
-                    'unit' => $updatedTransfer['unit'],
+                    'sku' => $updatedTransfer['sku'] ?? '',
+                    'unit' => $updatedTransfer['unit'] ?? 'kg',
                     'from' => $updatedTransfer['from'],
                     'to' => $updatedTransfer['to'],
                     'quantity' => (float)$updatedTransfer['quantity'],
@@ -1202,7 +1202,7 @@ $routes = [
             $stmt->execute([$newStatus, $transferId]);
             
             // Fetch updated transfer
-            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name, p.sku, p.unit FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
+            $stmt = $pdo->prepare('SELECT t.*, p.name as product_name FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
             $stmt->execute([$transferId]);
             $updatedTransfer = $stmt->fetch();
             
@@ -1220,8 +1220,8 @@ $routes = [
                     'id' => (string)$updatedTransfer['id'],
                     'productId' => (string)$updatedTransfer['product_id'],
                     'productName' => $updatedTransfer['product_name'],
-                    'sku' => $updatedTransfer['sku'],
-                    'unit' => $updatedTransfer['unit'],
+                    'sku' => $updatedTransfer['sku'] ?? '',
+                    'unit' => $updatedTransfer['unit'] ?? 'kg',
                     'from' => $updatedTransfer['from'],
                     'to' => $updatedTransfer['to'],
                     'quantity' => (float)$updatedTransfer['quantity'],
