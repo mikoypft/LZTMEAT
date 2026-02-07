@@ -730,29 +730,26 @@ $routes = [
                 return ['error' => 'Items array is required'];
             }
             
-            if (empty($body['storeId']) || empty($body['location'])) {
+            if (empty($body['storeId'])) {
                 http_response_code(400);
-                return ['error' => 'Store ID and location are required'];
+                return ['error' => 'Store ID is required'];
             }
             
-            // Create sales record
+            // Create sales record with only the columns that exist in the table
             $stmt = $pdo->prepare('
                 INSERT INTO sales (
                     transaction_id, 
                     user_id, 
                     store_id, 
-                    location,
                     customer,
-                    customer_name,
-                    customer_phone,
-                    customer_email,
                     items,
                     subtotal,
                     global_discount,
                     tax,
                     total, 
-                    payment_method
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    payment_method,
+                    sales_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ');
             
             // Build customer object for JSON
@@ -768,17 +765,14 @@ $routes = [
                 $body['transactionId'] ?? '',
                 $body['userId'] ?? null,
                 $body['storeId'] ?? null,
-                $body['location'] ?? '',
                 $customerData,
-                $body['customer']['name'] ?? null,
-                $body['customer']['phone'] ?? null,
-                $body['customer']['email'] ?? null,
                 $itemsData,
                 $body['subtotal'] ?? 0,
                 $body['globalDiscount'] ?? 0,
                 $body['tax'] ?? 0,
                 $body['total'] ?? 0,
                 $body['paymentMethod'] ?? 'Cash',
+                $body['salesType'] ?? 'retail',
             ]);
             
             $saleId = (string)$pdo->lastInsertId();
