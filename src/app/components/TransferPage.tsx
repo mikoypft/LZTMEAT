@@ -97,35 +97,41 @@ export function TransferPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [transfersData, storesData, productsData, usersData, inventoryData] =
-        await Promise.all([
-          getTransfers(),
-          getStores(),
-          getProducts(),
-          getAllUsers(),
-          getInventory(),
-        ]);
+      const [
+        transfersData,
+        storesData,
+        productsData,
+        usersData,
+        inventoryData,
+      ] = await Promise.all([
+        getTransfers(),
+        getStores(),
+        getProducts(),
+        getAllUsers(),
+        getInventory(),
+      ]);
       // Sort transfers by createdAt in descending order (newest first)
       const sortedTransfers = transfersData.sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
       setStores(storesData.filter((s) => s.status === "active")); // Only show active stores
-      
+
       // Enrich transfers with product data (sku, unit, etc.)
       const enrichedTransfers = sortedTransfers.map((t) => {
         // Find matching product to get sku, unit, and other details
         const matchedProduct = productsData.find(
-          (p: Product) => String(p.id) === String(t.productId)
+          (p: Product) => String(p.id) === String(t.productId),
         );
-        
+
         return {
           ...t,
           productName: t.productName || matchedProduct?.name || "",
           sku: t.sku || matchedProduct?.sku || "",
           unit: t.unit || matchedProduct?.unit || "kg",
           quantity: t.quantity || 0,
-          quantityReceived: t.quantityReceived !== undefined ? t.quantityReceived : null,
+          quantityReceived:
+            t.quantityReceived !== undefined ? t.quantityReceived : null,
           discrepancy: t.discrepancy !== undefined ? t.discrepancy : null,
           transferredBy: t.transferredBy || "-",
           receivedBy: t.receivedBy || null,
@@ -134,27 +140,33 @@ export function TransferPage() {
           time: t.time || "",
         };
       });
-      
+
       setTransfers(enrichedTransfers);
-      
+
       // Combine products with inventory data for easier access
       const productsWithStock = productsData.map((product: Product) => {
         // For now, calculate total stock across all locations
         const invRecords = inventoryData.filter(
-          (inv: InventoryRecord) => String(inv.productId) === String(product.id)
+          (inv: InventoryRecord) =>
+            String(inv.productId) === String(product.id),
         );
-        const totalStock = invRecords.reduce((sum, inv) => sum + (Number(inv.quantity) || 0), 0);
+        const totalStock = invRecords.reduce(
+          (sum, inv) => sum + (Number(inv.quantity) || 0),
+          0,
+        );
         return {
           ...product,
           stock: totalStock,
         };
       });
-      
+
       // Also create a location-specific version for when "from" location is selected
       const createProductsForLocation = (location: string) => {
         return productsData.map((product: Product) => {
           const inv = inventoryData.find(
-            (i: InventoryRecord) => String(i.productId) === String(product.id) && i.location === location
+            (i: InventoryRecord) =>
+              String(i.productId) === String(product.id) &&
+              i.location === location,
           );
           return {
             ...product,
@@ -162,11 +174,11 @@ export function TransferPage() {
           };
         });
       };
-      
+
       setProducts(productsWithStock);
       setInventory(inventoryData);
       setUsers(usersData);
-      
+
       console.log("Enriched transfers:", enrichedTransfers);
       console.log("Products with stock loaded:", productsWithStock);
       console.log("Inventory data:", inventoryData);
@@ -223,7 +235,7 @@ export function TransferPage() {
     try {
       const createdTransfer = await createTransfer(transferData);
       console.log("Created transfer response:", createdTransfer);
-      
+
       // Ensure the transfer has all required fields with defaults
       const transferWithDefaults = {
         ...createdTransfer,
@@ -232,13 +244,16 @@ export function TransferPage() {
         unit: createdTransfer.unit || product.unit || "kg",
         quantityReceived: createdTransfer.quantityReceived || null,
         discrepancy: createdTransfer.discrepancy || null,
-        transferredBy: createdTransfer.transferredBy || newTransfer.requestedBy || "-",
+        transferredBy:
+          createdTransfer.transferredBy || newTransfer.requestedBy || "-",
         receivedBy: createdTransfer.receivedBy || null,
         status: createdTransfer.status || "in-transit",
         date: createdTransfer.date || new Date().toISOString().split("T")[0],
-        time: createdTransfer.time || new Date().toLocaleTimeString("en-US", { hour12: false }),
+        time:
+          createdTransfer.time ||
+          new Date().toLocaleTimeString("en-US", { hour12: false }),
       };
-      
+
       setTransfers([transferWithDefaults, ...transfers]);
       setCurrentPage(1);
       setNewTransfer({
@@ -284,7 +299,7 @@ export function TransferPage() {
 
       // Get the matched product for enrichment
       const matchedProduct = products.find(
-        (p: Product) => String(p.id) === String(selectedTransfer.productId)
+        (p: Product) => String(p.id) === String(selectedTransfer.productId),
       );
 
       // Enrich the updated transfer with product data
@@ -443,9 +458,13 @@ export function TransferPage() {
                         let stock = (product as any).stock || 0;
                         if (newTransfer.from) {
                           const locationSpecificStock = inventory.find(
-                            (inv) => String(inv.productId) === String(product.id) && inv.location === newTransfer.from
+                            (inv) =>
+                              String(inv.productId) === String(product.id) &&
+                              inv.location === newTransfer.from,
                           );
-                          stock = locationSpecificStock ? Number(locationSpecificStock.quantity) || 0 : 0;
+                          stock = locationSpecificStock
+                            ? Number(locationSpecificStock.quantity) || 0
+                            : 0;
                         }
                         const displayUnit = product.unit || "units";
                         return (
@@ -641,8 +660,9 @@ export function TransferPage() {
                           <span
                             className={`px-3 py-1 rounded-full text-xs ${transfer.status ? getStatusColor(transfer.status) : "bg-gray-100 text-gray-700"}`}
                           >
-                            {transfer.status 
-                              ? transfer.status.charAt(0).toUpperCase() + transfer.status.slice(1)
+                            {transfer.status
+                              ? transfer.status.charAt(0).toUpperCase() +
+                                transfer.status.slice(1)
                               : "Unknown"}
                           </span>
                         </div>
@@ -654,8 +674,9 @@ export function TransferPage() {
                               onClick={() => {
                                 setSelectedTransfer(transfer);
                                 setReceiveData({
-                                  quantityReceived:
-                                    String(transfer.quantity || 0),
+                                  quantityReceived: String(
+                                    transfer.quantity || 0,
+                                  ),
                                   discrepancyReason: "",
                                   receivedBy: "",
                                 });
@@ -809,13 +830,13 @@ export function TransferPage() {
                     Original Quantity Sent
                   </label>
                   <input
-                    type="number"
-                    value={selectedTransfer.quantity}
+                    type="text"
+                    value={`${selectedTransfer.quantity || 0} ${selectedTransfer.unit || "kg"}`}
                     disabled
                     className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Quantity sent from {selectedTransfer.fromLocation}
+                    Quantity sent from {selectedTransfer.from}
                   </p>
                 </div>
 
@@ -830,18 +851,19 @@ export function TransferPage() {
                     onChange={(e) =>
                       setReceiveData({
                         ...receiveData,
-                        quantityReceived: parseFloat(e.target.value) || 0,
+                        quantityReceived: e.target.value,
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
-                  {receiveData.quantityReceived !==
+                  {parseFloat(receiveData.quantityReceived) !==
                     selectedTransfer.quantity && (
                     <p className="text-xs text-orange-600 mt-1">
                       Discrepancy:{" "}
                       {(
-                        selectedTransfer.quantity - receiveData.quantityReceived
+                        selectedTransfer.quantity -
+                        parseFloat(receiveData.quantityReceived)
                       ).toFixed(2)}{" "}
                       unit(s)
                     </p>
