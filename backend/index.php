@@ -1569,7 +1569,7 @@ $routes = [
                     'id' => (string)$u['id'],
                     'username' => $u['username'],
                     'name' => $u['full_name'],
-                    'mobile' => $u['phone'] ?? '',
+                    'mobile' => $u['mobile'] ?? '',
                     'address' => $u['address'] ?? '',
                     'role' => $u['role'],
                     'employeeRole' => $u['employee_role'] ?? null,
@@ -1604,7 +1604,7 @@ $routes = [
             else if ($role === 'POS') $role = 'POS';
             else $role = 'EMPLOYEE';
             
-            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, phone, address, role, store_id, can_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
             $bindParams = [
                 $username,
                 $passwordHash,
@@ -1648,7 +1648,7 @@ $routes = [
                     'id' => (string)$user['id'],
                     'username' => $user['username'],
                     'name' => $user['full_name'],
-                    'mobile' => $user['phone'] ?? '',
+                    'mobile' => $user['mobile'] ?? '',
                     'address' => $user['address'] ?? '',
                     'role' => $user['role'],
                     'storeId' => !empty($user['store_id']) ? (string)$user['store_id'] : null,
@@ -1677,7 +1677,7 @@ $routes = [
                 $params[] = $body['name'];
             }
             if (isset($body['mobile'])) {
-                $updates[] = 'phone = ?';
+                $updates[] = 'mobile = ?';
                 $params[] = $body['mobile'];
             }
             if (isset($body['address'])) {
@@ -1734,9 +1734,10 @@ $routes = [
                     'id' => (string)$user['id'],
                     'username' => $user['username'] ?? '',
                     'name' => $user['full_name'] ?? '',
-                    'mobile' => $user['phone'] ?? '',
+                    'mobile' => $user['mobile'] ?? '',
                     'address' => $user['address'] ?? '',
                     'role' => $user['role'] ?? '',
+                    'employeeRole' => $user['employee_role'] ?? null,
                     'storeId' => !empty($user['store_id']) ? (string)$user['store_id'] : null,
                     'storeName' => $user['store_name'] ?? null,
                     'canLogin' => isset($user['can_login']) ? (bool)$user['can_login'] : false,
