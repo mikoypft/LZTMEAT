@@ -139,37 +139,72 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        try {
+            $user = User::findOrFail($id);
 
-        $updateData = [];
-        if ($request->has('name')) $updateData['full_name'] = $request->name;
-        if ($request->has('mobile')) $updateData['mobile'] = $request->mobile;
-        if ($request->has('address')) $updateData['address'] = $request->address;
-        if ($request->has('password')) $updateData['password'] = Hash::make($request->password);
-        if ($request->has('storeId')) $updateData['store_id'] = $request->storeId;
-        if ($request->has('email')) $updateData['email'] = $request->email;
-        if ($request->has('permissions')) {
-            $permissions = $request->permissions;
-            $updateData['permissions'] = is_array($permissions) ? json_encode($permissions) : $permissions;
+            // Map role from frontend format to database format
+            $roleMap = [
+                'Store' => 'STORE',
+                'Production' => 'PRODUCTION',
+                'POS' => 'POS',
+                'Employee' => 'EMPLOYEE',
+            ];
+
+            $updateData = [];
+            if ($request->has('name')) $updateData['full_name'] = $request->name;
+            if ($request->has('mobile')) $updateData['mobile'] = $request->mobile;
+            if ($request->has('address')) $updateData['address'] = $request->address;
+            if ($request->has('password')) $updateData['password'] = Hash::make($request->password);
+            if ($request->has('username')) $updateData['username'] = $request->username;
+            if ($request->has('storeId')) $updateData['store_id'] = $request->storeId ?: null;
+            if ($request->has('email')) $updateData['email'] = $request->email;
+            if ($request->has('role')) {
+                $role = $request->role;
+                if (isset($roleMap[$role])) {
+                    $role = $roleMap[$role];
+                }
+                $updateData['role'] = $role;
+                // Set employee_role based on mapped role
+                $employeeRoleMap = [
+                    'EMPLOYEE' => 'Employee',
+                    'STORE' => 'Store',
+                    'PRODUCTION' => 'Production',
+                    'POS' => 'POS',
+                ];
+                $updateData['employee_role'] = $employeeRoleMap[$role] ?? null;
+            }
+            if ($request->has('permissions')) {
+                $permissions = $request->permissions;
+                $updateData['permissions'] = is_array($permissions) ? json_encode($permissions) : $permissions;
+            }
+            if ($request->has('canLogin')) $updateData['can_login'] = $request->canLogin;
+
+            $user->update($updateData);
+
+            // Reload the user with store relationship
+            $user->load('store');
+
+            return response()->json([
+                'employee' => [
+                    'id' => (string)$user->id,
+                    'name' => $user->full_name,
+                    'username' => $user->username ?? '',
+                    'mobile' => $user->mobile ?? '',
+                    'address' => $user->address ?? '',
+                    'role' => $user->role ?? '',
+                    'employeeRole' => $user->employee_role ?? null,
+                    'storeId' => $user->store_id ? (string)$user->store_id : null,
+                    'storeName' => $user->store?->name ?? null,
+                    'permissions' => is_string($user->permissions) ? json_decode($user->permissions, true) : ($user->permissions ?? []),
+                    'canLogin' => (bool)($user->can_login ?? false),
+                    'createdAt' => $user->created_at?->toISOString(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to update employee: ' . $e->getMessage(),
+            ], 500);
         }
-        if ($request->has('canLogin')) $updateData['can_login'] = $request->canLogin;
-
-        $user->update($updateData);
-
-        return response()->json([
-            'employee' => [
-                'id' => $user->id,
-                'name' => $user->full_name,
-                'mobile' => $user->mobile ?? '',
-                'address' => $user->address ?? '',
-                'role' => $user->employee_role ?? $user->role,
-                'storeId' => $user->store_id,
-                'storeName' => $user->store?->name,
-                'permissions' => $user->permissions,
-                'username' => $user->username,
-                'canLogin' => $user->can_login,
-            ],
-        ]);
     }
 
     public function destroy($id)

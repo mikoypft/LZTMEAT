@@ -221,8 +221,10 @@ export function EmployeesPage() {
         console.log("→ Calling updateEmployee API...");
         const result = await updateEmployee(editingEmployee.id, cleanData);
         console.log("→ Update result from server:", result);
-        console.log("  - StoreId in response:", result.storeId);
-        console.log("  - StoreName in response:", result.storeName);
+        if (result) {
+          console.log("  - StoreId in response:", result.storeId);
+          console.log("  - StoreName in response:", result.storeName);
+        }
         toast.success("Employee updated successfully");
         await loadEmployees();
         resetForm();
