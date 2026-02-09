@@ -54,6 +54,11 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
+            // Clear any OPcache to ensure fresh code
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+
             // Map role from frontend format to database format
             $roleMap = [
                 'Store' => 'STORE',
@@ -70,26 +75,11 @@ class UserController extends Controller
             if (isset($roleMap[$role])) {
                 $role = $roleMap[$role];
             }
-            
-            // Merge mapped role back
-            $request->merge(['role' => $role]);
-            
-            $request->validate([
-                'name' => 'required|string',
-                'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
-                'storeId' => 'nullable',
-                'mobile' => 'nullable|string',
-                'address' => 'nullable|string',
-                'email' => 'nullable|email',
-                'permissions' => 'nullable',
-                'canLogin' => 'nullable',
-            ]);
 
             // Auto-generate username from name if not provided
             $username = $request->input('username');
             if (!$username) {
                 $baseName = strtolower(str_replace(' ', '_', $request->input('name')));
-                // Remove non-alphanumeric characters except underscore
                 $baseName = preg_replace('/[^a-z0-9_]/', '', $baseName);
                 if (empty($baseName)) {
                     $baseName = 'user';
@@ -126,15 +116,17 @@ class UserController extends Controller
                 $storeId = null;
             }
 
-            // Handle permissions
+            // Handle permissions - pass as array since model casts to json
             $permissions = $request->input('permissions');
-            if (is_array($permissions)) {
-                $permissions = json_encode($permissions);
-            } elseif (empty($permissions)) {
-                $permissions = '[]';
+            if (is_string($permissions)) {
+                $decoded = json_decode($permissions, true);
+                $permissions = is_array($decoded) ? $decoded : [];
+            } elseif (!is_array($permissions)) {
+                $permissions = [];
             }
 
-            $user = User::create([
+            // Use raw DB insert to avoid any model issues
+            $userId = \Illuminate\Support\Facades\DB::table('users')->insertGetId([
                 'full_name' => $request->input('name'),
                 'username' => $username,
                 'password' => \Illuminate\Support\Facades\Hash::make($password),
@@ -143,58 +135,37 @@ class UserController extends Controller
                 'store_id' => $storeId,
                 'mobile' => $request->input('mobile') ?? '',
                 'address' => $request->input('address') ?? '',
-                'permissions' => $permissions,
-                'can_login' => $request->input('canLogin') ? true : true,
+                'permissions' => json_encode($permissions),
+                'can_login' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            // Refresh user from database to get all fields
-            $user = User::find($user->id);
-            
-            // Load store relationship safely
-            try {
-                $user->load('store');
-            } catch (\Exception $e) {
-                // Ignore store loading errors
-            }
+            // Fetch the created user
+            $user = User::with('store')->find($userId);
 
             $storeName = null;
-            try {
-                $storeName = $user->store ? $user->store->name : null;
-            } catch (\Exception $e) {
-                $storeName = null;
+            if ($user && $user->store) {
+                $storeName = $user->store->name;
             }
 
             $responseData = [
                 'employee' => [
-                    'id' => (string)$user->id,
-                    'name' => $user->full_name ?? '',
-                    'fullName' => $user->full_name ?? '',
-                    'mobile' => $user->mobile ?? '',
-                    'address' => $user->address ?? '',
-                    'role' => $user->role ?? '',
-                    'employeeRole' => $user->employee_role ?? null,
-                    'storeId' => $user->store_id ? (string)$user->store_id : null,
+                    'id' => (string)$userId,
+                    'name' => $request->input('name'),
+                    'fullName' => $request->input('name'),
+                    'mobile' => $request->input('mobile') ?? '',
+                    'address' => $request->input('address') ?? '',
+                    'role' => $role,
+                    'employeeRole' => $employeeRoleMap[$role] ?? null,
+                    'storeId' => $storeId ? (string)$storeId : null,
                     'storeName' => $storeName,
-                    'permissions' => [],
+                    'permissions' => $permissions,
                     'username' => $username,
                     'canLogin' => true,
                     'createdAt' => date('c'),
                 ],
             ];
-
-            // Parse permissions safely
-            try {
-                if (is_string($user->permissions)) {
-                    $decoded = json_decode($user->permissions, true);
-                    if (is_array($decoded)) {
-                        $responseData['employee']['permissions'] = $decoded;
-                    }
-                } elseif (is_array($user->permissions)) {
-                    $responseData['employee']['permissions'] = $user->permissions;
-                }
-            } catch (\Exception $e) {
-                $responseData['employee']['permissions'] = [];
-            }
             
             // Include generated password in response if auto-generated
             if ($plainPassword) {
