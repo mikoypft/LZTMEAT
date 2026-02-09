@@ -53,88 +53,112 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        // Map role from frontend format to database format
-        $roleMap = [
-            'Store' => 'STORE',
-            'Production' => 'PRODUCTION', 
-            'POS' => 'POS',
-            'Employee' => 'EMPLOYEE',
-        ];
-        
-        $role = $request->input('role');
-        if (isset($roleMap[$role])) {
-            $role = $roleMap[$role];
-        }
-        
-        // Merge mapped role back
-        $request->merge(['role' => $role]);
-        
-        $request->validate([
-            'name' => 'required|string',
-            'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
-            'storeId' => 'nullable|integer|exists:stores,id',
-            'mobile' => 'nullable|string',
-            'address' => 'nullable|string',
-            'email' => 'nullable|email',
-            'permissions' => 'nullable',
-            'canLogin' => 'nullable|boolean',
-        ]);
-
-        // Auto-generate username from name if not provided
-        $username = $request->input('username');
-        if (!$username) {
-            $baseName = strtolower(str_replace(' ', '_', $request->input('name')));
-            $username = $baseName;
-            $counter = 1;
-            while (User::where('username', $username)->exists()) {
-                $username = $baseName . '_' . $counter;
-                $counter++;
+        try {
+            // Map role from frontend format to database format
+            $roleMap = [
+                'Store' => 'STORE',
+                'Production' => 'PRODUCTION', 
+                'POS' => 'POS',
+                'Employee' => 'EMPLOYEE',
+            ];
+            
+            $role = $request->input('role');
+            if (isset($roleMap[$role])) {
+                $role = $roleMap[$role];
             }
-        }
-        
-        // Auto-generate password if not provided
-        $password = $request->input('password');
-        $plainPassword = null;
-        if (!$password) {
-            $plainPassword = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
-            $password = $plainPassword;
-        }
+            
+            // Merge mapped role back
+            $request->merge(['role' => $role]);
+            
+            $request->validate([
+                'name' => 'required|string',
+                'role' => 'required|in:ADMIN,STORE,PRODUCTION,POS,EMPLOYEE',
+                'storeId' => 'nullable|integer|exists:stores,id',
+                'mobile' => 'nullable|string',
+                'address' => 'nullable|string',
+                'email' => 'nullable|email',
+                'permissions' => 'nullable',
+                'canLogin' => 'nullable|boolean',
+            ]);
 
-        $user = User::create([
-            'full_name' => $request->input('name'),
-            'username' => $username,
-            'password' => Hash::make($password),
-            'role' => $role,
-            'employee_role' => $role === 'EMPLOYEE' ? 'Employee' : null,
-            'store_id' => $request->input('storeId'),
-            'mobile' => $request->input('mobile'),
-            'address' => $request->input('address'),
-            'permissions' => is_array($request->input('permissions')) ? json_encode($request->input('permissions')) : $request->input('permissions'),
-            'can_login' => $request->input('canLogin') ?? true,
-        ]);
+            // Auto-generate username from name if not provided
+            $username = $request->input('username');
+            if (!$username) {
+                $baseName = strtolower(str_replace(' ', '_', $request->input('name')));
+                $username = $baseName;
+                $counter = 1;
+                while (User::where('username', $username)->exists()) {
+                    $username = $baseName . '_' . $counter;
+                    $counter++;
+                }
+            }
+            
+            // Auto-generate password if not provided
+            $password = $request->input('password');
+            $plainPassword = null;
+            if (!$password) {
+                $plainPassword = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+                $password = $plainPassword;
+            }
 
-        $response = [
-            'employee' => [
-                'id' => $user->id,
-                'name' => $user->full_name,
-                'fullName' => $user->full_name,
-                'mobile' => $user->mobile ?? '',
-                'address' => $user->address ?? '',
-                'role' => $user->employee_role ?? $user->role,
-                'storeId' => $user->store_id,
-                'storeName' => $user->store?->name,
-                'permissions' => $user->permissions,
-                'username' => $user->username,
-                'canLogin' => $user->can_login,
-            ],
-        ];
-        
-        // Include generated password in response if auto-generated
-        if ($plainPassword) {
-            $response['employee']['password'] = $plainPassword;
+            // Map employee_role properly for all roles
+            $employeeRoleMap = [
+                'EMPLOYEE' => 'Employee',
+                'STORE' => 'Store',
+                'PRODUCTION' => 'Production',
+                'POS' => 'POS',
+            ];
+
+            $user = User::create([
+                'full_name' => $request->input('name'),
+                'username' => $username,
+                'password' => Hash::make($password),
+                'role' => $role,
+                'employee_role' => $employeeRoleMap[$role] ?? null,
+                'store_id' => $request->input('storeId') ?: null,
+                'mobile' => $request->input('mobile'),
+                'address' => $request->input('address'),
+                'permissions' => is_array($request->input('permissions')) ? json_encode($request->input('permissions')) : $request->input('permissions'),
+                'can_login' => $request->input('canLogin') ?? true,
+            ]);
+
+            // Load store relationship
+            $user->load('store');
+
+            $response = [
+                'employee' => [
+                    'id' => (string)$user->id,
+                    'name' => $user->full_name,
+                    'fullName' => $user->full_name,
+                    'mobile' => $user->mobile ?? '',
+                    'address' => $user->address ?? '',
+                    'role' => $user->role,
+                    'employeeRole' => $user->employee_role,
+                    'storeId' => $user->store_id ? (string)$user->store_id : null,
+                    'storeName' => $user->store?->name ?? null,
+                    'permissions' => is_string($user->permissions) ? json_decode($user->permissions, true) : ($user->permissions ?? []),
+                    'username' => $user->username,
+                    'canLogin' => (bool)$user->can_login,
+                    'createdAt' => $user->created_at?->toISOString(),
+                ],
+            ];
+            
+            // Include generated password in response if auto-generated
+            if ($plainPassword) {
+                $response['employee']['password'] = $plainPassword;
+            }
+
+            return response()->json($response, 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to create employee: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json($response, 201);
     }
 
     public function update(Request $request, $id)

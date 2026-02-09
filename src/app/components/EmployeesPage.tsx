@@ -232,6 +232,11 @@ export function EmployeesPage() {
         console.log("Creating new employee");
         const newEmployee = await createEmployee(cleanData);
         console.log("New employee created:", newEmployee);
+        
+        if (!newEmployee) {
+          throw new Error("Employee created but no data returned from server");
+        }
+        
         toast.success("Employee added successfully");
 
         // Check if credentials were returned
