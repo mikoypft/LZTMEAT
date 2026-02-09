@@ -67,6 +67,7 @@ async function apiRequest<T>(
   try {
     // Trim and extract JSON from response
     const trimmed = text.trim();
+    console.debug(`[apiRequest] ${endpoint} raw response (${response.status}):`, trimmed.substring(0, 500));
     const jsonMatch = trimmed.match(/{[\s\S]*}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -791,11 +792,21 @@ export async function getEmployees(): Promise<Employee[]> {
 export async function createEmployee(
   employee: Omit<Employee, "id" | "createdAt">,
 ): Promise<Employee> {
-  const data = await apiRequest<{ employee: Employee }>("/employees", {
+  const data = await apiRequest<any>("/employees", {
     method: "POST",
     body: JSON.stringify(employee),
   });
-  return data.employee;
+  console.log("[createEmployee] Raw API response data:", JSON.stringify(data));
+  // Handle both {employee: {...}} and direct employee object formats
+  if (data?.employee) {
+    return data.employee;
+  }
+  // If the response itself looks like an employee object (has id and name)
+  if (data?.id && data?.name) {
+    return data as Employee;
+  }
+  console.error("[createEmployee] Unexpected response format:", data);
+  return data?.employee;
 }
 
 export async function updateEmployee(

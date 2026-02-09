@@ -229,12 +229,16 @@ export function EmployeesPage() {
         await loadEmployees();
         resetForm();
       } else {
-        console.log("Creating new employee");
+        console.log("Creating new employee with data:", JSON.stringify(cleanData));
         const newEmployee = await createEmployee(cleanData);
-        console.log("New employee created:", newEmployee);
+        console.log("New employee created:", JSON.stringify(newEmployee));
         
         if (!newEmployee) {
-          throw new Error("Employee created but no data returned from server");
+          console.error("newEmployee is falsy - API returned no employee data");
+          toast.error("Employee may have been created but server returned unexpected response. Please refresh.");
+          await loadEmployees();
+          resetForm();
+          return;
         }
         
         toast.success("Employee added successfully");
