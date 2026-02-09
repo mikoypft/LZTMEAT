@@ -1692,6 +1692,10 @@ $routes = [
                 $updates[] = 'store_id = ?';
                 $params[] = !empty($body['storeId']) ? $body['storeId'] : null;
             }
+            if (isset($body['permissions'])) {
+                $updates[] = 'permissions = ?';
+                $params[] = json_encode($body['permissions']);
+            }
             if (isset($body['canLogin'])) {
                 $updates[] = 'can_login = ?';
                 $params[] = $body['canLogin'] ? 1 : 0;
@@ -1721,18 +1725,23 @@ $routes = [
             $stmt->execute([$id]);
             $user = $stmt->fetch();
             
+            if (!$user) {
+                return ['error' => 'User not found after update'];
+            }
+            
             return [
                 'employee' => [
                     'id' => (string)$user['id'],
-                    'username' => $user['username'],
-                    'name' => $user['full_name'],
+                    'username' => $user['username'] ?? '',
+                    'name' => $user['full_name'] ?? '',
                     'mobile' => $user['phone'] ?? '',
                     'address' => $user['address'] ?? '',
-                    'role' => $user['role'],
-                    'storeId' => $user['store_id'] ? (string)$user['store_id'] : null,
-                    'storeName' => $user['store_name'],
-                    'canLogin' => (bool)$user['can_login'],
-                    'createdAt' => $user['created_at']
+                    'role' => $user['role'] ?? '',
+                    'storeId' => !empty($user['store_id']) ? (string)$user['store_id'] : null,
+                    'storeName' => $user['store_name'] ?? null,
+                    'canLogin' => isset($user['can_login']) ? (bool)$user['can_login'] : false,
+                    'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
+                    'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : []
                 ]
             ];
         } catch (Exception $e) {
