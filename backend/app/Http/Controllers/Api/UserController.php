@@ -139,7 +139,7 @@ class UserController extends Controller
                     'permissions' => is_string($user->permissions) ? json_decode($user->permissions, true) : ($user->permissions ?? []),
                     'username' => $user->username,
                     'canLogin' => (bool)$user->can_login,
-                    'createdAt' => $user->created_at?->toISOString(),
+                    'createdAt' => $user->created_at?->toIso8601String(),
                 ],
             ];
             
@@ -221,7 +221,7 @@ class UserController extends Controller
                     'storeName' => $user->store?->name ?? null,
                     'permissions' => is_string($user->permissions) ? json_decode($user->permissions, true) : ($user->permissions ?? []),
                     'canLogin' => (bool)($user->can_login ?? false),
-                    'createdAt' => $user->created_at?->toISOString(),
+                    'createdAt' => $user->created_at?->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {
