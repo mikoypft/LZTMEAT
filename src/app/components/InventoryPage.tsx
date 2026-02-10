@@ -40,6 +40,7 @@ import {
   createTransfer,
   getIngredients,
   saveProductDefaultIngredients,
+  getProductDefaultIngredients,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -1573,9 +1574,17 @@ function EditItemModal({
 }) {
   const [formData, setFormData] = useState(item);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
+  const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
+  const [defaultIngredients, setDefaultIngredients] = useState<
+    Array<{ ingredientId: string; quantity: string }>
+  >([]);
+  const [loadingIngredients, setLoadingIngredients] = useState(true);
+  const [savingIngredients, setSavingIngredients] = useState(false);
 
   useEffect(() => {
     loadStoreLocations();
+    loadIngredients();
+    loadDefaultIngredients();
   }, []);
 
   const loadStoreLocations = async () => {
@@ -1587,8 +1596,79 @@ function EditItemModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadIngredients = async () => {
+    try {
+      const ingredientsData = await getIngredients();
+      setAllIngredients(ingredientsData);
+    } catch (error) {
+      console.error("Error loading ingredients:", error);
+    }
+  };
+
+  const loadDefaultIngredients = async () => {
+    try {
+      setLoadingIngredients(true);
+      const defaults = await getProductDefaultIngredients(item.id);
+      if (defaults && defaults.length > 0) {
+        setDefaultIngredients(
+          defaults.map((d) => ({
+            ingredientId: d.ingredientId,
+            quantity: String(d.quantity),
+          })),
+        );
+      }
+    } catch (error) {
+      console.error("Error loading default ingredients:", error);
+    } finally {
+      setLoadingIngredients(false);
+    }
+  };
+
+  const addIngredientRow = () => {
+    setDefaultIngredients([
+      ...defaultIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
+  };
+
+  const removeIngredientRow = (index: number) => {
+    setDefaultIngredients(defaultIngredients.filter((_, i) => i !== index));
+  };
+
+  const updateDefaultIngredient = (
+    index: number,
+    field: "ingredientId" | "quantity",
+    value: string,
+  ) => {
+    const updated = [...defaultIngredients];
+    updated[index] = { ...updated[index], [field]: value };
+    setDefaultIngredients(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Save default ingredients
+    const validIngredients = defaultIngredients.filter(
+      (ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+    );
+
+    try {
+      setSavingIngredients(true);
+      await saveProductDefaultIngredients(
+        item.id,
+        validIngredients.map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        })),
+      );
+    } catch (err) {
+      console.error("Error saving default ingredients:", err);
+      toast.error("Failed to save default ingredients");
+    } finally {
+      setSavingIngredients(false);
+    }
+
     onSave(formData);
   };
 
@@ -1676,6 +1756,80 @@ function EditItemModal({
             />
           </div>
 
+          {/* Default Ingredients Section */}
+          <div className="bg-background rounded-lg p-4 border border-border">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-medium">Default Ingredients for Production</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Auto-loaded when this product is selected for production
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addIngredientRow}
+                className="flex items-center gap-1 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+
+            {loadingIngredients ? (
+              <p className="text-sm text-muted-foreground text-center py-3">
+                Loading ingredients...
+              </p>
+            ) : defaultIngredients.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">
+                No default ingredients set. Click "Add" to define ingredients.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {defaultIngredients.map((ing, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <select
+                        value={ing.ingredientId}
+                        onChange={(e) =>
+                          updateDefaultIngredient(index, "ingredientId", e.target.value)
+                        }
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      >
+                        <option value="">Select Ingredient</option>
+                        {allIngredients.map((ingredient) => (
+                          <option key={ingredient.id} value={ingredient.id}>
+                            {ingredient.name} ({ingredient.unit})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-28">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={ing.quantity}
+                        onChange={(e) =>
+                          updateDefaultIngredient(index, "quantity", e.target.value)
+                        }
+                        placeholder="Qty"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeIngredientRow(index)}
+                      className="p-2 hover:bg-red-100 text-red-600 rounded"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2 pt-4">
             <button
               type="button"
@@ -1687,9 +1841,10 @@ function EditItemModal({
             <button
               type="submit"
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              disabled={savingIngredients}
             >
               <Save className="w-4 h-4" />
-              Save Changes
+              {savingIngredients ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -1799,7 +1954,8 @@ function EncodeProductModal({
 
       // Save default ingredients if any were added
       const validIngredients = defaultIngredients.filter(
-        (ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        (ing) =>
+          ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
       );
       if (validIngredients.length > 0 && newProduct.id) {
         try {
@@ -1920,9 +2076,12 @@ function EncodeProductModal({
           <div className="bg-background rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-medium">Default Ingredients for Production</h3>
+                <h3 className="text-sm font-medium">
+                  Default Ingredients for Production
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  These ingredients will be auto-loaded when this product is selected for production
+                  These ingredients will be auto-loaded when this product is
+                  selected for production
                 </p>
               </div>
               <button
@@ -1937,7 +2096,8 @@ function EncodeProductModal({
 
             {defaultIngredients.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-3">
-                No default ingredients set. Click "Add" to define ingredients for this product.
+                No default ingredients set. Click "Add" to define ingredients
+                for this product.
               </p>
             ) : (
               <div className="space-y-2">
@@ -1947,7 +2107,11 @@ function EncodeProductModal({
                       <select
                         value={ing.ingredientId}
                         onChange={(e) =>
-                          updateDefaultIngredient(index, "ingredientId", e.target.value)
+                          updateDefaultIngredient(
+                            index,
+                            "ingredientId",
+                            e.target.value,
+                          )
                         }
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                       >
@@ -1966,7 +2130,11 @@ function EncodeProductModal({
                         min="0"
                         value={ing.quantity}
                         onChange={(e) =>
-                          updateDefaultIngredient(index, "quantity", e.target.value)
+                          updateDefaultIngredient(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
                         }
                         placeholder="Qty"
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
