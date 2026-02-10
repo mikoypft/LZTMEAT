@@ -38,9 +38,12 @@ import {
   deleteProduct,
   getStores,
   createTransfer,
+  getIngredients,
+  saveProductDefaultIngredients,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
+  type Ingredient,
 } from "@/utils/api";
 import { toast } from "sonner";
 import { getCategories, type Category, API_BASE_URL } from "@/utils/api";
@@ -1711,9 +1714,14 @@ function EncodeProductModal({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
+  const [defaultIngredients, setDefaultIngredients] = useState<
+    Array<{ ingredientId: string; quantity: string }>
+  >([]);
 
   useEffect(() => {
     loadCategories();
+    loadIngredients();
   }, []);
 
   const loadCategories = async () => {
@@ -1727,6 +1735,36 @@ function EncodeProductModal({
       console.error("Error loading categories:", error);
       toast.error("Failed to load categories");
     }
+  };
+
+  const loadIngredients = async () => {
+    try {
+      const ingredientsData = await getIngredients();
+      setAllIngredients(ingredientsData);
+    } catch (error) {
+      console.error("Error loading ingredients:", error);
+    }
+  };
+
+  const addIngredientRow = () => {
+    setDefaultIngredients([
+      ...defaultIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
+  };
+
+  const removeIngredientRow = (index: number) => {
+    setDefaultIngredients(defaultIngredients.filter((_, i) => i !== index));
+  };
+
+  const updateDefaultIngredient = (
+    index: number,
+    field: "ingredientId" | "quantity",
+    value: string,
+  ) => {
+    const updated = [...defaultIngredients];
+    updated[index] = { ...updated[index], [field]: value };
+    setDefaultIngredients(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1759,8 +1797,27 @@ function EncodeProductModal({
         image: null,
       });
 
+      // Save default ingredients if any were added
+      const validIngredients = defaultIngredients.filter(
+        (ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+      );
+      if (validIngredients.length > 0 && newProduct.id) {
+        try {
+          await saveProductDefaultIngredients(
+            String(newProduct.id),
+            validIngredients.map((ing) => ({
+              ingredientId: ing.ingredientId,
+              quantity: parseFloat(ing.quantity),
+            })),
+          );
+        } catch (err) {
+          console.error("Error saving default ingredients:", err);
+          toast.error("Product created but failed to save default ingredients");
+        }
+      }
+
       toast.success(
-        `Product "${formData.name}" has been created. Add stock via Production or transfer from other locations.`,
+        `Product "${formData.name}" has been created${validIngredients.length > 0 ? " with default ingredients" : ""}. Add stock via Production or transfer from other locations.`,
       );
       onAddProduct();
       onClose();
@@ -1857,6 +1914,76 @@ function EncodeProductModal({
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
+          </div>
+
+          {/* Default Ingredients Section */}
+          <div className="bg-background rounded-lg p-4 border border-border">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-medium">Default Ingredients for Production</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  These ingredients will be auto-loaded when this product is selected for production
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addIngredientRow}
+                className="flex items-center gap-1 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+
+            {defaultIngredients.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">
+                No default ingredients set. Click "Add" to define ingredients for this product.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {defaultIngredients.map((ing, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <select
+                        value={ing.ingredientId}
+                        onChange={(e) =>
+                          updateDefaultIngredient(index, "ingredientId", e.target.value)
+                        }
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      >
+                        <option value="">Select Ingredient</option>
+                        {allIngredients.map((ingredient) => (
+                          <option key={ingredient.id} value={ingredient.id}>
+                            {ingredient.name} ({ingredient.unit})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-28">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={ing.quantity}
+                        onChange={(e) =>
+                          updateDefaultIngredient(index, "quantity", e.target.value)
+                        }
+                        placeholder="Qty"
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeIngredientRow(index)}
+                      className="p-2 hover:bg-red-100 text-red-600 rounded"
+                      title="Remove"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">

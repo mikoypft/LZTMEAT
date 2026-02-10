@@ -67,7 +67,10 @@ async function apiRequest<T>(
   try {
     // Trim and extract JSON from response
     const trimmed = text.trim();
-    console.debug(`[apiRequest] ${endpoint} raw response (${response.status}):`, trimmed.substring(0, 500));
+    console.debug(
+      `[apiRequest] ${endpoint} raw response (${response.status}):`,
+      trimmed.substring(0, 500),
+    );
     const jsonMatch = trimmed.match(/{[\s\S]*}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -164,6 +167,42 @@ export async function deleteAllProducts(): Promise<void> {
   });
 }
 
+// ==================== PRODUCT DEFAULT INGREDIENTS API ====================
+
+export interface ProductDefaultIngredient {
+  id: string;
+  productId: string;
+  ingredientId: string;
+  ingredientName: string;
+  ingredientCode: string;
+  ingredientUnit: string;
+  ingredientStock: number;
+  quantity: number;
+}
+
+export async function getProductDefaultIngredients(
+  productId: string,
+): Promise<ProductDefaultIngredient[]> {
+  const data = await apiRequest<{
+    defaultIngredients: ProductDefaultIngredient[];
+  }>(`/products/${productId}/default-ingredients`);
+  return data.defaultIngredients;
+}
+
+export async function saveProductDefaultIngredients(
+  productId: string,
+  ingredients: Array<{ ingredientId: string; quantity: number }>,
+): Promise<ProductDefaultIngredient[]> {
+  const data = await apiRequest<{
+    success: boolean;
+    defaultIngredients: ProductDefaultIngredient[];
+  }>(`/products/${productId}/default-ingredients`, {
+    method: "POST",
+    body: JSON.stringify({ ingredients }),
+  });
+  return data.defaultIngredients;
+}
+
 // ==================== CATEGORIES API ====================
 
 export interface Category {
@@ -175,9 +214,7 @@ export interface Category {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const data = await apiRequest<{ categories: Category[] }>(
-    "/categories",
-  );
+  const data = await apiRequest<{ categories: Category[] }>("/categories");
   return data.categories;
 }
 
@@ -186,7 +223,10 @@ export async function addCategory(
 ): Promise<Category> {
   const data = await apiRequest<{ category: Category }>("/categories", {
     method: "POST",
-    body: JSON.stringify({ name: category.name, description: category.description }),
+    body: JSON.stringify({
+      name: category.name,
+      description: category.description,
+    }),
   });
   return data.category;
 }
@@ -197,7 +237,10 @@ export async function updateCategory(
 ): Promise<Category> {
   const data = await apiRequest<{ category: Category }>(`/categories/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ name: category.name, description: category.description }),
+    body: JSON.stringify({
+      name: category.name,
+      description: category.description,
+    }),
   });
   return data.category;
 }
@@ -219,10 +262,16 @@ export async function getIngredientCategories(): Promise<Category[]> {
 export async function addIngredientCategory(
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const data = await apiRequest<{ category: Category }>("/ingredient-categories", {
-    method: "POST",
-    body: JSON.stringify({ name: category.name, description: category.description }),
-  });
+  const data = await apiRequest<{ category: Category }>(
+    "/ingredient-categories",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: category.name,
+        description: category.description,
+      }),
+    },
+  );
   return data.category;
 }
 
@@ -230,10 +279,16 @@ export async function updateIngredientCategory(
   id: string,
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const data = await apiRequest<{ category: Category }>(`/ingredient-categories/${id}`, {
-    method: "PUT",
-    body: JSON.stringify({ name: category.name, description: category.description }),
-  });
+  const data = await apiRequest<{ category: Category }>(
+    `/ingredient-categories/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        name: category.name,
+        description: category.description,
+      }),
+    },
+  );
   return data.category;
 }
 

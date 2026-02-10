@@ -31,6 +31,7 @@ import {
   updateProductionRecordStatus,
   deleteProductionRecord,
   getEmployees,
+  getProductDefaultIngredients,
   type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
   type Employee,
@@ -227,7 +228,8 @@ export function ProductionDashboard() {
             batchNumber: record.batchNumber,
             status: record.status || "completed",
             ingredientsUsed:
-              (record.initialIngredients && Array.isArray(record.initialIngredients))
+              record.initialIngredients &&
+              Array.isArray(record.initialIngredients)
                 ? record.initialIngredients.map((ing: any) => ({
                     code: ing.ingredientId || ing.code || "",
                     name: ing.ingredientName || ing.name || "",
@@ -756,7 +758,7 @@ export function ProductionDashboard() {
                   <label className="block text-sm mb-2">Product Name *</label>
                   <select
                     value={newProduction.productId}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const selectedId = e.target.value;
                       const product = products.find(
                         (p) => String(p.id) === selectedId,
@@ -766,6 +768,37 @@ export function ProductionDashboard() {
                         productId: selectedId,
                         productName: product?.name || "",
                       });
+
+                      // Auto-load default ingredients for selected product
+                      if (selectedId) {
+                        try {
+                          const defaults = await getProductDefaultIngredients(selectedId);
+                          if (defaults && defaults.length > 0) {
+                            const loadedIngredients = defaults.map((d) => {
+                              // Find the ingredient in the context by ID to get its code
+                              const ing = ingredients.find(
+                                (i) => String(i.id) === String(d.ingredientId),
+                              );
+                              return {
+                                code: ing?.code || d.ingredientCode || "",
+                                quantity: String(d.quantity),
+                              };
+                            });
+                            setSelectedIngredients(loadedIngredients);
+                            toast.info(
+                              `Loaded ${defaults.length} default ingredient(s) for ${product?.name || "product"}`,
+                            );
+                          } else {
+                            setSelectedIngredients([]);
+                          }
+                        } catch (err) {
+                          console.error("Error loading default ingredients:", err);
+                          // Don't show error toast - just leave ingredients empty
+                          setSelectedIngredients([]);
+                        }
+                      } else {
+                        setSelectedIngredients([]);
+                      }
                     }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >

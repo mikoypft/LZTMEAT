@@ -94,6 +94,25 @@ try {
     );
     $dbConnected = true;
     $dbError = null;
+    
+    // Auto-create product_default_ingredients table if it doesn't exist
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS product_default_ingredients (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                product_id BIGINT UNSIGNED NOT NULL,
+                ingredient_id BIGINT UNSIGNED NOT NULL,
+                quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+                FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_product_ingredient (product_id, ingredient_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('product_default_ingredients table creation: ' . $tableErr->getMessage());
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -381,6 +400,115 @@ $routes = [
             return ['success' => true, 'message' => 'All products deleted successfully'];
         } catch (Exception $e) {
             return ['error' => 'Failed to delete products: ' . $e->getMessage()];
+        }
+    },
+    
+    // Product Default Ingredients API
+    'GET /api/products/{id}/default-ingredients' => function() use ($pdo) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        // Extract product ID from /api/products/{id}/default-ingredients
+        preg_match('/\/api\/products\/(\d+)\/default-ingredients/', $uri, $matches);
+        $productId = $matches[1] ?? null;
+        
+        if (!$productId) {
+            return ['error' => 'Product ID is required'];
+        }
+        
+        try {
+            $stmt = $pdo->prepare('
+                SELECT pdi.*, i.name as ingredient_name, i.code as ingredient_code, i.unit as ingredient_unit, i.stock as ingredient_stock
+                FROM product_default_ingredients pdi
+                JOIN ingredients i ON pdi.ingredient_id = i.id
+                WHERE pdi.product_id = ?
+                ORDER BY i.name
+            ');
+            $stmt->execute([$productId]);
+            $defaults = $stmt->fetchAll();
+            
+            return [
+                'defaultIngredients' => array_map(function($d) {
+                    return [
+                        'id' => (string)$d['id'],
+                        'productId' => (string)$d['product_id'],
+                        'ingredientId' => (string)$d['ingredient_id'],
+                        'ingredientName' => $d['ingredient_name'],
+                        'ingredientCode' => $d['ingredient_code'],
+                        'ingredientUnit' => $d['ingredient_unit'],
+                        'ingredientStock' => (float)$d['ingredient_stock'],
+                        'quantity' => (float)$d['quantity'],
+                    ];
+                }, $defaults),
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get default ingredients: ' . $e->getMessage()];
+        }
+    },
+    
+    'POST /api/products/{id}/default-ingredients' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/products\/(\d+)\/default-ingredients/', $uri, $matches);
+        $productId = $matches[1] ?? null;
+        
+        if (!$productId) {
+            return ['error' => 'Product ID is required'];
+        }
+        
+        $ingredients = $body['ingredients'] ?? [];
+        
+        if (!is_array($ingredients)) {
+            return ['error' => 'Ingredients must be an array'];
+        }
+        
+        try {
+            // Delete existing defaults for this product
+            $stmt = $pdo->prepare('DELETE FROM product_default_ingredients WHERE product_id = ?');
+            $stmt->execute([$productId]);
+            
+            // Insert new defaults
+            $stmt = $pdo->prepare('
+                INSERT INTO product_default_ingredients (product_id, ingredient_id, quantity, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
+            ');
+            
+            foreach ($ingredients as $ing) {
+                $ingredientId = $ing['ingredientId'] ?? null;
+                $quantity = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                
+                if ($ingredientId && $quantity > 0) {
+                    $stmt->execute([$productId, $ingredientId, $quantity]);
+                }
+            }
+            
+            // Fetch the saved defaults
+            $stmt = $pdo->prepare('
+                SELECT pdi.*, i.name as ingredient_name, i.code as ingredient_code, i.unit as ingredient_unit, i.stock as ingredient_stock
+                FROM product_default_ingredients pdi
+                JOIN ingredients i ON pdi.ingredient_id = i.id
+                WHERE pdi.product_id = ?
+                ORDER BY i.name
+            ');
+            $stmt->execute([$productId]);
+            $defaults = $stmt->fetchAll();
+            
+            return [
+                'success' => true,
+                'defaultIngredients' => array_map(function($d) {
+                    return [
+                        'id' => (string)$d['id'],
+                        'productId' => (string)$d['product_id'],
+                        'ingredientId' => (string)$d['ingredient_id'],
+                        'ingredientName' => $d['ingredient_name'],
+                        'ingredientCode' => $d['ingredient_code'],
+                        'ingredientUnit' => $d['ingredient_unit'],
+                        'ingredientStock' => (float)$d['ingredient_stock'],
+                        'quantity' => (float)$d['quantity'],
+                    ];
+                }, $defaults),
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to save default ingredients: ' . $e->getMessage()];
         }
     },
     
