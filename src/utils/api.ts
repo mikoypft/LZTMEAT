@@ -176,7 +176,7 @@ export interface Category {
 
 export async function getCategories(): Promise<Category[]> {
   const data = await apiRequest<{ categories: Category[] }>(
-    "/categories?type=product",
+    "/categories",
   );
   return data.categories;
 }
@@ -184,10 +184,9 @@ export async function getCategories(): Promise<Category[]> {
 export async function addCategory(
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const categoryWithType = { ...category, type: "product" };
   const data = await apiRequest<{ category: Category }>("/categories", {
     method: "POST",
-    body: JSON.stringify(categoryWithType),
+    body: JSON.stringify({ name: category.name, description: category.description }),
   });
   return data.category;
 }
@@ -196,10 +195,9 @@ export async function updateCategory(
   id: string,
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const categoryWithType = { ...category, type: "product" };
   const data = await apiRequest<{ category: Category }>(`/categories/${id}`, {
     method: "PUT",
-    body: JSON.stringify(categoryWithType),
+    body: JSON.stringify({ name: category.name, description: category.description }),
   });
   return data.category;
 }
@@ -213,7 +211,7 @@ export async function deleteCategory(id: string): Promise<void> {
 // Ingredient Categories API
 export async function getIngredientCategories(): Promise<Category[]> {
   const data = await apiRequest<{ categories: Category[] }>(
-    "/categories?type=ingredient",
+    "/ingredient-categories",
   );
   return data.categories;
 }
@@ -221,10 +219,9 @@ export async function getIngredientCategories(): Promise<Category[]> {
 export async function addIngredientCategory(
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const categoryWithType = { ...category, type: "ingredient" };
-  const data = await apiRequest<{ category: Category }>("/categories", {
+  const data = await apiRequest<{ category: Category }>("/ingredient-categories", {
     method: "POST",
-    body: JSON.stringify(categoryWithType),
+    body: JSON.stringify({ name: category.name, description: category.description }),
   });
   return data.category;
 }
@@ -233,16 +230,15 @@ export async function updateIngredientCategory(
   id: string,
   category: Omit<Category, "id" | "createdAt">,
 ): Promise<Category> {
-  const categoryWithType = { ...category, type: "ingredient" };
-  const data = await apiRequest<{ category: Category }>(`/categories/${id}`, {
+  const data = await apiRequest<{ category: Category }>(`/ingredient-categories/${id}`, {
     method: "PUT",
-    body: JSON.stringify(categoryWithType),
+    body: JSON.stringify({ name: category.name, description: category.description }),
   });
   return data.category;
 }
 
 export async function deleteIngredientCategory(id: string): Promise<void> {
-  await apiRequest<{ success: boolean }>(`/categories/${id}`, {
+  await apiRequest<{ success: boolean }>(`/ingredient-categories/${id}`, {
     method: "DELETE",
   });
 }
