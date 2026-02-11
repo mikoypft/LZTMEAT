@@ -163,6 +163,27 @@ try {
     } catch (Exception $tableErr) {
         error_log('system_history table creation: ' . $tableErr->getMessage());
     }
+
+    // Auto-create transactions table if it doesn't exist (for Cash In/Cash Out)
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS transactions (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                type ENUM('Cash In', 'Cash Out') NOT NULL,
+                amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                description VARCHAR(500) NULL,
+                category VARCHAR(255) NULL,
+                reference VARCHAR(255) NULL,
+                created_by VARCHAR(255) NULL,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_type (type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('transactions table creation: ' . $tableErr->getMessage());
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -2726,14 +2747,97 @@ $routes = [
         }
     },
 
+    'GET /api/transactions' => function() use ($pdo) {
+        try {
+            $stmt = $pdo->query('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 500');
+            $transactions = $stmt->fetchAll();
+
+            return [
+                'transactions' => array_map(function($t) {
+                    return [
+                        'id' => (string)$t['id'],
+                        'type' => $t['type'],
+                        'amount' => (float)$t['amount'],
+                        'description' => $t['description'],
+                        'category' => $t['category'],
+                        'reference' => $t['reference'],
+                        'createdBy' => $t['created_by'],
+                        'timestamp' => $t['created_at'],
+                    ];
+                }, $transactions),
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get transactions: ' . $e->getMessage()];
+        }
+    },
+
+    'POST /api/transactions' => function() use ($pdo, $body) {
+        try {
+            $type = $body['type'] ?? 'Cash In';
+            $amount = (float)($body['amount'] ?? 0);
+            $description = $body['description'] ?? '';
+            $category = $body['category'] ?? '';
+            $reference = $body['reference'] ?? null;
+            $createdBy = $body['createdBy'] ?? 'Admin';
+
+            if ($amount <= 0) {
+                http_response_code(400);
+                return ['error' => 'Amount must be greater than 0'];
+            }
+
+            $stmt = $pdo->prepare('
+                INSERT INTO transactions (type, amount, description, category, reference, created_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ');
+            $stmt->execute([$type, $amount, $description, $category, $reference, $createdBy]);
+
+            $id = (string)$pdo->lastInsertId();
+
+            return [
+                'success' => true,
+                'transaction' => [
+                    'id' => $id,
+                    'type' => $type,
+                    'amount' => $amount,
+                    'description' => $description,
+                    'category' => $category,
+                    'reference' => $reference,
+                    'createdBy' => $createdBy,
+                    'timestamp' => date('Y-m-d H:i:s'),
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to create transaction: ' . $e->getMessage()];
+        }
+    },
+
+    'DELETE /api/transactions/{id}' => function() use ($pdo) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $id = basename($uri);
+
+        try {
+            $stmt = $pdo->prepare('DELETE FROM transactions WHERE id = ?');
+            $stmt->execute([$id]);
+
+            return ['success' => true, 'message' => 'Transaction deleted'];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete transaction: ' . $e->getMessage()];
+        }
+    },
+
     'GET /api/reports/daily-pdf' => function() use ($pdo) {
         try {
+            // Set timezone to Philippines
+            date_default_timezone_set('Asia/Manila');
+            try { $pdo->exec("SET time_zone = '+08:00'"); } catch (Exception $tzErr) { /* ignore */ }
+
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = $_GET['storeId'] ?? null;
 
             $dateFormatted = date('m/d/Y', strtotime($date));
-            $startDate = $date . ' 00:00:00';
-            $endDate = $date . ' 23:59:59';
 
             // Get store info
             $storeName = 'All Stores';
@@ -2748,13 +2852,13 @@ $routes = [
                 }
             }
 
-            // Get sales
+            // Get sales - use DATE() for robust date matching regardless of timezone
             $salesQuery = 'SELECT s.*, u.full_name as cashier_name, st.name as store_name 
                            FROM sales s 
                            LEFT JOIN users u ON s.user_id = u.id 
                            LEFT JOIN stores st ON s.store_id = st.id 
-                           WHERE s.created_at BETWEEN ? AND ?';
-            $params = [$startDate, $endDate];
+                           WHERE DATE(s.created_at) = ?';
+            $params = [$date];
             if ($storeId) {
                 $salesQuery .= ' AND s.store_id = ?';
                 $params[] = $storeId;
@@ -2762,6 +2866,8 @@ $routes = [
             $salesStmt = $pdo->prepare($salesQuery);
             $salesStmt->execute($params);
             $sales = $salesStmt->fetchAll();
+
+            error_log('[PDF Report] Date: ' . $date . ', StoreId: ' . ($storeId ?? 'ALL') . ', Sales found: ' . count($sales));
 
             // Get products with inventory
             $productsStmt = $pdo->query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name');
@@ -2891,14 +2997,38 @@ $routes = [
             $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
+            // Query cash out transactions for this date if the table exists
+            $cashOutRows = '';
+            $cashOutTotal = 0;
+            try {
+                $txCheck = $pdo->query("SHOW TABLES LIKE 'transactions'");
+                if ($txCheck->rowCount() > 0) {
+                    $txQuery = 'SELECT * FROM transactions WHERE type = ? AND DATE(created_at) = ? ORDER BY created_at ASC';
+                    $txParams = ['Cash Out', $date];
+                    $txStmt = $pdo->prepare($txQuery);
+                    $txStmt->execute($txParams);
+                    $cashOutTxns = $txStmt->fetchAll();
+                    foreach ($cashOutTxns as $tx) {
+                        $txDesc = htmlspecialchars($tx['description'] ?? $tx['category'] ?? 'Cash Out');
+                        $txAmount = (float)($tx['amount'] ?? 0);
+                        $cashOutTotal += $txAmount;
+                        $cashOutRows .= '<tr><td>' . $txDesc . '</td><td class="number">P ' . number_format($txAmount, 2) . '</td></tr>';
+                    }
+                }
+            } catch (Exception $txErr) {
+                error_log('Cash out query error: ' . $txErr->getMessage());
+            }
+
+            if (empty($cashOutRows)) {
+                $cashOutRows = '<tr><td colspan="2" style="text-align:center;font-style:italic;">No cash out transactions</td></tr>';
+            }
+
             // Cash out + Sales section
             $html .= '<table><tr><td style="width:50%;vertical-align:top;border:none;padding-right:5px;">';
             $html .= '<div class="section-title">CASH OUT</div>';
             $html .= '<table class="cash-out-table">';
-            $html .= '<tr><td>PWESTO</td><td class="number">P 0.00</td></tr>';
-            $html .= '<tr><td>OTHER</td><td class="number">P 0.00</td></tr>';
-            $html .= '<tr><td>KAFF</td><td class="number">P 0.00</td></tr>';
-            $html .= '<tr><td style="border-top:2px solid #000;"><strong>TOTAL</strong></td><td class="number" style="border-top:2px solid #000;"><strong>P 0.00</strong></td></tr>';
+            $html .= $cashOutRows;
+            $html .= '<tr><td style="border-top:2px solid #000;"><strong>TOTAL</strong></td><td class="number" style="border-top:2px solid #000;"><strong>P ' . number_format($cashOutTotal, 2) . '</strong></td></tr>';
             $html .= '</table></td><td style="width:50%;vertical-align:top;border:none;padding-left:5px;">';
             $html .= '<div class="section-title">SALES</div>';
             $html .= '<table><tr><th>DEN</th><th>#</th><th>TOTAL</th></tr>';
@@ -2910,9 +3040,11 @@ $routes = [
             $html .= '<div class="section-title">COMPUTATION</div>';
             $html .= '<table class="cash-out-table">';
             $html .= '<tr><td>TOTAL SALES</td><td class="number">P ' . number_format($totalSales, 2) . '</td></tr>';
-            $html .= '<tr><td>CASH OUT</td><td class="number">P 0.00</td></tr>';
+            $html .= '<tr><td>CASH OUT</td><td class="number">P ' . number_format($cashOutTotal, 2) . '</td></tr>';
+            $netSales = $totalSales - $cashOutTotal;
             $html .= '<tr><td style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>GROSS SALES</strong></td><td class="number" style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>P ' . number_format($grossSales, 2) . '</strong></td></tr>';
-            $html .= '<tr style="background-color:#ffcc00;"><td><strong>OVER</strong></td><td class="number"><strong>P 0.00</strong></td></tr>';
+            $over = $grossSales - $cashOutTotal;
+            $html .= '<tr style="background-color:#ffcc00;"><td><strong>OVER</strong></td><td class="number"><strong>P ' . number_format($over, 2) . '</strong></td></tr>';
             $html .= '</table>';
 
             // Remarks + Signatures
@@ -2959,18 +3091,19 @@ $routes = [
 
     'GET /api/reports/daily-csv' => function() use ($pdo) {
         try {
+            // Set timezone to Philippines
+            date_default_timezone_set('Asia/Manila');
+            try { $pdo->exec("SET time_zone = '+08:00'"); } catch (Exception $tzErr) { /* ignore */ }
+
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = $_GET['storeId'] ?? null;
-
-            $startDate = $date . ' 00:00:00';
-            $endDate = $date . ' 23:59:59';
 
             $salesQuery = 'SELECT s.*, u.full_name as cashier_name, st.name as store_name 
                            FROM sales s 
                            LEFT JOIN users u ON s.user_id = u.id 
                            LEFT JOIN stores st ON s.store_id = st.id 
-                           WHERE s.created_at BETWEEN ? AND ?';
-            $params = [$startDate, $endDate];
+                           WHERE DATE(s.created_at) = ?';
+            $params = [$date];
             if ($storeId) {
                 $salesQuery .= ' AND s.store_id = ?';
                 $params[] = $storeId;

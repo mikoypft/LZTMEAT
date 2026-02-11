@@ -8,7 +8,7 @@ import {
   User,
   FileText,
 } from "lucide-react";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { API_BASE_URL } from "../../utils/api";
 import { toast } from "sonner";
 
 interface Transaction {
@@ -44,14 +44,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-26f4e13f/transactions`,
-        {
-          headers: {
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -77,24 +74,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
 
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-26f4e13f/transactions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            type,
-            amount: numAmount,
-            description,
-            category,
-            reference: reference || undefined,
-            createdBy: user?.fullName || "Admin",
-          }),
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          type,
+          amount: numAmount,
+          description,
+          category,
+          reference: reference || undefined,
+          createdBy: user?.fullName || "Admin",
+        }),
+      });
 
       if (response.ok) {
         await fetchTransactions();
