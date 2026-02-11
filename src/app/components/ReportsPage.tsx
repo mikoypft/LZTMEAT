@@ -44,7 +44,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     try {
       setLoadingPdf(true);
       toast.promise(
-        exportDailyReportPDF(selectedDate, selectedStore || undefined),
+        exportDailyReportPDF(selectedDate, selectedStore || undefined, currentUser?.fullName || currentUser?.username || 'Unknown'),
         {
           loading: "Generating PDF report...",
           success: "PDF report downloaded successfully!",

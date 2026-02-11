@@ -2836,6 +2836,7 @@ $routes = [
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = $_GET['storeId'] ?? null;
+            $userName = $_GET['userName'] ?? 'Unknown';
 
             $dateFormatted = date('m/d/Y', strtotime($date));
 
@@ -2996,8 +2997,8 @@ $routes = [
             $html .= '<div class="header"><h1>LZT MEAT PRODUCTS</h1>';
             $html .= '<div class="header-info">';
             $html .= '<table style="width:100%;border:none;margin:0;padding:0;"><tr>';
-            $html .= '<td style="border:none;text-align:left;padding:0;width:40%;"><strong>NAME:</strong> ' . htmlspecialchars($storeName) . '</td>';
-            $html .= '<td style="border:none;text-align:center;padding:0;width:30%;"><strong>LOC:</strong> ' . htmlspecialchars($storeLocation) . '</td>';
+            $html .= '<td style="border:none;text-align:left;padding:0;width:40%;"><strong>NAME:</strong> ' . htmlspecialchars($userName) . '</td>';
+            $html .= '<td style="border:none;text-align:center;padding:0;width:30%;"><strong>LOC:</strong> ' . htmlspecialchars($storeName) . '</td>';
             $html .= '<td style="border:none;text-align:right;padding:0;width:30%;"><strong>DATE:</strong> ' . $dateFormatted . '</td>';
             $html .= '</tr></table>';
             $html .= '</div></div>';

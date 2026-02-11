@@ -1065,10 +1065,14 @@ export async function updateDiscountSettings(settings: {
 export async function exportDailyReportPDF(
   date: string,
   storeId?: string,
+  userName?: string,
 ): Promise<void> {
   let endpoint = `/reports/daily-pdf?date=${date}`;
   if (storeId) {
     endpoint += `&storeId=${storeId}`;
+  }
+  if (userName) {
+    endpoint += `&userName=${encodeURIComponent(userName)}`;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`);
