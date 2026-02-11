@@ -2909,6 +2909,17 @@ $routes = [
             $productTableRows = '';
             $totalAmount = 0;
             $totalKgSales = 0;
+            $totalUnitPrice = 0;
+            $totalWGs = 0;
+            $totalStocks = 0;
+            $totalAdd = 0;
+            $totalPickUp = 0;
+            $totalReturn = 0;
+            $totalScrapBO = 0;
+            $totalTurnOver = 0;
+            $totalTotalSales = 0;
+            $totalWholesaleKg = 0;
+            $totalWholesaleDisc = 0;
 
             foreach ($products as $product) {
                 $productName = $product['name'];
@@ -2926,6 +2937,10 @@ $routes = [
                 $productTotalSales = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['total_sales'] : 0;
                 $totalAmount += $productTotalSales;
                 $totalKgSales += $quantity;
+                $totalUnitPrice += $unitPrice;
+                $totalStocks += $stock;
+                $totalPickUp += $quantity;
+                $totalTotalSales += $productTotalSales;
 
                 $productTableRows .= '<tr>';
                 $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
@@ -2990,10 +3005,20 @@ $routes = [
             $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th></tr>';
             $html .= '</thead><tbody>';
             $html .= $productTableRows;
-            $html .= '<tr class="total-row"><td colspan="9" style="text-align:right;"><strong>TOTAL</strong></td>';
+            $html .= '<tr class="total-row">';
+            $html .= '<td></td>';
+            $html .= '<td class="number"><strong>TOTAL:</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalWGs, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalStocks, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalAdd, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalPickUp, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalReturn, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalScrapBO, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalTurnOver, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalKgSales, 2) . '</strong></td>';
-            $html .= '<td class="number"><strong>P ' . number_format($totalSales, 2) . '</strong></td>';
-            $html .= '<td></td><td></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalTotalSales, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalWholesaleKg, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalWholesaleDisc, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
