@@ -79,27 +79,14 @@ if (str_starts_with($path, '/api')) {
         exit;
     }
 
-    // Check if Laravel vendor is installed, if not fall back to standalone API
-    $laravelAutoload = __DIR__ . '/backend/vendor/autoload.php';
+    // Use standalone API (backend/index.php) which handles its own DB credentials
+    // with proper production fallback. Laravel route is disabled to avoid .env
+    // credential conflicts between local dev and production.
     $standaloneApi = __DIR__ . '/backend/index.php';
 
-    if (file_exists($laravelAutoload)) {
-        // Use Laravel
-        $_SERVER['SCRIPT_NAME'] = '/api';
-        $_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/backend/public/index.php';
-
-        chdir(__DIR__ . '/backend/public');
-        require $laravelAutoload;
-        $app = require_once __DIR__ . '/backend/bootstrap/app.php';
-        $app->handleRequest(\Illuminate\Http\Request::capture());
-    } elseif (file_exists($standaloneApi)) {
-        // Fallback to standalone PHP API (no composer needed)
-        // The standalone API will auto-detect .env or .env.production
+    if (file_exists($standaloneApi)) {
+        // Standalone PHP API with built-in production credential handling
         chdir(__DIR__ . '/backend');
-        
-        // Debug: Check if .env or .env.production exists
-        $envPath = file_exists('.env') ? '.env' : (file_exists('.env.production') ? '.env.production' : 'NONE');
-        
         require $standaloneApi;
     } else {
         http_response_code(500);

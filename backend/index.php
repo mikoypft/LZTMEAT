@@ -27,10 +27,10 @@ $logFile = __DIR__ . '/api_requests.log';
 $logMsg = date('Y-m-d H:i:s') . " - " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI'] . "\n";
 error_log($logMsg, 3, $logFile);
 
-// Load environment variables (check .env first, then .env.production as fallback)
-$envFile = __DIR__ . '/.env';
+// Load environment variables (prefer .env.production for Plesk, fallback to .env for local dev)
+$envFile = __DIR__ . '/.env.production';
 if (!file_exists($envFile)) {
-    $envFile = __DIR__ . '/.env.production';
+    $envFile = __DIR__ . '/.env';
 }
 
 $envLoaded = false;
