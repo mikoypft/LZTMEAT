@@ -1760,7 +1760,9 @@ function EditItemModal({
           <div className="bg-background rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-medium">Default Ingredients for Production</h3>
+                <h3 className="text-sm font-medium">
+                  Default Ingredients for Production
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Auto-loaded when this product is selected for production
                 </p>
@@ -1791,7 +1793,11 @@ function EditItemModal({
                       <select
                         value={ing.ingredientId}
                         onChange={(e) =>
-                          updateDefaultIngredient(index, "ingredientId", e.target.value)
+                          updateDefaultIngredient(
+                            index,
+                            "ingredientId",
+                            e.target.value,
+                          )
                         }
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                       >
@@ -1810,7 +1816,11 @@ function EditItemModal({
                         min="0"
                         value={ing.quantity}
                         onChange={(e) =>
-                          updateDefaultIngredient(index, "quantity", e.target.value)
+                          updateDefaultIngredient(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
                         }
                         placeholder="Qty"
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"

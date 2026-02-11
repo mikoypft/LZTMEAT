@@ -1000,7 +1000,7 @@ $routes = [
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
             
-            // Build customer name (store as plain string)
+            // Build customer data as valid JSON for the JSON column
             $customerName = null;
             if (!empty($body['customerName'])) {
                 $customerName = trim((string)$body['customerName']);
@@ -1013,7 +1013,8 @@ $routes = [
             if (!$customerName) {
                 $customerName = 'Walk-in Customer';
             }
-            $customerData = $customerName;
+            // Must be valid JSON for MariaDB's JSON column CHECK constraint
+            $customerData = json_encode(['name' => $customerName]);
             
             // Build items array for JSON
             $itemsData = json_encode($body['items']);

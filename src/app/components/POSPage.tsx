@@ -641,8 +641,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         userId: currentUser?.id || "",
         username: currentUser?.username || "Unknown",
         customer: {
-              name: customer?.name?.trim() || "Walk-in Customer",
-            },
+          name: customer?.name?.trim() || "Walk-in Customer",
+        },
         items: cart.map((item) => ({
           productId: item.id,
           name: item.name,

@@ -772,7 +772,8 @@ export function ProductionDashboard() {
                       // Auto-load default ingredients for selected product
                       if (selectedId) {
                         try {
-                          const defaults = await getProductDefaultIngredients(selectedId);
+                          const defaults =
+                            await getProductDefaultIngredients(selectedId);
                           if (defaults && defaults.length > 0) {
                             const loadedIngredients = defaults.map((d) => {
                               // Find the ingredient in the context by ID to get its code
@@ -792,7 +793,10 @@ export function ProductionDashboard() {
                             setSelectedIngredients([]);
                           }
                         } catch (err) {
-                          console.error("Error loading default ingredients:", err);
+                          console.error(
+                            "Error loading default ingredients:",
+                            err,
+                          );
                           // Don't show error toast - just leave ingredients empty
                           setSelectedIngredients([]);
                         }
