@@ -142,6 +142,27 @@ try {
     } catch (Exception $tableErr) {
         error_log('stock_adjustments table creation: ' . $tableErr->getMessage());
     }
+
+    // Auto-create system_history table if it doesn't exist
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS system_history (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                action VARCHAR(255) NOT NULL,
+                entity VARCHAR(255) NULL,
+                entity_id VARCHAR(255) NULL,
+                details JSON NULL,
+                user_id BIGINT UNSIGNED NULL,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_created_at (created_at),
+                INDEX idx_entity (entity),
+                INDEX idx_user_id (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('system_history table creation: ' . $tableErr->getMessage());
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -179,6 +200,22 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // Get JSON body for POST/PUT requests
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+// Log a system history entry (best-effort)
+function logSystemHistory($pdo, $action, $entity = null, $entityId = null, $details = null, $userId = null) {
+    try {
+        $stmt = $pdo->prepare('INSERT INTO system_history (action, entity, entity_id, details, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
+        $stmt->execute([
+            $action,
+            $entity,
+            $entityId,
+            $details ? json_encode($details) : null,
+            $userId,
+        ]);
+    } catch (Exception $e) {
+        error_log('system_history insert failed: ' . $e->getMessage());
+    }
+}
 
 // Simple router
 $routes = [
@@ -1042,6 +1079,21 @@ $routes = [
             }
             
             $pdo->commit();
+
+            logSystemHistory(
+                $pdo,
+                'Sale Created',
+                'Sale',
+                $saleId,
+                [
+                    'transactionId' => $body['transactionId'] ?? '',
+                    'total' => $body['total'] ?? 0,
+                    'itemCount' => count($body['items']),
+                    'storeId' => $body['storeId'] ?? null,
+                    'customer' => $body['customer'] ?? null,
+                ],
+                $body['userId'] ?? null
+            );
             
             return [
                 'success' => true,
@@ -1888,6 +1940,22 @@ $routes = [
             $stmt = $pdo->prepare('UPDATE ingredients SET stock = ? WHERE id = ?');
             $stmt->execute([$newStock, $ingredientId]);
 
+            logSystemHistory(
+                $pdo,
+                'Inventory Adjustment',
+                'Ingredient',
+                (string)$ingredient['id'],
+                [
+                    'ingredient' => $ingredient['name'],
+                    'type' => $type,
+                    'quantity' => $quantity,
+                    'previousStock' => $previousStock,
+                    'newStock' => $newStock,
+                    'reason' => $reason,
+                ],
+                $userId
+            );
+
             // Fetch the created adjustment
             $stmt = $pdo->prepare('SELECT * FROM stock_adjustments WHERE id = ?');
             $stmt->execute([$adjustmentId]);
@@ -2617,13 +2685,10 @@ $routes = [
                     return [
                         'id' => (int)$record['id'],
                         'action' => $record['action'],
-                        'entity' => $record['entity'],
-                        'entityId' => $record['entity_id'],
+                        'description' => $record['action'],
+                        'user' => $record['user_name'] ?? 'System',
+                        'timestamp' => $record['created_at'],
                         'details' => $record['details'] ? json_decode($record['details'], true) : null,
-                        'userId' => $record['user_id'] ? (int)$record['user_id'] : null,
-                        'userName' => $record['user_name'],
-                        'createdAt' => $record['created_at'],
-                        'updatedAt' => $record['updated_at'],
                     ];
                 }, $records),
                 'total' => (int)$count,
