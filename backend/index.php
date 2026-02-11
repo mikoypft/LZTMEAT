@@ -2975,7 +2975,7 @@ $routes = [
             $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>';
             $html .= '* { margin: 0; padding: 0; box-sizing: border-box; }';
             $html .= 'body { font-family: Arial, sans-serif; font-size: 8px; color: #000; line-height: 1.2; margin: 0; padding: 0; }';
-            $html .= '.document-container { border: 3px solid #000; margin: 72px; padding: 20px; }';
+            $html .= '.document-container { border: 3px solid #000; margin: 1cm; padding: 20px; }';
             $html .= '.header { text-align: center; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 5px; }';
             $html .= '.header h1 { font-size: 14px; font-weight: bold; margin-bottom: 3px; }';
             $html .= '.header-info { margin-top: 5px; font-size: 8px; }';
@@ -3100,7 +3100,7 @@ $routes = [
             $options->set('isHtml5ParserEnabled', true);
             $dompdf = new \Dompdf\Dompdf($options);
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->setPaper('letter', 'portrait');
             $dompdf->render();
 
             // Output PDF directly
