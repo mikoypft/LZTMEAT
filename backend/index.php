@@ -3057,8 +3057,11 @@ $routes = [
             $html .= '</table></td><td style="width:50%;vertical-align:top;border:none;padding-left:5px;">';
             $html .= '<div class="section-title">SALES</div>';
             $html .= '<table><tr><th>DEN</th><th>#</th><th>TOTAL</th></tr>';
-            $html .= $paymentRows;
-            $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td class="number"><strong>-</strong></td><td class="number"><strong>P ' . number_format($totalSales, 2) . '</strong></td></tr>';
+            $denominations = ['5000', '1000', '500', '200', '100', '50', '20'];
+            foreach ($denominations as $den) {
+                $html .= '<tr><td>' . $den . '</td><td></td><td></td></tr>';
+            }
+            $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td></td></tr>';
             $html .= '</table></td></tr></table>';
 
             // Computation
