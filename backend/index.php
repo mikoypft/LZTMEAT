@@ -2725,6 +2725,307 @@ $routes = [
             return ['error' => 'Failed to get history: ' . $e->getMessage()];
         }
     },
+
+    'GET /api/reports/daily-pdf' => function() use ($pdo) {
+        try {
+            $date = $_GET['date'] ?? date('Y-m-d');
+            $storeId = $_GET['storeId'] ?? null;
+
+            $dateFormatted = date('m/d/Y', strtotime($date));
+            $startDate = $date . ' 00:00:00';
+            $endDate = $date . ' 23:59:59';
+
+            // Get store info
+            $storeName = 'All Stores';
+            $storeLocation = 'N/A';
+            if ($storeId) {
+                $storeStmt = $pdo->prepare('SELECT * FROM stores WHERE id = ?');
+                $storeStmt->execute([$storeId]);
+                $store = $storeStmt->fetch();
+                if ($store) {
+                    $storeName = $store['name'];
+                    $storeLocation = $store['location'] ?? 'N/A';
+                }
+            }
+
+            // Get sales
+            $salesQuery = 'SELECT s.*, u.full_name as cashier_name, st.name as store_name 
+                           FROM sales s 
+                           LEFT JOIN users u ON s.user_id = u.id 
+                           LEFT JOIN stores st ON s.store_id = st.id 
+                           WHERE s.created_at BETWEEN ? AND ?';
+            $params = [$startDate, $endDate];
+            if ($storeId) {
+                $salesQuery .= ' AND s.store_id = ?';
+                $params[] = $storeId;
+            }
+            $salesStmt = $pdo->prepare($salesQuery);
+            $salesStmt->execute($params);
+            $sales = $salesStmt->fetchAll();
+
+            // Get products with inventory
+            $productsStmt = $pdo->query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name');
+            $products = $productsStmt->fetchAll();
+
+            // Group sales by product
+            $salesByProduct = [];
+            $totalSales = 0;
+            $totalDiscount = 0;
+            $paymentBreakdown = [];
+
+            foreach ($sales as $sale) {
+                $totalSales += (float)$sale['total'];
+                $totalDiscount += (float)($sale['global_discount'] ?? 0);
+
+                $method = $sale['payment_method'] ?? 'Cash';
+                if (!isset($paymentBreakdown[$method])) {
+                    $paymentBreakdown[$method] = ['method' => $method, 'count' => 0, 'amount' => 0];
+                }
+                $paymentBreakdown[$method]['count']++;
+                $paymentBreakdown[$method]['amount'] += (float)$sale['total'];
+
+                $items = json_decode($sale['items'], true);
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $name = $item['name'] ?? 'Unknown';
+                        $qty = $item['quantity'] ?? 0;
+                        $price = $item['price'] ?? 0;
+                        if (!isset($salesByProduct[$name])) {
+                            $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
+                        }
+                        $salesByProduct[$name]['quantity'] += $qty;
+                        $salesByProduct[$name]['total_sales'] += ($qty * $price);
+                    }
+                }
+            }
+
+            // Build product rows
+            $productTableRows = '';
+            $totalAmount = 0;
+            $totalKgSales = 0;
+
+            foreach ($products as $product) {
+                $productName = $product['name'];
+                $unitPrice = (float)$product['price'];
+
+                // Get inventory
+                $invStmt = $pdo->prepare('SELECT quantity FROM inventory WHERE product_id = ?' . ($storeId ? ' AND location = ?' : '') . ' LIMIT 1');
+                $invParams = [$product['id']];
+                if ($storeId) $invParams[] = $storeLocation;
+                $invStmt->execute($invParams);
+                $inv = $invStmt->fetch();
+                $stock = $inv ? (float)$inv['quantity'] : 0;
+
+                $quantity = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['quantity'] : 0;
+                $productTotalSales = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['total_sales'] : 0;
+                $totalAmount += $productTotalSales;
+                $totalKgSales += $quantity;
+
+                $productTableRows .= '<tr>';
+                $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
+                $productTableRows .= '<td class="number">' . number_format($unitPrice, 2) . '</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . $stock . '</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . $quantity . '</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
+                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
+                $productTableRows .= '</tr>';
+            }
+
+            // Payment rows
+            $paymentRows = '';
+            foreach ($paymentBreakdown as $p) {
+                $paymentRows .= '<tr>';
+                $paymentRows .= '<td>' . strtoupper(htmlspecialchars($p['method'])) . '</td>';
+                $paymentRows .= '<td class="number">' . $p['count'] . '</td>';
+                $paymentRows .= '<td class="number">P ' . number_format($p['amount'], 2) . '</td>';
+                $paymentRows .= '</tr>';
+            }
+
+            $grossSales = $totalSales + $totalDiscount;
+
+            $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>';
+            $html .= '* { margin: 0; padding: 0; box-sizing: border-box; }';
+            $html .= 'body { font-family: Arial, sans-serif; font-size: 8px; color: #000; line-height: 1.2; margin: 0; padding: 0; }';
+            $html .= '.document-container { border: 3px solid #000; margin: 72px; padding: 20px; }';
+            $html .= '.header { text-align: center; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 5px; }';
+            $html .= '.header h1 { font-size: 14px; font-weight: bold; margin-bottom: 3px; }';
+            $html .= '.header-info { margin-top: 5px; font-size: 8px; }';
+            $html .= '.info-item { display: inline-block; margin-right: 20px; }';
+            $html .= '.info-item strong { display: inline-block; width: 50px; }';
+            $html .= 'table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }';
+            $html .= 'th { background-color: #f0f0f0; border: 1px solid #000; padding: 2px; text-align: center; font-weight: bold; font-size: 7px; }';
+            $html .= 'td { border: 1px solid #000; padding: 2px; text-align: left; font-size: 8px; }';
+            $html .= 'td.number { text-align: right; padding-right: 4px; }';
+            $html .= '.products-table th, .products-table td { padding: 1px 2px; font-size: 7px; }';
+            $html .= '.total-row { background-color: #ffcc00; font-weight: bold; }';
+            $html .= '.section-title { font-size: 8px; font-weight: bold; margin-top: 8px; margin-bottom: 3px; background-color: #f0f0f0; padding: 2px; border: 1px solid #000; text-align: center; }';
+            $html .= '.cash-out-table td { padding: 2px; }';
+            $html .= '.signature-box { margin-top: 10px; font-size: 7px; }';
+            $html .= '.signature { display: inline-block; text-align: center; width: 30%; margin-right: 3%; }';
+            $html .= '.signature-line { border-top: 1px solid #000; margin-top: 15px; font-size: 7px; }';
+            $html .= '</style></head><body><div class="document-container">';
+            $html .= '<div class="header"><h1>LZT MEAT PRODUCTS</h1>';
+            $html .= '<div class="header-info">';
+            $html .= '<span class="info-item"><strong>NAME:</strong> ' . htmlspecialchars($storeName) . '</span>';
+            $html .= '<span class="info-item"><strong>LOC:</strong> ' . htmlspecialchars($storeLocation) . '</span>';
+            $html .= '<span class="info-item"><strong>DATE:</strong> ' . $dateFormatted . '</span>';
+            $html .= '</div></div>';
+            $html .= '<div class="section-title">PRODUCTS</div>';
+            $html .= '<table class="products-table"><thead><tr>';
+            $html .= '<th>PRODUCT</th><th>UNIT</th><th>WGS</th><th>STOC</th><th>ADG</th><th>PICK</th><th>RET</th><th>SCRAP</th><th>TURN</th><th>W/O</th><th>KG SALES</th><th>TOTAL SALES</th><th>KG</th><th>DISC</th><th>AMOUNT</th>';
+            $html .= '</tr></thead><tbody>';
+            $html .= $productTableRows;
+            $html .= '<tr class="total-row"><td colspan="10" style="text-align:right;"><strong>TOTAL</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalKgSales, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalSales, 2) . '</strong></td>';
+            $html .= '<td></td><td></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
+            $html .= '</tr></tbody></table>';
+
+            // Cash out + Sales section
+            $html .= '<table><tr><td style="width:50%;vertical-align:top;border:none;padding-right:5px;">';
+            $html .= '<div class="section-title">CASH OUT</div>';
+            $html .= '<table class="cash-out-table">';
+            $html .= '<tr><td>PWESTO</td><td class="number">P 0.00</td></tr>';
+            $html .= '<tr><td>OTHER</td><td class="number">P 0.00</td></tr>';
+            $html .= '<tr><td>KAFF</td><td class="number">P 0.00</td></tr>';
+            $html .= '<tr><td style="border-top:2px solid #000;"><strong>TOTAL</strong></td><td class="number" style="border-top:2px solid #000;"><strong>P 0.00</strong></td></tr>';
+            $html .= '</table></td><td style="width:50%;vertical-align:top;border:none;padding-left:5px;">';
+            $html .= '<div class="section-title">SALES</div>';
+            $html .= '<table><tr><th>DEN</th><th>#</th><th>TOTAL</th></tr>';
+            $html .= $paymentRows;
+            $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td class="number"><strong>-</strong></td><td class="number"><strong>P ' . number_format($totalSales, 2) . '</strong></td></tr>';
+            $html .= '</table></td></tr></table>';
+
+            // Computation
+            $html .= '<div class="section-title">COMPUTATION</div>';
+            $html .= '<table class="cash-out-table">';
+            $html .= '<tr><td>TOTAL SALES</td><td class="number">P ' . number_format($totalSales, 2) . '</td></tr>';
+            $html .= '<tr><td>CASH OUT</td><td class="number">P 0.00</td></tr>';
+            $html .= '<tr><td style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>GROSS SALES</strong></td><td class="number" style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>P ' . number_format($grossSales, 2) . '</strong></td></tr>';
+            $html .= '<tr style="background-color:#ffcc00;"><td><strong>OVER</strong></td><td class="number"><strong>P 0.00</strong></td></tr>';
+            $html .= '</table>';
+
+            // Remarks + Signatures
+            $html .= '<div class="section-title">REMARKS</div>';
+            $html .= '<div style="border:1px solid #000;padding:5px;min-height:20px;"></div>';
+            $html .= '<div class="signature-box">';
+            $html .= '<div class="signature"><p>Prepared By:</p><div class="signature-line">_____________________</div></div>';
+            $html .= '<div class="signature"><p>Checked By:</p><div class="signature-line">_____________________</div></div>';
+            $html .= '<div class="signature"><p>Approved By:</p><div class="signature-line">_____________________</div></div>';
+            $html .= '</div>';
+            $html .= '<p style="text-align:center;margin-top:8px;font-size:7px;border-top:1px solid #000;padding-top:5px;">ATTENTION: Please WRITE a READABLE and CLEAR numbers and points and avoid ALTERATIONS</p>';
+            $html .= '</div></body></html>';
+
+            // Use DomPDF from vendor
+            $autoloadPath = __DIR__ . '/vendor/autoload.php';
+            if (!file_exists($autoloadPath)) {
+                http_response_code(500);
+                return ['error' => 'PDF library not available. Vendor autoload not found.'];
+            }
+
+            require_once $autoloadPath;
+
+            $options = new \Dompdf\Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('isHtml5ParserEnabled', true);
+            $dompdf = new \Dompdf\Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            // Output PDF directly
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="Daily-Report-' . $date . '.pdf"');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            echo $dompdf->output();
+            exit;
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            error_log('PDF Generation Error: ' . $e->getMessage());
+            return ['error' => 'Failed to generate PDF: ' . $e->getMessage()];
+        }
+    },
+
+    'GET /api/reports/daily-csv' => function() use ($pdo) {
+        try {
+            $date = $_GET['date'] ?? date('Y-m-d');
+            $storeId = $_GET['storeId'] ?? null;
+
+            $startDate = $date . ' 00:00:00';
+            $endDate = $date . ' 23:59:59';
+
+            $salesQuery = 'SELECT s.*, u.full_name as cashier_name, st.name as store_name 
+                           FROM sales s 
+                           LEFT JOIN users u ON s.user_id = u.id 
+                           LEFT JOIN stores st ON s.store_id = st.id 
+                           WHERE s.created_at BETWEEN ? AND ?';
+            $params = [$startDate, $endDate];
+            if ($storeId) {
+                $salesQuery .= ' AND s.store_id = ?';
+                $params[] = $storeId;
+            }
+            $salesQuery .= ' ORDER BY s.created_at ASC';
+            $salesStmt = $pdo->prepare($salesQuery);
+            $salesStmt->execute($params);
+            $sales = $salesStmt->fetchAll();
+
+            $filename = "Daily-Report-{$date}.csv";
+            header('Content-Type: text/csv');
+            header("Content-Disposition: attachment; filename=\"{$filename}\"");
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+
+            $output = fopen('php://output', 'w');
+
+            fputcsv($output, [
+                'Transaction ID', 'Date', 'Time', 'Cashier', 'Customer', 'Store',
+                'Items Count', 'Subtotal', 'Global Discount', 'Total', 'Payment Method', 'Sales Type',
+            ]);
+
+            foreach ($sales as $sale) {
+                $items = json_decode($sale['items'], true);
+                $itemsCount = is_array($items) ? count($items) : 0;
+                $customer = $sale['customer'] ?? '';
+                if (is_string($customer)) {
+                    $decoded = json_decode($customer, true);
+                    $customer = $decoded['name'] ?? $customer;
+                }
+
+                fputcsv($output, [
+                    $sale['transaction_id'],
+                    date('Y-m-d', strtotime($sale['created_at'])),
+                    date('H:i:s', strtotime($sale['created_at'])),
+                    $sale['cashier_name'] ?? 'Unknown',
+                    $customer ?: 'Walk-in',
+                    $sale['store_name'] ?? 'Unknown',
+                    $itemsCount,
+                    number_format((float)$sale['subtotal'], 2),
+                    number_format((float)($sale['global_discount'] ?? 0), 2),
+                    number_format((float)$sale['total'], 2),
+                    $sale['payment_method'] ?? 'Cash',
+                    $sale['sales_type'] ?? 'retail',
+                ]);
+            }
+
+            fclose($output);
+            exit;
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            error_log('CSV Export Error: ' . $e->getMessage());
+            return ['error' => 'Failed to generate CSV: ' . $e->getMessage()];
+        }
+    },
 ];
 
 // Find and execute route
