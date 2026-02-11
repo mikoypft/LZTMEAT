@@ -135,6 +135,18 @@ export function HistoryPage() {
     setExpandedRows(newExpanded);
   };
 
+  const formatDetailKey = (key: string) =>
+    key
+      .replace(/_/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/^./, (char) => char.toUpperCase());
+
+  const formatDetailValue = (value: unknown) => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
   const handleExportCSV = async () => {
     try {
       await exportHistoryToCSV(filteredData);
@@ -363,6 +375,10 @@ export function HistoryPage() {
                     ];
 
                     if (isExpanded) {
+                      const detailsEntries = entry.details
+                        ? Object.entries(entry.details)
+                        : [];
+
                       rows.push(
                         <tr key={`${entry.id}-details`} className="bg-muted/30">
                           <td colSpan={5} className="py-4 px-4">
@@ -370,9 +386,27 @@ export function HistoryPage() {
                               <h4 className="text-sm font-semibold mb-2">
                                 Details:
                               </h4>
-                              <pre className="text-xs overflow-auto max-h-64 bg-muted/50 p-3 rounded">
-                                {JSON.stringify(entry.details, null, 2)}
-                              </pre>
+                              {detailsEntries.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                  No details available
+                                </p>
+                              ) : (
+                                <div className="text-xs bg-muted/50 p-3 rounded divide-y divide-border">
+                                  {detailsEntries.map(([key, value]) => (
+                                    <div
+                                      key={key}
+                                      className="py-2 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                    >
+                                      <span className="text-muted-foreground">
+                                        {formatDetailKey(key)}
+                                      </span>
+                                      <span className="font-mono break-all sm:text-right">
+                                        {formatDetailValue(value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>,
