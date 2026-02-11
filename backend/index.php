@@ -113,6 +113,35 @@ try {
     } catch (Exception $tableErr) {
         error_log('product_default_ingredients table creation: ' . $tableErr->getMessage());
     }
+
+    // Auto-create stock_adjustments table if it doesn't exist
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS stock_adjustments (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                ingredient_id BIGINT UNSIGNED NOT NULL,
+                ingredient_name VARCHAR(255) NOT NULL,
+                ingredient_code VARCHAR(255) NOT NULL,
+                type ENUM('add', 'remove') NOT NULL,
+                quantity DECIMAL(10,2) NOT NULL,
+                previous_stock DECIMAL(10,2) NOT NULL,
+                new_stock DECIMAL(10,2) NOT NULL,
+                unit VARCHAR(50) NOT NULL,
+                reason TEXT NULL,
+                user_id BIGINT UNSIGNED NULL,
+                user_name VARCHAR(255) NULL,
+                ip_address VARCHAR(45) NULL,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_ingredient_id (ingredient_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_type (type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('stock_adjustments table creation: ' . $tableErr->getMessage());
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -1780,7 +1809,157 @@ $routes = [
             return ['error' => 'Failed to delete supplier: ' . $e->getMessage()];
         }
     },
-    
+
+    // Stock Adjustments endpoints
+    'GET /api/stock-adjustments' => function() use ($pdo) {
+        try {
+            $query = 'SELECT * FROM stock_adjustments ORDER BY created_at DESC LIMIT 50';
+            $stmt = $pdo->query($query);
+            $adjustments = $stmt->fetchAll();
+
+            return [
+                'success' => true,
+                'adjustments' => $adjustments,
+                'pagination' => [
+                    'total' => count($adjustments),
+                    'per_page' => 50,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Failed to fetch stock adjustments: ' . $e->getMessage()];
+        }
+    },
+
+    'POST /api/stock-adjustments' => function() use ($pdo, $body) {
+        try {
+            $ingredientId = $body['ingredient_id'] ?? null;
+            $type = $body['type'] ?? null;
+            $quantity = $body['quantity'] ?? null;
+            $reason = $body['reason'] ?? null;
+            $userId = $body['user_id'] ?? null;
+            $userName = $body['user_name'] ?? 'System';
+
+            if (!$ingredientId || !$type || !$quantity) {
+                http_response_code(422);
+                return ['success' => false, 'message' => 'ingredient_id, type, and quantity are required'];
+            }
+
+            if (!in_array($type, ['add', 'remove'])) {
+                http_response_code(422);
+                return ['success' => false, 'message' => 'type must be add or remove'];
+            }
+
+            // Get the ingredient
+            $stmt = $pdo->prepare('SELECT * FROM ingredients WHERE id = ?');
+            $stmt->execute([$ingredientId]);
+            $ingredient = $stmt->fetch();
+
+            if (!$ingredient) {
+                http_response_code(404);
+                return ['success' => false, 'message' => 'Ingredient not found'];
+            }
+
+            $previousStock = (float)$ingredient['stock'];
+            $delta = $type === 'add' ? (float)$quantity : -(float)$quantity;
+            $newStock = max(0, $previousStock + $delta);
+
+            // Create adjustment record
+            $stmt = $pdo->prepare('INSERT INTO stock_adjustments (ingredient_id, ingredient_name, ingredient_code, type, quantity, previous_stock, new_stock, unit, reason, user_id, user_name, ip_address, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            $stmt->execute([
+                $ingredient['id'],
+                $ingredient['name'],
+                $ingredient['code'],
+                $type,
+                $quantity,
+                $previousStock,
+                $newStock,
+                $ingredient['unit'],
+                $reason,
+                $userId,
+                $userName,
+                $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+            $adjustmentId = $pdo->lastInsertId();
+
+            // Update ingredient stock
+            $stmt = $pdo->prepare('UPDATE ingredients SET stock = ? WHERE id = ?');
+            $stmt->execute([$newStock, $ingredientId]);
+
+            // Fetch the created adjustment
+            $stmt = $pdo->prepare('SELECT * FROM stock_adjustments WHERE id = ?');
+            $stmt->execute([$adjustmentId]);
+            $adjustment = $stmt->fetch();
+
+            http_response_code(201);
+            return [
+                'success' => true,
+                'message' => 'Stock adjustment recorded successfully',
+                'adjustment' => $adjustment,
+                'ingredient' => [
+                    'id' => (int)$ingredient['id'],
+                    'name' => $ingredient['name'],
+                    'stock' => $newStock,
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'message' => 'Failed to create stock adjustment', 'error' => $e->getMessage()];
+        }
+    },
+
+    'GET /api/stock-adjustments/summary' => function() use ($pdo) {
+        try {
+            $totalAdditions = $pdo->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_adjustments WHERE type = 'add'")->fetchColumn();
+            $totalRemovals = $pdo->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_adjustments WHERE type = 'remove'")->fetchColumn();
+            $totalAdjustments = $pdo->query("SELECT COUNT(*) FROM stock_adjustments")->fetchColumn();
+
+            $stmt = $pdo->query('SELECT * FROM stock_adjustments ORDER BY created_at DESC LIMIT 10');
+            $recent = $stmt->fetchAll();
+
+            return [
+                'success' => true,
+                'summary' => [
+                    'total_additions' => (float)$totalAdditions,
+                    'total_removals' => (float)$totalRemovals,
+                    'total_adjustments' => (int)$totalAdjustments,
+                    'net_change' => (float)$totalAdditions - (float)$totalRemovals,
+                ],
+                'recent' => $recent,
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Failed to fetch summary: ' . $e->getMessage()];
+        }
+    },
+
+    'GET /api/stock-adjustments/ingredient/{ingredientId}' => function() use ($pdo) {
+        try {
+            $uri = $_SERVER['REQUEST_URI'];
+            preg_match('#/api/stock-adjustments/ingredient/(\d+)#', $uri, $matches);
+            $ingredientId = $matches[1] ?? null;
+
+            if (!$ingredientId) {
+                http_response_code(400);
+                return ['success' => false, 'message' => 'Ingredient ID is required'];
+            }
+
+            $stmt = $pdo->prepare('SELECT * FROM stock_adjustments WHERE ingredient_id = ? ORDER BY created_at DESC LIMIT 100');
+            $stmt->execute([$ingredientId]);
+            $adjustments = $stmt->fetchAll();
+
+            return [
+                'success' => true,
+                'adjustments' => $adjustments,
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'error' => 'Failed to fetch history: ' . $e->getMessage()];
+        }
+    },
+
     'GET /api/users' => function() use ($pdo) {
         $stmt = $pdo->query('SELECT u.*, s.name as store_name FROM users u LEFT JOIN stores s ON u.store_id = s.id ORDER BY u.full_name');
         $users = $stmt->fetchAll();
