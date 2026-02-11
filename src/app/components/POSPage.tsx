@@ -577,12 +577,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const total = afterDiscount;
 
   const handleCheckout = async (method: string) => {
-    // Validate customer name is required
-    if (!customer?.name || customer.name.trim() === "") {
-      toast.error("Customer name is required to complete the sale.");
-      return;
-    }
-
     // Validate store is selected
     if (!selectedStore) {
       toast.error("No store selected. Cannot process checkout.");
@@ -619,18 +613,20 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       // CRITICAL: Calculate discount amounts BEFORE sending
       // globalDiscount is a percentage (0-100), convert to actual amount in pesos
       const globalDiscountPercentage = parseFloat(String(globalDiscount)) || 0;
-      const globalDiscountAmount = Math.round((subtotal * globalDiscountPercentage / 100) * 100) / 100; // Round to 2 decimals
-      
+      const globalDiscountAmount =
+        Math.round(((subtotal * globalDiscountPercentage) / 100) * 100) / 100; // Round to 2 decimals
+
       // wholesaleDiscount is already a calculated amount, not a percentage
-      const wholesaleDiscountAmount = parseFloat(String(totalWholesaleDiscount)) || 0;
-      
+      const wholesaleDiscountAmount =
+        parseFloat(String(totalWholesaleDiscount)) || 0;
+
       console.log("=== DISCOUNT CALCULATION ===");
       console.log("globalDiscount (%):", globalDiscountPercentage);
       console.log("subtotal:", subtotal);
       console.log("globalDiscountAmount (₱):", globalDiscountAmount);
       console.log("wholesaleDiscountAmount (₱):", wholesaleDiscountAmount);
       console.log("===========================");
-      
+
       const salePayload = {
         transactionId: transactionId,
         date: now.toISOString(),
@@ -640,11 +636,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           currentUser?.fullName || currentUser?.username || "Unknown User",
         userId: currentUser?.id || "",
         username: currentUser?.username || "Unknown",
-        customer: customer
-          ? {
-              name: customer.name,
-            }
-          : null,
+        customer: {
+              name: customer?.name?.trim() || "Walk-in Customer",
+            },
         items: cart.map((item) => ({
           productId: item.id,
           name: item.name,
@@ -660,14 +654,14 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         paymentMethod: method,
         salesType: salesType,
       };
-      
+
       console.log("=== PAYLOAD VERIFICATION ===");
       console.log("Sending globalDiscount:", salePayload.globalDiscount);
       console.log("Sending wholesaleDiscount:", salePayload.wholesaleDiscount);
       console.log("Sending subtotal:", salePayload.subtotal);
       console.log("Sending total:", salePayload.total);
       console.log("===========================");
-      
+
       await createSale(salePayload);
 
       toast.success(`Sale recorded successfully at ${selectedStore?.name}!`);
