@@ -157,7 +157,7 @@ export function IngredientsInventoryPage({
 
       // Update local state
       await adjustStock(
-        Number(selectedIngredient.id),
+        selectedIngredient.id,
         adjustment.quantity,
         adjustment.type,
         adjustment.reason,
@@ -165,9 +165,13 @@ export function IngredientsInventoryPage({
 
       const delta =
         adjustment.type === "add" ? adjustment.quantity : -adjustment.quantity;
-      const newStock = Math.max(0, ingredient.stock + delta);
+      const currentStock =
+        typeof ingredient.stock === "string"
+          ? parseFloat(ingredient.stock)
+          : ingredient.stock;
+      const newStock = Math.max(0, currentStock + delta);
 
-      await updateIngredient(Number(selectedIngredient.id), {
+      await updateIngredient(selectedIngredient.id, {
         stock: newStock,
         lastUpdated: new Date().toISOString(),
       });
