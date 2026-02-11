@@ -428,6 +428,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     return matchesSearch && matchesCategory;
   });
 
+  const sortedProducts = [...filteredProducts].sort(
+    (a, b) => Number(b.stock > 0) - Number(a.stock > 0),
+  );
+
   const openWeightAdjustmentModal = (product: Product) => {
     // Validate that we have a selected store
     if (!selectedStore) {
@@ -922,7 +926,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         {/* Products Grid */}
         <div className="flex-1 overflow-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {filteredProducts.map((product) => (
+            {sortedProducts.map((product) => (
               <div
                 key={product.id}
                 onClick={() =>
