@@ -2995,9 +2995,11 @@ $routes = [
             $html .= '</style></head><body><div class="document-container">';
             $html .= '<div class="header"><h1>LZT MEAT PRODUCTS</h1>';
             $html .= '<div class="header-info">';
-            $html .= '<span class="info-item"><strong>NAME:</strong> ' . htmlspecialchars($storeName) . '</span>';
-            $html .= '<span class="info-item"><strong>LOC:</strong> ' . htmlspecialchars($storeLocation) . '</span>';
-            $html .= '<span class="info-item"><strong>DATE:</strong> ' . $dateFormatted . '</span>';
+            $html .= '<table style="width:100%;border:none;margin:0;padding:0;"><tr>';
+            $html .= '<td style="border:none;text-align:left;padding:0;width:40%;"><strong>NAME:</strong> ' . htmlspecialchars($storeName) . '</td>';
+            $html .= '<td style="border:none;text-align:center;padding:0;width:30%;"><strong>LOC:</strong> ' . htmlspecialchars($storeLocation) . '</td>';
+            $html .= '<td style="border:none;text-align:right;padding:0;width:30%;"><strong>DATE:</strong> ' . $dateFormatted . '</td>';
+            $html .= '</tr></table>';
             $html .= '</div></div>';
             $html .= '<div class="section-title">PRODUCTS</div>';
             $html .= '<table class="products-table"><thead>';
