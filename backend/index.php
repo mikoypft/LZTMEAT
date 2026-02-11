@@ -2937,7 +2937,6 @@ $routes = [
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
                 $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
                 $productTableRows .= '<td class="number">0</td>';
@@ -2987,11 +2986,11 @@ $routes = [
             $html .= '</div></div>';
             $html .= '<div class="section-title">PRODUCTS</div>';
             $html .= '<table class="products-table"><thead>';
-            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th></tr>';
-            $html .= '<tr><th>PRODUCT</th><th>UNIT</th><th>WGS</th><th>STOC</th><th>ADG</th><th>PICK</th><th>RET</th><th>SCRAP</th><th>TURN</th><th>W/O</th><th>KG SALES</th><th>TOTAL SALES</th><th>KG</th><th>DISC</th><th>AMOUNT</th></tr>';
+            $html .= '<tr><th colspan="11"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th></tr>';
+            $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th></tr>';
             $html .= '</thead><tbody>';
             $html .= $productTableRows;
-            $html .= '<tr class="total-row"><td colspan="10" style="text-align:right;"><strong>TOTAL</strong></td>';
+            $html .= '<tr class="total-row"><td colspan="9" style="text-align:right;"><strong>TOTAL</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalKgSales, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalSales, 2) . '</strong></td>';
             $html .= '<td></td><td></td>';
