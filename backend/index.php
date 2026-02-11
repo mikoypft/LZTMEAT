@@ -890,10 +890,20 @@ $routes = [
                 $itemStmt->execute([$s['id']]);
                 $items = $itemStmt->fetchAll();
                 
-                // Decode customer JSON
-                $customer = null;
+                // Decode customer JSON or plain string
+                $customerName = null;
+                $customerPhone = null;
+                $customerEmail = null;
+
                 if (!empty($s['customer'])) {
-                    $customer = json_decode($s['customer'], true);
+                    $decodedCustomer = json_decode($s['customer'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decodedCustomer)) {
+                        $customerName = $decodedCustomer['name'] ?? null;
+                        $customerPhone = $decodedCustomer['phone'] ?? null;
+                        $customerEmail = $decodedCustomer['email'] ?? null;
+                    } else {
+                        $customerName = $s['customer'];
+                    }
                 }
                 
                 // Get store location if store_id exists
@@ -911,9 +921,14 @@ $routes = [
                     'date' => $s['created_at'],
                     'timestamp' => $s['created_at'],
                     'location' => $location,
-                    'customerName' => $customer['name'] ?? null,
-                    'customerPhone' => $customer['phone'] ?? null,
-                    'customerEmail' => $customer['email'] ?? null,
+                    'customerName' => $customerName,
+                    'customerPhone' => $customerPhone,
+                    'customerEmail' => $customerEmail,
+                    'customer' => $customerName ? [
+                        'name' => $customerName,
+                        'phone' => $customerPhone,
+                        'email' => $customerEmail,
+                    ] : null,
                     'subtotal' => (float)$s['subtotal'],
                     'globalDiscount' => (float)($s['global_discount'] ?? 0),
                     'wholesaleDiscount' => (float)($s['wholesale_discount'] ?? 0),
@@ -985,11 +1000,20 @@ $routes = [
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
             
-            // Build customer object for JSON
-            $customerData = null;
-            if (!empty($body['customer'])) {
-                $customerData = json_encode($body['customer']);
+            // Build customer name (store as plain string)
+            $customerName = null;
+            if (!empty($body['customerName'])) {
+                $customerName = trim((string)$body['customerName']);
+            } elseif (!empty($body['customer']) && is_array($body['customer'])) {
+                $customerName = trim((string)($body['customer']['name'] ?? ''));
             }
+            if ($customerName === '') {
+                $customerName = null;
+            }
+            if (!$customerName) {
+                $customerName = 'Walk-in Customer';
+            }
+            $customerData = $customerName;
             
             // Build items array for JSON
             $itemsData = json_encode($body['items']);
@@ -1090,7 +1114,7 @@ $routes = [
                     'total' => $body['total'] ?? 0,
                     'itemCount' => count($body['items']),
                     'storeId' => $body['storeId'] ?? null,
-                    'customer' => $body['customer'] ?? null,
+                    'customer' => $customerName ?: null,
                 ],
                 $body['userId'] ?? null
             );
