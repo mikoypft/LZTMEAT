@@ -29,10 +29,10 @@ class SupplierController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'contactPerson' => 'required|string',
-            'phone' => 'required|string',
-            'email' => 'required|email',
-            'address' => 'required|string',
+            'contactPerson' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email',
+            'address' => 'nullable|string',
         ]);
 
         $supplier = Supplier::create([

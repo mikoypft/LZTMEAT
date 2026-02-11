@@ -1661,12 +1661,124 @@ $routes = [
                 return [
                     'id' => (string)$s['id'],
                     'name' => $s['name'],
+                    'contactPerson' => $s['contact_person'] ?? '',
                     'email' => $s['email'],
                     'phone' => $s['phone'],
                     'address' => $s['address'],
+                    'createdAt' => $s['created_at'] ?? date('c'),
                 ];
             }, $suppliers),
         ];
+    },
+
+    'POST /api/suppliers' => function() use ($pdo, $body) {
+        try {
+            $name = $body['name'] ?? '';
+            $contactPerson = $body['contactPerson'] ?? '';
+            $phone = $body['phone'] ?? '';
+            $email = $body['email'] ?? '';
+            $address = $body['address'] ?? '';
+
+            if (empty($name)) {
+                http_response_code(422);
+                return ['error' => 'Supplier name is required'];
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO suppliers (name, contact_person, phone, email, address, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
+            $stmt->execute([$name, $contactPerson, $phone, $email, $address]);
+            $id = $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare('SELECT * FROM suppliers WHERE id = ?');
+            $stmt->execute([$id]);
+            $supplier = $stmt->fetch();
+
+            http_response_code(201);
+            return [
+                'supplier' => [
+                    'id' => (string)$supplier['id'],
+                    'name' => $supplier['name'],
+                    'contactPerson' => $supplier['contact_person'] ?? '',
+                    'phone' => $supplier['phone'],
+                    'email' => $supplier['email'],
+                    'address' => $supplier['address'],
+                    'createdAt' => $supplier['created_at'],
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to create supplier: ' . $e->getMessage()];
+        }
+    },
+
+    'PUT /api/suppliers/{id}' => function() use ($pdo, $body) {
+        try {
+            $uri = $_SERVER['REQUEST_URI'];
+            preg_match('#/api/suppliers/(\d+)#', $uri, $matches);
+            $id = $matches[1] ?? null;
+
+            if (!$id) {
+                http_response_code(400);
+                return ['error' => 'Supplier ID is required'];
+            }
+
+            $stmt = $pdo->prepare('SELECT * FROM suppliers WHERE id = ?');
+            $stmt->execute([$id]);
+            $supplier = $stmt->fetch();
+
+            if (!$supplier) {
+                http_response_code(404);
+                return ['error' => 'Supplier not found'];
+            }
+
+            $name = $body['name'] ?? $supplier['name'];
+            $contactPerson = $body['contactPerson'] ?? $supplier['contact_person'];
+            $phone = $body['phone'] ?? $supplier['phone'];
+            $email = $body['email'] ?? $supplier['email'];
+            $address = $body['address'] ?? $supplier['address'];
+
+            $stmt = $pdo->prepare('UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([$name, $contactPerson, $phone, $email, $address, $id]);
+
+            $stmt = $pdo->prepare('SELECT * FROM suppliers WHERE id = ?');
+            $stmt->execute([$id]);
+            $updated = $stmt->fetch();
+
+            return [
+                'supplier' => [
+                    'id' => (string)$updated['id'],
+                    'name' => $updated['name'],
+                    'contactPerson' => $updated['contact_person'] ?? '',
+                    'phone' => $updated['phone'],
+                    'email' => $updated['email'],
+                    'address' => $updated['address'],
+                    'createdAt' => $updated['created_at'],
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update supplier: ' . $e->getMessage()];
+        }
+    },
+
+    'DELETE /api/suppliers/{id}' => function() use ($pdo) {
+        try {
+            $uri = $_SERVER['REQUEST_URI'];
+            preg_match('#/api/suppliers/(\d+)#', $uri, $matches);
+            $id = $matches[1] ?? null;
+
+            if (!$id) {
+                http_response_code(400);
+                return ['error' => 'Supplier ID is required'];
+            }
+
+            $stmt = $pdo->prepare('DELETE FROM suppliers WHERE id = ?');
+            $stmt->execute([$id]);
+
+            return ['success' => true];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete supplier: ' . $e->getMessage()];
+        }
     },
     
     'GET /api/users' => function() use ($pdo) {
