@@ -461,6 +461,12 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     const priceToUse = adjustedPrice || product.price;
     const basePrice = product.price; // Store original base price
 
+    console.log('=== ADD TO CART ===');
+    console.log('Product:', product.name);
+    console.log('Modal weight:', weight);
+    console.log('Actual weight:', actualWeight);
+    console.log('Price to use:', priceToUse);
+
     // Look for an existing item with the SAME product ID AND price
     // If prices differ (due to weight), create a new line item instead
     const existingItemWithSamePrice = cart.find(
@@ -477,6 +483,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         const newQuantity = existingItemWithSamePrice.quantity + 1;
         const newWeight = existingWeightPerUnit * newQuantity;
         
+        console.log('Updating existing item:');
+        console.log('  Existing weight:', existingItemWithSamePrice.weight);
+        console.log('  Existing quantity:', existingItemWithSamePrice.quantity);
+        console.log('  Weight per unit:', existingWeightPerUnit);
+        console.log('  New quantity:', newQuantity);
+        console.log('  New weight:', newWeight);
+        
         setCart(
           cart.map((item) =>
             item.id === product.id && item.price === priceToUse
@@ -492,12 +505,17 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       }
     } else {
       // Different price (different weight) or new product - create new line item
+      console.log('Creating new cart item:');
+      console.log('  Weight:', actualWeight);
+      console.log('  Quantity:', 1);
+      
       setCart([
         ...cart,
         { ...product, price: priceToUse, quantity: 1, discount: 0, basePrice, weight: actualWeight },
       ]);
       toast.success(`Added ${product.name} to cart`);
     }
+    console.log('===================');
 
     setWeightAdjustmentModal({
       show: false,
@@ -507,6 +525,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
+    console.log('=== UPDATE QUANTITY ===');
+    console.log('Product ID:', productId);
+    console.log('Delta:', delta);
+    
     setCart(
       cart.map((item) => {
         if (item.id === productId) {
@@ -519,6 +541,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           if (item.weight && item.quantity > 0) {
             const weightPerUnit = item.weight / item.quantity;
             newWeight = weightPerUnit * newQuantity;
+            
+            console.log('Item:', item.name);
+            console.log('  Current weight:', item.weight);
+            console.log('  Current quantity:', item.quantity);
+            console.log('  Weight per unit:', weightPerUnit);
+            console.log('  New quantity:', newQuantity);
+            console.log('  New weight:', newWeight);
           }
           
           return { ...item, quantity: newQuantity, weight: newWeight };
@@ -526,6 +555,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         return item;
       }),
     );
+    console.log('======================');
   };
 
   const updateItemDiscount = (productId: string, discount: number) => {
@@ -647,6 +677,18 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       console.log("wholesaleDiscountAmount (₱):", wholesaleDiscountAmount);
       console.log("===========================");
 
+      // Debug: Log cart state before creating payload
+      console.log("=== CART STATE BEFORE CHECKOUT ===");
+      cart.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          name: item.name,
+          quantity: item.quantity,
+          weight: item.weight,
+          price: item.price,
+        });
+      });
+      console.log("===================================");
+
       const salePayload = {
         transactionId: transactionId,
         date: now.toISOString(),
@@ -659,14 +701,18 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         customer: {
           name: customer?.name?.trim() || "Walk-in Customer",
         },
-        items: cart.map((item) => ({
-          productId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          weight: item.weight || item.quantity, // Use adjusted weight for inventory deduction
-          discount: item.discount,
-        })),
+        items: cart.map((item) => {
+          const weightToUse = item.weight !== undefined && item.weight !== null ? item.weight : item.quantity;
+          console.log(`Mapping item ${item.name}: weight=${item.weight}, quantity=${item.quantity}, using weight=${weightToUse}`);
+          return {
+            productId: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            weight: weightToUse, // Use adjusted weight for inventory deduction
+            discount: item.discount,
+          };
+        }),
         subtotal: subtotal,
         globalDiscount: globalDiscountAmount,
         wholesaleDiscount: wholesaleDiscountAmount,
@@ -681,6 +727,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       console.log("Sending wholesaleDiscount:", salePayload.wholesaleDiscount);
       console.log("Sending subtotal:", salePayload.subtotal);
       console.log("Sending total:", salePayload.total);
+      console.log("Sending items:", JSON.stringify(salePayload.items, null, 2));
       console.log("===========================");
 
       await createSale(salePayload);

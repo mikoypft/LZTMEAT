@@ -1136,6 +1136,12 @@ $routes = [
             
             // Process each item
             foreach ($body['items'] as $item) {
+                // Log what we're processing
+                error_log('Processing item: ' . ($item['name'] ?? 'unknown'));
+                error_log('  productId: ' . ($item['productId'] ?? 'missing'));
+                error_log('  quantity: ' . ($item['quantity'] ?? 'missing'));
+                error_log('  weight: ' . (isset($item['weight']) ? $item['weight'] : 'NOT SET'));
+                
                 // Insert sale item
                 $itemStmt = $pdo->prepare('
                     INSERT INTO sale_items (
@@ -1162,6 +1168,8 @@ $routes = [
                 // Deduct from inventory - use weight if provided (for weight-adjusted products), otherwise use quantity
                 // This handles cases where products are sold by weight (e.g., 1.5kg) instead of just units
                 $deductionAmount = isset($item['weight']) ? floatval($item['weight']) : floatval($item['quantity']);
+                error_log('  Deducting from inventory: ' . $deductionAmount . ' (using ' . (isset($item['weight']) ? 'weight' : 'quantity') . ')');
+                
                 $location = $body['location'] ?? $body['storeId'] ?? 'Main Store';
                 $invStmt = $pdo->prepare('
                     UPDATE inventory 
