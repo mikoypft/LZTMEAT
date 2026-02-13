@@ -470,10 +470,17 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     if (existingItemWithSamePrice) {
       // Same product, same price - increment quantity
       if (existingItemWithSamePrice.quantity < product.stock) {
+        // Use the existing item's weight-per-unit ratio, not the current modal weight
+        const existingWeightPerUnit = existingItemWithSamePrice.weight 
+          ? existingItemWithSamePrice.weight / existingItemWithSamePrice.quantity 
+          : actualWeight;
+        const newQuantity = existingItemWithSamePrice.quantity + 1;
+        const newWeight = existingWeightPerUnit * newQuantity;
+        
         setCart(
           cart.map((item) =>
             item.id === product.id && item.price === priceToUse
-              ? { ...item, quantity: item.quantity + 1, weight: actualWeight * (item.quantity + 1) }
+              ? { ...item, quantity: newQuantity, weight: newWeight }
               : item,
           ),
         );
