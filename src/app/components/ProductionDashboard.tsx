@@ -32,6 +32,7 @@ import {
   deleteProductionRecord,
   getEmployees,
   getProductDefaultIngredients,
+  getInventory,
   type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
   type Employee,
@@ -130,6 +131,34 @@ interface IngredientInput {
   quantity: string;
 }
 
+// Helper component to display product ingredients
+function ProductIngredientsList({ productId }: { productId: string }) {
+  const [ingredientsList, setIngredientsList] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadIngredients = async () => {
+      try {
+        const defaults = await getProductDefaultIngredients(productId);
+        if (defaults && defaults.length > 0) {
+          const ingredientNames = defaults.map((d) => d.ingredientName).join(", ");
+          setIngredientsList(ingredientNames);
+        } else {
+          setIngredientsList("Not set");
+        }
+      } catch (error) {
+        setIngredientsList("Not set");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadIngredients();
+  }, [productId]);
+
+  if (loading) return <span>Loading...</span>;
+  return <span className="text-xs text-muted-foreground">{ingredientsList}</span>;
+}
+
 export function ProductionDashboard() {
   const context = useContext(IngredientsContext);
 
@@ -144,7 +173,8 @@ export function ProductionDashboard() {
 
   const { ingredients, deductIngredient, refreshIngredients } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showProductionModal, setShowProductionModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(null);
   const [newProduction, setNewProduction] = useState({
     productName: "",
     productId: "",
@@ -159,6 +189,7 @@ export function ProductionDashboard() {
     IngredientInput[]
   >([]);
   const [products, setProducts] = useState<APIProduct[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
@@ -177,11 +208,12 @@ export function ProductionDashboard() {
     loadProducts();
     loadProductionRecords();
     loadEmployees();
+    loadInventory();
   }, []);
 
-  // Auto-generate batch number when form is shown
+  // Auto-generate batch number when modal is shown
   useEffect(() => {
-    if (showAddForm && productions.length > 0) {
+    if (showProductionModal && productions.length > 0) {
       // Find the highest batch number
       const batchNumbers = productions
         .map((p) => {
@@ -196,11 +228,11 @@ export function ProductionDashboard() {
       const nextBatchNumber = `B${String(nextBatchNum).padStart(3, "0")}`;
 
       setNewProduction((prev) => ({ ...prev, batchNumber: nextBatchNumber }));
-    } else if (showAddForm && productions.length === 0) {
+    } else if (showProductionModal && productions.length === 0) {
       // First production record
       setNewProduction((prev) => ({ ...prev, batchNumber: "B001" }));
     }
-  }, [showAddForm, productions]);
+  }, [showProductionModal, productions]);
 
   const loadProducts = async () => {
     try {
@@ -212,6 +244,15 @@ export function ProductionDashboard() {
       toast.error("Failed to load products from inventory");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInventory = async () => {
+    try {
+      const inventoryData = await getInventory();
+      setInventory(inventoryData);
+    } catch (error) {
+      console.error("Error loading inventory:", error);
     }
   };
 
@@ -378,6 +419,47 @@ export function ProductionDashboard() {
       .slice(0, 8); // Show top 8 products
   };
 
+  const handleProductCardClick = async (product: APIProduct) => {
+    setSelectedProduct(product);
+    setNewProduction({
+      ...newProduction,
+      productId: String(product.id),
+      productName: product.name,
+    });
+
+    // Auto-load default ingredients for selected product
+    try {
+      const defaults = await getProductDefaultIngredients(String(product.id));
+      if (defaults && defaults.length > 0) {
+        const loadedIngredients = defaults.map((d) => {
+          // Find the ingredient in the context by ID to get its code
+          const ing = ingredients.find(
+            (i) => String(i.id) === String(d.ingredientId),
+          );
+          return {
+            code: ing?.code || d.ingredientCode || "",
+            quantity: String(d.quantity),
+          };
+        });
+        // Store base quantities (for 1 unit of production)
+        setBaseIngredientQuantities(loadedIngredients);
+        setSelectedIngredients(loadedIngredients);
+        toast.info(
+          `Loaded ${defaults.length} default ingredient(s) for ${product.name}`,
+        );
+      } else {
+        setSelectedIngredients([]);
+        setBaseIngredientQuantities([]);
+      }
+    } catch (err) {
+      console.error("Error loading default ingredients:", err);
+      setSelectedIngredients([]);
+      setBaseIngredientQuantities([]);
+    }
+
+    setShowProductionModal(true);
+  };
+
   const weeklyProductionData = getWeeklyProductionData();
   const productDistributionData = getProductDistribution();
   const vsLastWeek = calculateVsLastWeek();
@@ -516,7 +598,7 @@ export function ProductionDashboard() {
       });
       setSelectedIngredients([]);
       setBaseIngredientQuantities([]);
-      setShowAddForm(false);
+      setShowProductionModal(false);
 
       toast.success(
         `Production added! ${producedWeight} kg of ${newProduction.productName} added to Production Facility inventory.`,
@@ -744,254 +826,61 @@ export function ProductionDashboard() {
           </div>
         </div>
 
-        {/* Production Entry Form */}
+        {/* Select Product for Production */}
         <div className="bg-card rounded-lg border border-border">
-          <div className="p-6 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Factory className="w-6 h-6 text-primary" />
-              <h2>Encode Production (KG)</h2>
-            </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Add Production
-            </button>
+          <div className="p-6 border-b border-border flex items-center gap-3">
+            <Factory className="w-6 h-6 text-primary" />
+            <h2>Select Product for Production</h2>
           </div>
 
-          {showAddForm && (
-            <div className="p-6 bg-secondary/50 border-b border-border space-y-4">
-              {/* Production Details - Row 1 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm mb-2">Product Name *</label>
-                  <select
-                    value={newProduction.productId}
-                    onChange={async (e) => {
-                      const selectedId = e.target.value;
-                      const product = products.find(
-                        (p) => String(p.id) === selectedId,
-                      );
-                      setNewProduction({
-                        ...newProduction,
-                        productId: selectedId,
-                        productName: product?.name || "",
-                      });
+          {/* Products Grid */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {products.map((product) => {
+                // Get inventory for this product
+                const productInventory = inventory.find(
+                  (inv) => String(inv.product_id) === String(product.id) && inv.location === "Production Facility"
+                );
+                const currentStock = productInventory?.quantity || 0;
 
-                      // Auto-load default ingredients for selected product
-                      if (selectedId) {
-                        try {
-                          const defaults =
-                            await getProductDefaultIngredients(selectedId);
-                          if (defaults && defaults.length > 0) {
-                            const loadedIngredients = defaults.map((d) => {
-                              // Find the ingredient in the context by ID to get its code
-                              const ing = ingredients.find(
-                                (i) => String(i.id) === String(d.ingredientId),
-                              );
-                              return {
-                                code: ing?.code || d.ingredientCode || "",
-                                quantity: String(d.quantity),
-                              };
-                            });
-                            // Store base quantities (for 1 unit of production)
-                            setBaseIngredientQuantities(loadedIngredients);
-                            // If weight is already set, multiply quantities by weight
-                            const weight = parseFloat(newProduction.weightKg) || 1;
-                            const scaledIngredients = loadedIngredients.map((ing) => ({
-                              ...ing,
-                              quantity: String(parseFloat(ing.quantity) * weight),
-                            }));
-                            setSelectedIngredients(scaledIngredients);
-                            toast.info(
-                              `Loaded ${defaults.length} default ingredient(s) for ${product?.name || "product"}`,
-                            );
-                          } else {
-                            setSelectedIngredients([]);
-                            setBaseIngredientQuantities([]);
-                          }
-                        } catch (err) {
-                          console.error(
-                            "Error loading default ingredients:",
-                            err,
-                          );
-                          // Don't show error toast - just leave ingredients empty
-                          setSelectedIngredients([]);
-                          setBaseIngredientQuantities([]);
-                        }
-                      } else {
-                        setSelectedIngredients([]);
-                        setBaseIngredientQuantities([]);
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => handleProductCardClick(product)}
+                    className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all cursor-pointer group"
                   >
-                    <option value="">Select Product</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={String(product.id)}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Weight (KG) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newProduction.weightKg}
-                    onChange={(e) => {
-                      const weight = e.target.value;
-                      setNewProduction({
-                        ...newProduction,
-                        weightKg: weight,
-                      });
-                      
-                      // Auto-multiply ingredient quantities based on weight
-                      if (baseIngredientQuantities.length > 0) {
-                        const weightNum = parseFloat(weight) || 0;
-                        const scaledIngredients = baseIngredientQuantities.map((ing) => ({
-                          ...ing,
-                          quantity: String(parseFloat(ing.quantity) * weightNum),
-                        }));
-                        setSelectedIngredients(scaledIngredients);
-                      }
-                    }}
-                    placeholder="0.0"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Production Details - Row 2 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm mb-2">Employee Name *</label>
-                  <select
-                    value={newProduction.employeeName}
-                    onChange={(e) =>
-                      setNewProduction({
-                        ...newProduction,
-                        employeeName: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.fullName}>
-                        {employee.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">
-                    Batch Number (Auto-generated)
-                  </label>
-                  <input
-                    type="text"
-                    value={newProduction.batchNumber}
-                    onChange={(e) =>
-                      setNewProduction({
-                        ...newProduction,
-                        batchNumber: e.target.value,
-                      })
-                    }
-                    placeholder="B001"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-gray-100"
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              {/* Ingredients Section */}
-              <div className="bg-background rounded-lg p-4 border border-border">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <ChefHat className="w-5 h-5 text-primary" />
-                    <h3 className="text-sm font-medium">Ingredients Used</h3>
-                  </div>
-                  <button
-                    onClick={addIngredientRow}
-                    className="flex items-center gap-1 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Ingredient
-                  </button>
-                </div>
-
-                {selectedIngredients.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Click "Add Ingredient" to add ingredients for this
-                    production
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedIngredients.map((ing, index) => (
-                      <div key={index} className="flex gap-2 items-start">
-                        <div className="flex-1">
-                          <select
-                            value={ing.code}
-                            onChange={(e) =>
-                              updateIngredient(index, "code", e.target.value)
-                            }
-                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                          >
-                            <option value="">Select Ingredient</option>
-                            {ingredients.map((ingredient) => (
-                              <option
-                                key={ingredient.code}
-                                value={ingredient.code}
-                              >
-                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
-                                {ingredient.stock}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="w-32">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={ing.quantity}
-                            onChange={(e) =>
-                              updateIngredient(
-                                index,
-                                "quantity",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Qty"
-                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                          />
-                        </div>
-                        <button
-                          onClick={() => removeIngredientRow(index)}
-                          className="p-2 hover:bg-red-100 text-red-600 rounded"
-                          title="Remove"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    <div className="flex flex-col h-full">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-medium text-sm flex-1">
+                          {product.name}
+                        </h3>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
+                        {product.category}
+                      </span>
+                      
+                      {/* Show default ingredients */}
+                      <div className="text-xs text-muted-foreground mb-3 flex-1">
+                        <p className="font-medium mb-1">Default Ingredients:</p>
+                        <ProductIngredientsList productId={String(product.id)} />
+                      </div>
 
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={handleAddProduction}
-                  className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Production
-                </button>
-              </div>
+                      <div className="mt-auto flex justify-between items-end">
+                        <div>
+                          <p className="text-xl text-primary">
+                            {currentStock} {product.unit}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Current Stock
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
 
           {/* Production List */}
           <div className="p-6">
@@ -1335,6 +1224,206 @@ export function ProductionDashboard() {
               >
                 Confirm & Complete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Production Modal */}
+      {showProductionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Factory className="w-6 h-6 text-primary" />
+                <h2 className="text-xl font-bold">
+                  Encode Production - {selectedProduct?.name}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowProductionModal(false);
+                  setSelectedProduct(null);
+                  setNewProduction({
+                    productName: "",
+                    productId: "",
+                    weightKg: "",
+                    batchNumber: "",
+                    employeeName: "",
+                  });
+                  setSelectedIngredients([]);
+                  setBaseIngredientQuantities([]);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Production Details - Row 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm mb-2">Weight (KG) *</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newProduction.weightKg}
+                    onChange={(e) => {
+                      const weight = e.target.value;
+                      setNewProduction({
+                        ...newProduction,
+                        weightKg: weight,
+                      });
+                      
+                      // Auto-multiply ingredient quantities based on weight
+                      if (baseIngredientQuantities.length > 0) {
+                        const weightNum = parseFloat(weight) || 0;
+                        const scaledIngredients = baseIngredientQuantities.map((ing) => ({
+                          ...ing,
+                          quantity: String(parseFloat(ing.quantity) * weightNum),
+                        }));
+                        setSelectedIngredients(scaledIngredients);
+                      }
+                    }}
+                    placeholder="0.0"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-2">Employee Name *</label>
+                  <select
+                    value={newProduction.employeeName}
+                    onChange={(e) =>
+                      setNewProduction({
+                        ...newProduction,
+                        employeeName: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.fullName}>
+                        {employee.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">
+                  Batch Number (Auto-generated)
+                </label>
+                <input
+                  type="text"
+                  value={newProduction.batchNumber}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg"
+                  readOnly
+                />
+              </div>
+
+              {/* Ingredients Section */}
+              <div className="bg-secondary/50 rounded-lg p-4 border border-border">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <ChefHat className="w-5 h-5 text-primary" />
+                    <h3 className="text-sm font-medium">Ingredients Used</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addIngredientRow}
+                    className="flex items-center gap-1 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Ingredient
+                  </button>
+                </div>
+
+                {selectedIngredients.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Click "Add Ingredient" to add ingredients for this production
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedIngredients.map((ing, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <select
+                            value={ing.code}
+                            onChange={(e) =>
+                              updateIngredient(index, "code", e.target.value)
+                            }
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          >
+                            <option value="">Select Ingredient</option>
+                            {ingredients.map((ingredient) => (
+                              <option
+                                key={ingredient.code}
+                                value={ingredient.code}
+                              >
+                                {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="w-32">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={ing.quantity}
+                            onChange={(e) =>
+                              updateIngredient(index, "quantity", e.target.value)
+                            }
+                            placeholder="Qty"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeIngredientRow(index)}
+                          className="p-2 hover:bg-red-100 text-red-600 rounded"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductionModal(false);
+                    setSelectedProduct(null);
+                    setNewProduction({
+                      productName: "",
+                      productId: "",
+                      weightKg: "",
+                      batchNumber: "",
+                      employeeName: "",
+                    });
+                    setSelectedIngredients([]);
+                    setBaseIngredientQuantities([]);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddProduction}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Production
+                </button>
+              </div>
             </div>
           </div>
         </div>
