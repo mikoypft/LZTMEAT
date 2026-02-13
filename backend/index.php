@@ -1572,10 +1572,69 @@ $routes = [
             return ['error' => 'Production ID is required'];
         }
         
-        $stmt = $pdo->prepare('DELETE FROM production_records WHERE id = ?');
-        $stmt->execute([$id]);
-        
-        return ['success' => true, 'message' => 'Production record deleted'];
+        try {
+            // First, get the production record to retrieve initial ingredients and product details
+            $stmt = $pdo->prepare('SELECT * FROM production_records WHERE id = ?');
+            $stmt->execute([$id]);
+            $production = $stmt->fetch();
+            
+            if (!$production) {
+                return ['error' => 'Production record not found'];
+            }
+            
+            // Return ingredients to stock if initial_ingredients is set
+            if (!empty($production['initial_ingredients'])) {
+                $initialIngredients = json_decode($production['initial_ingredients'], true);
+                
+                if (is_array($initialIngredients)) {
+                    foreach ($initialIngredients as $ing) {
+                        $ingredientId = $ing['ingredientId'] ?? null;
+                        $ingredientQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                        
+                        if ($ingredientId && $ingredientQty > 0) {
+                            try {
+                                // Add back to the ingredients table stock column
+                                $stmt = $pdo->prepare('
+                                    UPDATE ingredients 
+                                    SET stock = stock + ?, updated_at = NOW()
+                                    WHERE id = ?
+                                ');
+                                $stmt->execute([$ingredientQty, $ingredientId]);
+                            } catch (Exception $ingredientError) {
+                                // Log error but continue - don't fail the entire deletion
+                                error_log('Ingredient return failed for ID ' . $ingredientId . ': ' . $ingredientError->getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Remove produced quantity from Production Facility inventory
+            $productId = $production['product_id'];
+            $quantity = $production['quantity'];
+            
+            if ($productId && $quantity > 0) {
+                try {
+                    $stmt = $pdo->prepare('
+                        UPDATE inventory 
+                        SET quantity = quantity - ?, updated_at = NOW()
+                        WHERE product_id = ? AND location = ?
+                    ');
+                    $stmt->execute([$quantity, $productId, 'Production Facility']);
+                } catch (Exception $inventoryError) {
+                    error_log('Inventory reduction failed: ' . $inventoryError->getMessage());
+                }
+            }
+            
+            // Finally, delete the production record
+            $stmt = $pdo->prepare('DELETE FROM production_records WHERE id = ?');
+            $stmt->execute([$id]);
+            
+            return ['success' => true, 'message' => 'Production record deleted and ingredients returned to stock'];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete production: ' . $e->getMessage()];
+        }
     },
     
     'GET /api/transfers' => function() use ($pdo) {
