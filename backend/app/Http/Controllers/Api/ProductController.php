@@ -66,16 +66,29 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
-        $product->update($request->all());
+        
+        $data = $request->only([
+            'name',
+            'sku',
+            'min_stock_level',
+            'reorder_point',
+            'reorder_quantity',
+        ]);
+        
+        $product->update($data);
 
         return response()->json([
             'product' => [
                 'id' => $product->id,
                 'name' => $product->name,
+                'sku' => $product->sku,
                 'category' => $product->category->name,
                 'price' => $product->price,
                 'unit' => $product->unit,
                 'image' => $product->image,
+                'min_stock_level' => $product->min_stock_level,
+                'reorder_point' => $product->reorder_point,
+                'reorder_quantity' => $product->reorder_quantity,
             ],
         ]);
     }
