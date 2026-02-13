@@ -1169,8 +1169,20 @@ $routes = [
                 // This handles cases where products are sold by weight (e.g., 1.5kg) instead of just units
                 $deductionAmount = isset($item['weight']) ? floatval($item['weight']) : floatval($item['quantity']);
                 error_log('  Deducting from inventory: ' . $deductionAmount . ' (using ' . (isset($item['weight']) ? 'weight' : 'quantity') . ')');
+                error_log('  Deduction amount type: ' . gettype($deductionAmount));
+                error_log('  Deduction amount value: ' . var_export($deductionAmount, true));
                 
                 $location = $body['location'] ?? $body['storeId'] ?? 'Main Store';
+                
+                // Log the SQL parameters before execution
+                error_log('  SQL UPDATE parameters: productId=' . $item['productId'] . ', location=' . $location . ', deduction=' . $deductionAmount);
+                
+                // Check current inventory before update
+                $checkStmt = $pdo->prepare('SELECT quantity FROM inventory WHERE product_id = ? AND location = ?');
+                $checkStmt->execute([$item['productId'], $location]);
+                $beforeQty = $checkStmt->fetchColumn();
+                error_log('  Inventory BEFORE update: ' . $beforeQty);
+                
                 $invStmt = $pdo->prepare('
                     UPDATE inventory 
                     SET quantity = quantity - ? 
@@ -1182,6 +1194,16 @@ $routes = [
                     $item['productId'],
                     $location
                 ]);
+                
+                // Log the number of affected rows
+                $affectedRows = $invStmt->rowCount();
+                error_log('  SQL UPDATE affected ' . $affectedRows . ' row(s)');
+                
+                // Check inventory after update
+                $checkStmt->execute([$item['productId'], $location]);
+                $afterQty = $checkStmt->fetchColumn();
+                error_log('  Inventory AFTER update: ' . $afterQty);
+                error_log('  Actual deduction: ' . ($beforeQty - $afterQty));
                 
                 // Check if update affected any rows
                 if ($invStmt->rowCount() === 0) {
