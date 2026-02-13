@@ -41,6 +41,7 @@ import {
   getIngredients,
   saveProductDefaultIngredients,
   getProductDefaultIngredients,
+  updateProduct,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -591,26 +592,42 @@ export function InventoryPage({
   };
 
   // Update Inventory Item
-  const handleUpdateItem = (updatedItem: InventoryItem) => {
-    // Calculate total stock dynamically from all stores
-    let totalStoreStock = 0;
-    Object.values(updatedItem.storeStocks).forEach((stock) => {
-      totalStoreStock += stock;
-    });
+  const handleUpdateItem = async (updatedItem: InventoryItem) => {
+    try {
+      // Update product via API
+      await updateProduct(updatedItem.id, {
+        name: updatedItem.name,
+        sku: updatedItem.sku,
+        minStockLevel: updatedItem.minStockLevel,
+        reorderPoint: updatedItem.reorderPoint,
+        reorderQuantity: updatedItem.reorderQuantity,
+      });
 
-    setInventory(
-      inventory.map((item) =>
-        item.id === updatedItem.id
-          ? {
-              ...updatedItem,
-              totalStock: updatedItem.stockProduction + totalStoreStock,
-              lastUpdated: new Date().toLocaleString(),
-            }
-          : item,
-      ),
-    );
-    setShowAddProductModal(false);
-    setSelectedItem(null);
+      // Calculate total stock dynamically from all stores
+      let totalStoreStock = 0;
+      Object.values(updatedItem.storeStocks).forEach((stock) => {
+        totalStoreStock += stock;
+      });
+
+      setInventory(
+        inventory.map((item) =>
+          item.id === updatedItem.id
+            ? {
+                ...updatedItem,
+                totalStock: updatedItem.stockProduction + totalStoreStock,
+                lastUpdated: new Date().toLocaleString(),
+              }
+            : item,
+        ),
+      );
+      
+      toast.success("Inventory item updated successfully");
+      setShowAddProductModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Error updating inventory item:", error);
+      toast.error("Failed to update inventory item");
+    }
   };
 
   // Export to CSV
@@ -1701,11 +1718,9 @@ function EditItemModal({
               <input
                 type="text"
                 value={formData.sku}
-                onChange={(e) =>
-                  setFormData({ ...formData, sku: e.target.value })
-                }
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg cursor-not-allowed opacity-70"
+                disabled
+                readOnly
               />
             </div>
           </div>
