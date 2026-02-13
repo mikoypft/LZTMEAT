@@ -506,7 +506,15 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           const newQuantity = item.quantity + delta;
           if (newQuantity <= 0) return item;
           if (newQuantity > item.stock) return item;
-          return { ...item, quantity: newQuantity };
+          
+          // If item has weight tracking (weight-adjusted products), scale the weight proportionally
+          let newWeight = item.weight;
+          if (item.weight && item.quantity > 0) {
+            const weightPerUnit = item.weight / item.quantity;
+            newWeight = weightPerUnit * newQuantity;
+          }
+          
+          return { ...item, quantity: newQuantity, weight: newWeight };
         }
         return item;
       }),
