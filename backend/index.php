@@ -453,6 +453,76 @@ $routes = [
         }
     },
     
+    'PUT /api/products/{id}' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/products\/(\d+)/', $uri, $matches);
+        $id = $matches[1] ?? null;
+        
+        if (empty($id)) {
+            return ['error' => 'Product ID is required'];
+        }
+        
+        try {
+            // Build update query dynamically based on provided fields
+            $updates = [];
+            $params = [];
+            
+            if (isset($body['name'])) {
+                $updates[] = 'name = ?';
+                $params[] = $body['name'];
+            }
+            if (isset($body['min_stock_level'])) {
+                $updates[] = 'min_stock_level = ?';
+                $params[] = $body['min_stock_level'];
+            }
+            if (isset($body['reorder_point'])) {
+                $updates[] = 'reorder_point = ?';
+                $params[] = $body['reorder_point'];
+            }
+            if (isset($body['reorder_quantity'])) {
+                $updates[] = 'reorder_quantity = ?';
+                $params[] = $body['reorder_quantity'];
+            }
+            
+            if (empty($updates)) {
+                return ['error' => 'No fields to update'];
+            }
+            
+            $updates[] = 'updated_at = NOW()';
+            $params[] = $id;
+            
+            $sql = 'UPDATE products SET ' . implode(', ', $updates) . ' WHERE id = ?';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            
+            // Fetch the updated product
+            $stmt = $pdo->prepare('SELECT p.*, c.name as category FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?');
+            $stmt->execute([$id]);
+            $product = $stmt->fetch();
+            
+            if (!$product) {
+                return ['error' => 'Product not found'];
+            }
+            
+            return [
+                'product' => [
+                    'id' => (string)$product['id'],
+                    'name' => $product['name'],
+                    'sku' => $product['sku'] ?? '',
+                    'category' => $product['category'] ?? 'Uncategorized',
+                    'price' => (float)$product['price'],
+                    'unit' => $product['unit'],
+                    'image' => $product['image'],
+                    'min_stock_level' => (float)($product['min_stock_level'] ?? 0),
+                    'reorder_point' => (float)($product['reorder_point'] ?? 0),
+                    'reorder_quantity' => (float)($product['reorder_quantity'] ?? 0),
+                ]
+            ];
+        } catch (Exception $e) {
+            return ['error' => 'Failed to update product: ' . $e->getMessage()];
+        }
+    },
+    
     'DELETE /api/products/{id}' => function() use ($pdo) {
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
