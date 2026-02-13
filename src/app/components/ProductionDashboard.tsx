@@ -155,6 +155,9 @@ export function ProductionDashboard() {
   const [selectedIngredients, setSelectedIngredients] = useState<
     IngredientInput[]
   >([]);
+  const [baseIngredientQuantities, setBaseIngredientQuantities] = useState<
+    IngredientInput[]
+  >([]);
   const [products, setProducts] = useState<APIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -512,6 +515,7 @@ export function ProductionDashboard() {
         employeeName: "",
       });
       setSelectedIngredients([]);
+      setBaseIngredientQuantities([]);
       setShowAddForm(false);
 
       toast.success(
@@ -791,12 +795,21 @@ export function ProductionDashboard() {
                                 quantity: String(d.quantity),
                               };
                             });
-                            setSelectedIngredients(loadedIngredients);
+                            // Store base quantities (for 1 unit of production)
+                            setBaseIngredientQuantities(loadedIngredients);
+                            // If weight is already set, multiply quantities by weight
+                            const weight = parseFloat(newProduction.weightKg) || 1;
+                            const scaledIngredients = loadedIngredients.map((ing) => ({
+                              ...ing,
+                              quantity: String(parseFloat(ing.quantity) * weight),
+                            }));
+                            setSelectedIngredients(scaledIngredients);
                             toast.info(
                               `Loaded ${defaults.length} default ingredient(s) for ${product?.name || "product"}`,
                             );
                           } else {
                             setSelectedIngredients([]);
+                            setBaseIngredientQuantities([]);
                           }
                         } catch (err) {
                           console.error(
@@ -805,9 +818,11 @@ export function ProductionDashboard() {
                           );
                           // Don't show error toast - just leave ingredients empty
                           setSelectedIngredients([]);
+                          setBaseIngredientQuantities([]);
                         }
                       } else {
                         setSelectedIngredients([]);
+                        setBaseIngredientQuantities([]);
                       }
                     }}
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -826,12 +841,23 @@ export function ProductionDashboard() {
                     type="number"
                     step="0.1"
                     value={newProduction.weightKg}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const weight = e.target.value;
                       setNewProduction({
                         ...newProduction,
-                        weightKg: e.target.value,
-                      })
-                    }
+                        weightKg: weight,
+                      });
+                      
+                      // Auto-multiply ingredient quantities based on weight
+                      if (baseIngredientQuantities.length > 0) {
+                        const weightNum = parseFloat(weight) || 0;
+                        const scaledIngredients = baseIngredientQuantities.map((ing) => ({
+                          ...ing,
+                          quantity: String(parseFloat(ing.quantity) * weightNum),
+                        }));
+                        setSelectedIngredients(scaledIngredients);
+                      }
+                    }}
                     placeholder="0.0"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
