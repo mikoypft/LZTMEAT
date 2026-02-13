@@ -202,6 +202,7 @@ export function ProductionDashboard() {
     actualWeight?: string;
     additionalIngredients?: IngredientInput[];
   }>({ show: false });
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
   // Load products and production records from database on mount
   useEffect(() => {
@@ -833,10 +834,48 @@ export function ProductionDashboard() {
             <h2>Select Product for Production</h2>
           </div>
 
+          {/* Category Filters */}
+          <div className="p-6 border-b border-border">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedCategory("All")}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  selectedCategory === "All"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary hover:bg-secondary/80"
+                }`}
+              >
+                All
+              </button>
+              {Array.from(new Set(products.map((p) => p.category)))
+                .filter(Boolean)
+                .sort()
+                .map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-4 py-2 rounded-lg transition-all ${
+                      selectedCategory === category
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary hover:bg-secondary/80"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+            </div>
+          </div>
+
           {/* Products Grid */}
           <div className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products.map((product) => {
+              {products
+                .filter(
+                  (product) =>
+                    selectedCategory === "All" ||
+                    product.category === selectedCategory
+                )
+                .map((product) => {
                 // Get inventory for this product
                 const productInventory = inventory.find(
                   (inv) => String(inv.product_id) === String(product.id) && inv.location === "Production Facility"
