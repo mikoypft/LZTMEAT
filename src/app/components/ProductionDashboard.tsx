@@ -501,6 +501,9 @@ export function ProductionDashboard() {
       // Reload production records to get updated list
       await loadProductionRecords();
 
+      // Refresh ingredients to show updated stock in real-time
+      await refreshIngredients();
+
       setNewProduction({
         productName: "",
         productId: "",
@@ -627,6 +630,9 @@ export function ProductionDashboard() {
 
       // Update local state
       setProductions(productions.filter((p) => p.id !== id));
+
+      // Refresh ingredients to show returned stock in real-time
+      await refreshIngredients();
 
       toast.success("Production record deleted");
     } catch (error) {
