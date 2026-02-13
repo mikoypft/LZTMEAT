@@ -141,7 +141,9 @@ function ProductIngredientsList({ productId }: { productId: string }) {
       try {
         const defaults = await getProductDefaultIngredients(productId);
         if (defaults && defaults.length > 0) {
-          const ingredientNames = defaults.map((d) => d.ingredientName).join(", ");
+          const ingredientNames = defaults
+            .map((d) => d.ingredientName)
+            .join(", ");
           setIngredientsList(ingredientNames);
         } else {
           setIngredientsList("Not set");
@@ -156,7 +158,9 @@ function ProductIngredientsList({ productId }: { productId: string }) {
   }, [productId]);
 
   if (loading) return <span>Loading...</span>;
-  return <span className="text-xs text-muted-foreground">{ingredientsList}</span>;
+  return (
+    <span className="text-xs text-muted-foreground">{ingredientsList}</span>
+  );
 }
 
 export function ProductionDashboard() {
@@ -174,7 +178,9 @@ export function ProductionDashboard() {
   const { ingredients, deductIngredient, refreshIngredients } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
   const [showProductionModal, setShowProductionModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(
+    null,
+  );
   const [newProduction, setNewProduction] = useState({
     productName: "",
     productId: "",
@@ -873,51 +879,57 @@ export function ProductionDashboard() {
                 .filter(
                   (product) =>
                     selectedCategory === "All" ||
-                    product.category === selectedCategory
+                    product.category === selectedCategory,
                 )
                 .map((product) => {
-                // Get inventory for this product
-                const productInventory = inventory.find(
-                  (inv) => String(inv.product_id) === String(product.id) && inv.location === "Production Facility"
-                );
-                const currentStock = productInventory?.quantity || 0;
+                  // Get inventory for this product
+                  const productInventory = inventory.find(
+                    (inv) =>
+                      String(inv.product_id) === String(product.id) &&
+                      inv.location === "Production Facility",
+                  );
+                  const currentStock = productInventory?.quantity || 0;
 
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => handleProductCardClick(product)}
-                    className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all cursor-pointer group"
-                  >
-                    <div className="flex flex-col h-full">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-sm flex-1">
-                          {product.name}
-                        </h3>
-                      </div>
-                      <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
-                        {product.category}
-                      </span>
-                      
-                      {/* Show default ingredients */}
-                      <div className="text-xs text-muted-foreground mb-3 flex-1">
-                        <p className="font-medium mb-1">Default Ingredients:</p>
-                        <ProductIngredientsList productId={String(product.id)} />
-                      </div>
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => handleProductCardClick(product)}
+                      className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all cursor-pointer group"
+                    >
+                      <div className="flex flex-col h-full">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium text-sm flex-1">
+                            {product.name}
+                          </h3>
+                        </div>
+                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
+                          {product.category}
+                        </span>
 
-                      <div className="mt-auto flex justify-between items-end">
-                        <div>
-                          <p className="text-xl text-primary">
-                            {currentStock} {product.unit}
+                        {/* Show default ingredients */}
+                        <div className="text-xs text-muted-foreground mb-3 flex-1">
+                          <p className="font-medium mb-1">
+                            Default Ingredients:
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Current Stock
-                          </p>
+                          <ProductIngredientsList
+                            productId={String(product.id)}
+                          />
+                        </div>
+
+                        <div className="mt-auto flex justify-between items-end">
+                          <div>
+                            <p className="text-xl text-primary">
+                              {currentStock} {product.unit}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Current Stock
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
 
@@ -1314,14 +1326,18 @@ export function ProductionDashboard() {
                         ...newProduction,
                         weightKg: weight,
                       });
-                      
+
                       // Auto-multiply ingredient quantities based on weight
                       if (baseIngredientQuantities.length > 0) {
                         const weightNum = parseFloat(weight) || 0;
-                        const scaledIngredients = baseIngredientQuantities.map((ing) => ({
-                          ...ing,
-                          quantity: String(parseFloat(ing.quantity) * weightNum),
-                        }));
+                        const scaledIngredients = baseIngredientQuantities.map(
+                          (ing) => ({
+                            ...ing,
+                            quantity: String(
+                              parseFloat(ing.quantity) * weightNum,
+                            ),
+                          }),
+                        );
                         setSelectedIngredients(scaledIngredients);
                       }
                     }}
@@ -1382,7 +1398,8 @@ export function ProductionDashboard() {
 
                 {selectedIngredients.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Click "Add Ingredient" to add ingredients for this production
+                    Click "Add Ingredient" to add ingredients for this
+                    production
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1402,7 +1419,8 @@ export function ProductionDashboard() {
                                 key={ingredient.code}
                                 value={ingredient.code}
                               >
-                                {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                {ingredient.stock}
                               </option>
                             ))}
                           </select>
@@ -1413,7 +1431,11 @@ export function ProductionDashboard() {
                             step="0.1"
                             value={ing.quantity}
                             onChange={(e) =>
-                              updateIngredient(index, "quantity", e.target.value)
+                              updateIngredient(
+                                index,
+                                "quantity",
+                                e.target.value,
+                              )
                             }
                             placeholder="Qty"
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"

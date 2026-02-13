@@ -47,6 +47,7 @@ interface CartItem extends Product {
   quantity: number;
   discount: number;
   basePrice?: number; // Original price before weight adjustment
+  weight?: number; // Actual weight for inventory deduction (e.g., 1.5 for 1.5kg)
 }
 
 interface Customer {
@@ -472,7 +473,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
         setCart(
           cart.map((item) =>
             item.id === product.id && item.price === priceToUse
-              ? { ...item, quantity: item.quantity + 1 }
+              ? { ...item, quantity: item.quantity + 1, weight: actualWeight * (item.quantity + 1) }
               : item,
           ),
         );
@@ -486,7 +487,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       // Different price (different weight) or new product - create new line item
       setCart([
         ...cart,
-        { ...product, price: priceToUse, quantity: 1, discount: 0, basePrice },
+        { ...product, price: priceToUse, quantity: 1, discount: 0, basePrice, weight: actualWeight },
       ]);
       toast.success(`Added ${product.name} to cart`);
     }
@@ -648,6 +649,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           name: item.name,
           price: item.price,
           quantity: item.quantity,
+          weight: item.weight || item.quantity, // Use adjusted weight for inventory deduction
           discount: item.discount,
         })),
         subtotal: subtotal,

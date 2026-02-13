@@ -620,7 +620,7 @@ export function InventoryPage({
             : item,
         ),
       );
-      
+
       toast.success("Inventory item updated successfully");
       setShowAddProductModal(false);
       setSelectedItem(null);

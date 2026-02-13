@@ -1159,7 +1159,9 @@ $routes = [
                     $itemTotal
                 ]);
                 
-                // Deduct from inventory - use location from body or default to "Main Store"
+                // Deduct from inventory - use weight if provided (for weight-adjusted products), otherwise use quantity
+                // This handles cases where products are sold by weight (e.g., 1.5kg) instead of just units
+                $deductionAmount = isset($item['weight']) ? floatval($item['weight']) : floatval($item['quantity']);
                 $location = $body['location'] ?? $body['storeId'] ?? 'Main Store';
                 $invStmt = $pdo->prepare('
                     UPDATE inventory 
@@ -1168,7 +1170,7 @@ $routes = [
                 ');
                 
                 $invStmt->execute([
-                    $item['quantity'],
+                    $deductionAmount,
                     $item['productId'],
                     $location
                 ]);
@@ -1185,7 +1187,7 @@ $routes = [
                         $createInvStmt->execute([
                             $item['productId'],
                             $location,
-                            -$item['quantity']
+                            -$deductionAmount
                         ]);
                     } catch (Exception $e) {
                         // Inventory record might already exist, just log
