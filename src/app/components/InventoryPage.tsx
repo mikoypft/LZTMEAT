@@ -1593,7 +1593,7 @@ function EditItemModal({
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
   const [defaultIngredients, setDefaultIngredients] = useState<
-    Array<{ ingredientId: string; quantity: string }>
+    Array<{ ingredientId: string }>
   >([]);
   const [loadingIngredients, setLoadingIngredients] = useState(true);
   const [savingIngredients, setSavingIngredients] = useState(false);
@@ -1630,7 +1630,6 @@ function EditItemModal({
         setDefaultIngredients(
           defaults.map((d) => ({
             ingredientId: d.ingredientId,
-            quantity: String(d.quantity),
           })),
         );
       }
@@ -1644,7 +1643,7 @@ function EditItemModal({
   const addIngredientRow = () => {
     setDefaultIngredients([
       ...defaultIngredients,
-      { ingredientId: "", quantity: "" },
+      { ingredientId: "" },
     ]);
   };
 
@@ -1654,11 +1653,10 @@ function EditItemModal({
 
   const updateDefaultIngredient = (
     index: number,
-    field: "ingredientId" | "quantity",
     value: string,
   ) => {
     const updated = [...defaultIngredients];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ingredientId: value };
     setDefaultIngredients(updated);
   };
 
@@ -1667,17 +1665,14 @@ function EditItemModal({
 
     // Save default ingredients
     const validIngredients = defaultIngredients.filter(
-      (ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+      (ing) => ing.ingredientId
     );
 
     try {
       setSavingIngredients(true);
       await saveProductDefaultIngredients(
         item.id,
-        validIngredients.map((ing) => ({
-          ingredientId: ing.ingredientId,
-          quantity: parseFloat(ing.quantity),
-        })),
+        validIngredients,
       );
     } catch (err) {
       console.error("Error saving default ingredients:", err);
@@ -1824,23 +1819,6 @@ function EditItemModal({
                         ))}
                       </select>
                     </div>
-                    <div className="w-28">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={ing.quantity}
-                        onChange={(e) =>
-                          updateDefaultIngredient(
-                            index,
-                            "quantity",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Qty"
-                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                      />
-                    </div>
                     <button
                       type="button"
                       onClick={() => removeIngredientRow(index)}
@@ -1896,7 +1874,7 @@ function EncodeProductModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
   const [defaultIngredients, setDefaultIngredients] = useState<
-    Array<{ ingredientId: string; quantity: string }>
+    Array<{ ingredientId: string }>
   >([]);
 
   useEffect(() => {
@@ -1929,7 +1907,7 @@ function EncodeProductModal({
   const addIngredientRow = () => {
     setDefaultIngredients([
       ...defaultIngredients,
-      { ingredientId: "", quantity: "" },
+      { ingredientId: "" },
     ]);
   };
 
@@ -1939,11 +1917,10 @@ function EncodeProductModal({
 
   const updateDefaultIngredient = (
     index: number,
-    field: "ingredientId" | "quantity",
     value: string,
   ) => {
     const updated = [...defaultIngredients];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ingredientId: value };
     setDefaultIngredients(updated);
   };
 
@@ -1979,17 +1956,13 @@ function EncodeProductModal({
 
       // Save default ingredients if any were added
       const validIngredients = defaultIngredients.filter(
-        (ing) =>
-          ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        (ing) => ing.ingredientId
       );
       if (validIngredients.length > 0 && newProduct.id) {
         try {
           await saveProductDefaultIngredients(
             String(newProduct.id),
-            validIngredients.map((ing) => ({
-              ingredientId: ing.ingredientId,
-              quantity: parseFloat(ing.quantity),
-            })),
+            validIngredients,
           );
         } catch (err) {
           console.error("Error saving default ingredients:", err);
@@ -2147,23 +2120,6 @@ function EncodeProductModal({
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="w-28">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={ing.quantity}
-                        onChange={(e) =>
-                          updateDefaultIngredient(
-                            index,
-                            "quantity",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Qty"
-                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                      />
                     </div>
                     <button
                       type="button"

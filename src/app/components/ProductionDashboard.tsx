@@ -445,11 +445,11 @@ export function ProductionDashboard() {
           );
           return {
             code: ing?.code || d.ingredientCode || "",
-            quantity: String(d.quantity),
+            quantity: "",
           };
         });
-        // Store base quantities (for 1 unit of production)
-        setBaseIngredientQuantities(loadedIngredients);
+        // No longer storing base quantities
+        setBaseIngredientQuantities([]);
         setSelectedIngredients(loadedIngredients);
         toast.info(
           `Loaded ${defaults.length} default ingredient(s) for ${product.name}`,
@@ -1326,20 +1326,7 @@ export function ProductionDashboard() {
                         ...newProduction,
                         weightKg: weight,
                       });
-
-                      // Auto-multiply ingredient quantities based on weight
-                      if (baseIngredientQuantities.length > 0) {
-                        const weightNum = parseFloat(weight) || 0;
-                        const scaledIngredients = baseIngredientQuantities.map(
-                          (ing) => ({
-                            ...ing,
-                            quantity: String(
-                              parseFloat(ing.quantity) * weightNum,
-                            ),
-                          }),
-                        );
-                        setSelectedIngredients(scaledIngredients);
-                      }
+                      // Auto-scaling removed - user must input quantities manually
                     }}
                     placeholder="0.0"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"

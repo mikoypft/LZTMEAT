@@ -592,7 +592,7 @@ $routes = [
                         'ingredientCode' => $d['ingredient_code'],
                         'ingredientUnit' => $d['ingredient_unit'],
                         'ingredientStock' => (float)$d['ingredient_stock'],
-                        'quantity' => (float)$d['quantity'],
+                        'quantity' => null,
                     ];
                 }, $defaults),
             ];
@@ -625,15 +625,14 @@ $routes = [
             // Insert new defaults
             $stmt = $pdo->prepare('
                 INSERT INTO product_default_ingredients (product_id, ingredient_id, quantity, created_at, updated_at)
-                VALUES (?, ?, ?, NOW(), NOW())
+                VALUES (?, ?, NULL, NOW(), NOW())
             ');
             
             foreach ($ingredients as $ing) {
                 $ingredientId = $ing['ingredientId'] ?? null;
-                $quantity = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
                 
-                if ($ingredientId && $quantity > 0) {
-                    $stmt->execute([$productId, $ingredientId, $quantity]);
+                if ($ingredientId) {
+                    $stmt->execute([$productId, $ingredientId]);
                 }
             }
             
@@ -659,7 +658,7 @@ $routes = [
                         'ingredientCode' => $d['ingredient_code'],
                         'ingredientUnit' => $d['ingredient_unit'],
                         'ingredientStock' => (float)$d['ingredient_stock'],
-                        'quantity' => (float)$d['quantity'],
+                        'quantity' => null,
                     ];
                 }, $defaults),
             ];

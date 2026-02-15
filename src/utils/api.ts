@@ -177,7 +177,7 @@ export interface ProductDefaultIngredient {
   ingredientCode: string;
   ingredientUnit: string;
   ingredientStock: number;
-  quantity: number;
+  quantity: number | null;
 }
 
 export async function getProductDefaultIngredients(
@@ -191,7 +191,7 @@ export async function getProductDefaultIngredients(
 
 export async function saveProductDefaultIngredients(
   productId: string,
-  ingredients: Array<{ ingredientId: string; quantity: number }>,
+  ingredients: Array<{ ingredientId: string }>,
 ): Promise<ProductDefaultIngredient[]> {
   const data = await apiRequest<{
     success: boolean;
