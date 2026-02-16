@@ -2126,27 +2126,44 @@ $routes = [
             }
             
             // Create product mix inventory record
-            $stmt = $pdo->prepare('
-                INSERT INTO product_mix_inventory (
-                    product_mix_category_id,
-                    product_mix_name,
-                    weight,
-                    unit,
-                    stock,
-                    cost,
-                    production_record_id,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            ');
-            $stmt->execute([
-                $mixCategoryId,
-                $mixCategoryName,
-                $mixWeight,
-                'kg',
-                $mixWeight,
-                $cost,
-                $id
-            ]);
+            try {
+                error_log("Creating mix inventory: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$mixWeight, cost=$cost, prodId=$id");
+                
+                $stmt = $pdo->prepare('
+                    INSERT INTO product_mix_inventory (
+                        product_mix_category_id,
+                        product_mix_name,
+                        weight,
+                        unit,
+                        stock,
+                        cost,
+                        production_record_id,
+                        created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                ');
+                $result = $stmt->execute([
+                    $mixCategoryId,
+                    $mixCategoryName,
+                    $mixWeight,
+                    'kg',
+                    $mixWeight,
+                    $cost,
+                    $id
+                ]);
+                
+                if (!$result) {
+                    $errorInfo = $stmt->errorInfo();
+                    error_log("Mix inventory INSERT failed: " . print_r($errorInfo, true));
+                    throw new Exception("Failed to insert mix inventory: " . $errorInfo[2]);
+                }
+                
+                $insertedId = $pdo->lastInsertId();
+                error_log("Mix inventory created successfully with ID: $insertedId");
+                
+            } catch (Exception $mixInsertError) {
+                error_log("Mix inventory creation error: " . $mixInsertError->getMessage());
+                throw $mixInsertError;
+            }
             
             // Update production record to cooking phase
             $stmt = $pdo->prepare('
