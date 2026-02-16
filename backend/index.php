@@ -920,11 +920,15 @@ $routes = [
             $stmt->execute([$categoryId]);
             $category = $stmt->fetch();
             
-            if (!$category || !$category['product_ids']) {
+            if (!$category) {
                 return ['items' => []];
             }
             
-            $productIds = json_decode($category['product_ids'], true) ?: [];
+            $productIds = [];
+            if ($category['product_ids']) {
+                $decoded = json_decode($category['product_ids'], true);
+                $productIds = is_array($decoded) ? $decoded : [];
+            }
             
             if (empty($productIds)) {
                 return ['items' => []];
@@ -966,7 +970,11 @@ $routes = [
             $stmt->execute([$categoryId]);
             $category = $stmt->fetch();
             
-            $productIds = $category['product_ids'] ? json_decode($category['product_ids'], true) : [];
+            $productIds = [];
+            if ($category && $category['product_ids']) {
+                $decoded = json_decode($category['product_ids'], true);
+                $productIds = is_array($decoded) ? $decoded : [];
+            }
             
             if (in_array($productId, $productIds)) {
                 http_response_code(400);
@@ -1014,7 +1022,12 @@ $routes = [
             $stmt->execute([$categoryId]);
             $category = $stmt->fetch();
             
-            $productIds = $category['product_ids'] ? json_decode($category['product_ids'], true) : [];
+            $productIds = [];
+            if ($category && $category['product_ids']) {
+                $decoded = json_decode($category['product_ids'], true);
+                $productIds = is_array($decoded) ? $decoded : [];
+            }
+            
             $productIds = array_filter($productIds, function($pid) use ($productId) {
                 return $pid != $productId;
             });
