@@ -629,7 +629,7 @@ function AddCategoryModal({
     }
   };
 
-  const handleAddProduct = (product: Product) => {
+  const handleAddProduct = async (product: Product) => {
     if (selectedProducts.some((p) => p.productId === product.id)) {
       toast.error("Product already added");
       return;
@@ -650,10 +650,36 @@ function AddCategoryModal({
 
     setSelectedProducts([...selectedProducts, newItem]);
     setProductSearchTerm("");
+
+    // If editing an existing category, save immediately to backend
+    if (category?.id) {
+      try {
+        await addProductToMix(category.id, product.id);
+        toast.success("Product added to mix");
+      } catch (error: any) {
+        console.error("Error adding product:", error);
+        toast.error(error.message || "Failed to add product");
+        // Remove from state if backend fails
+        setSelectedProducts(selectedProducts);
+      }
+    }
   };
 
-  const handleRemoveProduct = (productId: string) => {
+  const handleRemoveProduct = async (productId: string) => {
     setSelectedProducts(selectedProducts.filter((p) => p.productId !== productId));
+
+    // If editing an existing category, remove from backend immediately
+    if (category?.id) {
+      try {
+        await deleteProductMixItem(`${category.id}-${productId}`);
+        toast.success("Product removed from mix");
+      } catch (error) {
+        console.error("Error removing product:", error);
+        toast.error("Failed to remove product");
+        // Reload to get correct state
+        loadProductData();
+      }
+    }
   };
 
   const filteredProducts = availableProducts.filter(
@@ -726,33 +752,6 @@ function AddCategoryModal({
         toast.success(
           `${isIngredient ? "Ingredient" : isProductMix ? "Product Mix" : "Product"} category created successfully`,
         );
-      }
-
-      // Handle product mix items for editing
-      if (isEditing && isProductMix && category?.id) {
-        const existingItems = await getProductMixItems(category.id);
-        
-        // Remove items that are no longer in selectedProducts
-        for (const existing of existingItems) {
-          if (!selectedProducts.some((sp) => sp.productId === existing.productId)) {
-            try {
-              await deleteProductMixItem(`${category.id}-${existing.productId}`);
-            } catch (error) {
-              console.error("Error removing product:", error);
-            }
-          }
-        }
-
-        // Add new items
-        for (const selected of selectedProducts) {
-          if (!existingItems.some((ei) => ei.productId === selected.productId)) {
-            try {
-              await addProductToMix(category.id, selected.productId);
-            } catch (error) {
-              console.error("Error adding product:", error);
-            }
-          }
-        }
       }
 
       onSuccess();
