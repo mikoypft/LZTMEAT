@@ -1093,7 +1093,7 @@ export function ProductionDashboard() {
             <h2>Product Mix Inventory</h2>
           </div>
           <div className="p-6">
-            {mixInventory.length === 0 ? (
+            {!mixInventory || mixInventory.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No mix inventory available yet. Complete a mixing phase to create mix stock.
               </div>
@@ -1137,7 +1137,7 @@ export function ProductionDashboard() {
           {/* Product Mix Categories Grid */}
           <div className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {mixCategories.length === 0 ? (
+              {!mixCategories || mixCategories.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-muted-foreground">
                   No product mix categories available. Create one in the Product Mix page.
                 </div>
@@ -1379,7 +1379,7 @@ export function ProductionDashboard() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Operator</option>
-                    {employees.map((employee) => (
+                    {employees && employees.map((employee) => (
                       <option key={employee.id} value={employee.fullName}>
                         {employee.fullName}
                       </option>
@@ -1392,7 +1392,7 @@ export function ProductionDashboard() {
               <div className="bg-secondary/50 rounded-lg p-4 border border-border">
                 <h3 className="text-sm font-medium mb-3">Mix Products</h3>
                 <div className="space-y-2">
-                  {mixProducts.length === 0 ? (
+                  {!mixProducts || mixProducts.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No products configured for this mix
                     </p>
@@ -1428,7 +1428,7 @@ export function ProductionDashboard() {
               <div className="bg-secondary/50 rounded-lg p-4 border border-border">
                 <h3 className="text-sm font-medium mb-3">Ingredients *</h3>
                 <div className="space-y-2">
-                  {mixDefaultIngredients.length === 0 ? (
+                  {!mixDefaultIngredients || mixDefaultIngredients.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No default ingredients configured
                     </p>
@@ -1616,7 +1616,7 @@ export function ProductionDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  {productsCreated.length === 0 ? (
+                  {!productsCreated || productsCreated.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       Click "Add Product" to record what was created
                     </p>
@@ -1633,7 +1633,7 @@ export function ProductionDashboard() {
                           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         >
                           <option value="">Select Product</option>
-                          {products.map((product) => (
+                          {products && products.map((product) => (
                             <option key={product.id} value={product.id}>
                               {product.name}
                             </option>
@@ -1860,7 +1860,7 @@ export function ProductionDashboard() {
                             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           >
                             <option value="">Select ingredient</option>
-                            {ingredients.map((ingredient) => (
+                            {ingredients && ingredients.map((ingredient) => (
                               <option
                                 key={ingredient.id}
                                 value={ingredient.id.toString()}
@@ -2007,7 +2007,7 @@ export function ProductionDashboard() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Employee</option>
-                    {employees.map((employee) => (
+                    {employees && employees.map((employee) => (
                       <option key={employee.id} value={employee.fullName}>
                         {employee.fullName}
                       </option>
@@ -2063,7 +2063,7 @@ export function ProductionDashboard() {
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           >
                             <option value="">Select Ingredient</option>
-                            {ingredients.map((ingredient) => (
+                            {ingredients && ingredients.map((ingredient) => (
                               <option
                                 key={ingredient.code}
                                 value={ingredient.code}
