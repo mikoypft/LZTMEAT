@@ -361,6 +361,88 @@ $routes = [
         ];
     },
     
+    'GET /api/debug/fix-mix-inventory' => function() use ($pdo) {
+        try {
+            // Find production records in cooking phase without inventory
+            $stmt = $pdo->query("
+                SELECT pr.*, pmc.name as category_name 
+                FROM production_records pr
+                LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id
+                LEFT JOIN product_mix_inventory pmi ON pmi.production_record_id = pr.id
+                WHERE pr.phase IN ('cooking', 'completed') 
+                AND pr.product_mix_category_id IS NOT NULL
+                AND pmi.id IS NULL
+            ");
+            $missingRecords = $stmt->fetchAll();
+            
+            $fixed = [];
+            $errors = [];
+            
+            foreach ($missingRecords as $prod) {
+                try {
+                    $mixCategoryName = $prod['product_mix_category_name'] ?? $prod['category_name'] ?? 'Unknown Mix';
+                    $mixWeight = $prod['mix_weight'] ?? 0;
+                    
+                    // Calculate cost from initial ingredients
+                    $cost = 0;
+                    if (!empty($prod['initial_ingredients'])) {
+                        $ingredients = json_decode($prod['initial_ingredients'], true);
+                        if (is_array($ingredients)) {
+                            foreach ($ingredients as $ing) {
+                                $cost += ($ing['quantity'] ?? 0) * 10;
+                            }
+                        }
+                    }
+                    
+                    // Insert missing inventory
+                    $insertStmt = $pdo->prepare('
+                        INSERT INTO product_mix_inventory (
+                            product_mix_category_id,
+                            product_mix_name,
+                            weight,
+                            unit,
+                            stock,
+                            cost,
+                            production_record_id,
+                            created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                    ');
+                    $insertStmt->execute([
+                        $prod['product_mix_category_id'],
+                        $mixCategoryName,
+                        $mixWeight,
+                        'kg',
+                        $mixWeight,
+                        $cost,
+                        $prod['id']
+                    ]);
+                    
+                    $fixed[] = [
+                        'production_id' => $prod['id'],
+                        'batch_number' => $prod['batch_number'],
+                        'category_name' => $mixCategoryName,
+                        'weight' => $mixWeight
+                    ];
+                } catch (Exception $e) {
+                    $errors[] = [
+                        'production_id' => $prod['id'],
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+            
+            return [
+                'success' => true,
+                'found_missing' => count($missingRecords),
+                'fixed' => $fixed,
+                'errors' => $errors
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to fix inventory: ' . $e->getMessage()];
+        }
+    },
+    
     'POST /api/auth/login' => function() use ($pdo, $body) {
         $username = $body['username'] ?? '';
         $password = $body['password'] ?? '';
