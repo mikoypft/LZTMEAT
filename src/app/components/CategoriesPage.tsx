@@ -606,11 +606,24 @@ function AddCategoryModal({
   const isProductMix = type === "product-mix";
   const isEditing = !!category;
 
+  // Reset form data when category changes
+  useEffect(() => {
+    setFormData({
+      name: category?.name ?? "",
+      description: category?.description ?? "",
+    });
+  }, [category?.id]);
+
   useEffect(() => {
     if (isProductMix) {
+      // Clear previous data first
+      setSelectedProducts([]);
       loadProductData();
+    } else {
+      // Clear products if not product mix
+      setSelectedProducts([]);
     }
-  }, [isProductMix, category]);
+  }, [isProductMix, category?.id]);
 
   const loadProductData = async () => {
     setLoadingProducts(true);
