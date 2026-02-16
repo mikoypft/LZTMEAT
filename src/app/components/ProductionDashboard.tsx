@@ -868,6 +868,7 @@ export function ProductionDashboard() {
       // Create production record
       const productionData = {
         productMixCategoryId: String(selectedMixCategory.id),
+        productMixCategoryName: selectedMixCategory.name,
         batchNumber: mixBatchNumber,
         operatorName: mixOperator,
         ingredients: ingredientsData,
