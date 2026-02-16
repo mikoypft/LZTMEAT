@@ -665,13 +665,13 @@ function AddCategoryModal({
     }
   };
 
-  const handleRemoveProduct = async (productId: string) => {
+  const handleRemoveProduct = async (mixItemId: string, productId: string) => {
     setSelectedProducts(selectedProducts.filter((p) => p.productId !== productId));
 
     // If editing an existing category, remove from backend immediately
     if (category?.id) {
       try {
-        await deleteProductMixItem(`${category.id}-${productId}`);
+        await deleteProductMixItem(mixItemId);
         toast.success("Product removed from mix");
       } catch (error) {
         console.error("Error removing product:", error);
@@ -863,7 +863,7 @@ function AddCategoryModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleRemoveProduct(item.productId)}
+                            onClick={() => handleRemoveProduct(item.id, item.productId)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
