@@ -753,16 +753,42 @@ export interface IngredientUsed {
 
 export interface ProductionRecord {
   id: string;
+  productId?: string | null;
+  productName?: string | null;
+  productMixCategoryId?: string | null;
+  productMixCategoryName?: string | null;
+  quantity: number;
+  mixWeight?: number | null;
+  mixUsed?: number | null;
+  batchNumber: string;
+  operator: string;
+  status?: "mixing" | "cooking" | "completed" | "in-progress" | "quality-check";
+  phase?: "mixing" | "cooking" | "completed";
+  ingredientsUsed?: IngredientUsed[];
+  initialIngredients?: any[];
+  outputs?: ProductionOutput[];
+  notes?: string;
+  timestamp: string;
+}
+
+export interface ProductionOutput {
+  id: string;
   productId: string;
   productName: string;
   quantity: number;
-  batchNumber: string;
-  operator: string;
-  status?: "in-progress" | "completed" | "quality-check";
-  ingredientsUsed?: IngredientUsed[];
-  initialIngredients?: any[];
-  notes?: string;
-  timestamp: string;
+  unit: string;
+}
+
+export interface ProductMixInventory {
+  id: string;
+  productMixCategoryId: string;
+  productMixName: string;
+  categoryName: string;
+  weight: number;
+  unit: string;
+  stock: number;
+  cost: number;
+  createdAt: string;
 }
 
 export async function getProductionRecords(
@@ -786,6 +812,44 @@ export async function createProductionRecord(
     body: JSON.stringify(record),
   });
   return data.record;
+}
+
+export async function completeMixing(
+  id: string,
+  mixWeight: number,
+): Promise<ProductionRecord> {
+  const data = await apiRequest<{ record: ProductionRecord }>(
+    `/production/${id}/complete-mixing`,
+    {
+      method: "POST",
+      body: JSON.stringify({ mixWeight }),
+    },
+  );
+  return data.record;
+}
+
+export async function completeCooking(
+  id: string,
+  mixUsed: number,
+  products: Array<{ productId: string; quantity: number }>,
+): Promise<ProductionRecord> {
+  const data = await apiRequest<{ record: ProductionRecord }>(
+    `/production/${id}/complete-cooking`,
+    {
+      method: "POST",
+      body: JSON.stringify({ mixUsed, products }),
+    },
+  );
+  return data.record;
+}
+
+export async function getProductMixInventory(): Promise<
+  ProductMixInventory[]
+> {
+  const data = await apiRequest<{ inventory: ProductMixInventory[] }>(
+    "/product-mix-inventory",
+  );
+  return data.inventory;
 }
 
 export async function updateProductionRecordStatus(
