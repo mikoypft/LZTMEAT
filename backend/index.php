@@ -191,7 +191,7 @@ try {
             CREATE TABLE IF NOT EXISTS product_mix_inventory (
                 id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 product_mix_category_id BIGINT UNSIGNED NOT NULL,
-                product_mix_name VARCHAR(255) NOT NULL,
+                product_mix_name VARCHAR(255) NULL,
                 weight DECIMAL(10,2) NOT NULL DEFAULT 0,
                 unit VARCHAR(50) NOT NULL DEFAULT 'kg',
                 stock DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -203,6 +203,8 @@ try {
                 INDEX idx_production (production_record_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        // Make product_mix_name nullable for existing tables
+        $pdo->exec("ALTER TABLE product_mix_inventory MODIFY COLUMN product_mix_name VARCHAR(255) NULL");
     } catch (Exception $tableErr) {
         error_log('product_mix_inventory table creation: ' . $tableErr->getMessage());
     }
@@ -2103,7 +2105,12 @@ $routes = [
             
             $mixWeight = $body['mixWeight'] ?? 0;
             $mixCategoryId = $production['product_mix_category_id'];
-            $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'];
+            $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
+            
+            // Ensure we have a valid category name
+            if (empty($mixCategoryName)) {
+                $mixCategoryName = 'Unknown Mix';
+            }
             
             // Calculate cost from initial ingredients
             $cost = 0;
