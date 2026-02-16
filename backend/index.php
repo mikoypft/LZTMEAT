@@ -914,35 +914,43 @@ $routes = [
         try {
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $segments = explode('/', trim($uri, '/'));
-            $categoryId = $segments[3]; // api/product-mix-categories/{id}/items
+            $categoryId = $segments[3];
             
-            $stmt = $pdo->prepare('
-                SELECT pmi.*, p.name as product_name, p.sku, p.price, p.unit, p.category_id
-                FROM product_mix_items pmi
-                JOIN products p ON pmi.product_id = p.id
-                WHERE pmi.product_mix_category_id = ?
-                ORDER BY p.name
-            ');
+            $stmt = $pdo->prepare('SELECT product_ids FROM product_mix_categories WHERE id = ?');
             $stmt->execute([$categoryId]);
-            $items = $stmt->fetchAll();
+            $category = $stmt->fetch();
+            
+            if (!$category || !$category['product_ids']) {
+                return ['items' => []];
+            }
+            
+            $productIds = json_decode($category['product_ids'], true) ?: [];
+            
+            if (empty($productIds)) {
+                return ['items' => []];
+            }
+            
+            $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+            $stmt = $pdo->prepare("SELECT * FROM products WHERE id IN ($placeholders) ORDER BY name");
+            $stmt->execute($productIds);
+            $products = $stmt->fetchAll();
             
             return [
-                'items' => array_map(function($item) {
+                'items' => array_map(function($product) use ($categoryId) {
                     return [
-                        'id' => (string)$item['id'],
-                        'productMixCategoryId' => (string)$item['product_mix_category_id'],
-                        'productId' => (string)$item['product_id'],
-                        'productName' => $item['product_name'],
-                        'sku' => $item['sku'],
-                        'price' => (float)$item['price'],
-                        'unit' => $item['unit'],
-                        'quantity' => (int)$item['quantity'],
-                        'createdAt' => $item['created_at'],
+                        'id' => (string)$product['id'],
+                        'productMixCategoryId' => (string)$categoryId,
+                        'productId' => (string)$product['id'],
+                        'productName' => $product['name'],
+                        'sku' => $product['sku'],
+                        'price' => (float)$product['price'],
+                        'unit' => $product['unit'],
+                        'quantity' => 1,
+                        'createdAt' => $product['created_at'],
                     ];
-                }, $items),
+                }, $products),
             ];
         } catch (PDOException $e) {
-            // Table doesn't exist yet - return empty array
             return ['items' => []];
         }
     },
@@ -952,43 +960,43 @@ $routes = [
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $segments = explode('/', trim($uri, '/'));
             $categoryId = $segments[3];
+            $productId = $body['productId'] ?? '';
             
-            $stmt = $pdo->prepare('INSERT INTO product_mix_items (product_mix_category_id, product_id, quantity, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())');
-            $stmt->execute([
-                $categoryId,
-                $body['productId'] ?? '',
-                $body['quantity'] ?? 1,
-            ]);
+            $stmt = $pdo->prepare('SELECT product_ids FROM product_mix_categories WHERE id = ?');
+            $stmt->execute([$categoryId]);
+            $category = $stmt->fetch();
             
-            $lastId = $pdo->lastInsertId();
-            $stmt = $pdo->prepare('
-                SELECT pmi.*, p.name as product_name, p.sku, p.price, p.unit
-                FROM product_mix_items pmi
-                JOIN products p ON pmi.product_id = p.id
-                WHERE pmi.id = ?
-            ');
-            $stmt->execute([$lastId]);
-            $item = $stmt->fetch();
+            $productIds = $category['product_ids'] ? json_decode($category['product_ids'], true) : [];
+            
+            if (in_array($productId, $productIds)) {
+                http_response_code(400);
+                return ['error' => 'This product is already in the mix.'];
+            }
+            
+            $productIds[] = $productId;
+            
+            $stmt = $pdo->prepare('UPDATE product_mix_categories SET product_ids = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([json_encode($productIds), $categoryId]);
+            
+            $stmt = $pdo->prepare('SELECT * FROM products WHERE id = ?');
+            $stmt->execute([$productId]);
+            $product = $stmt->fetch();
             
             return [
                 'item' => [
-                    'id' => (string)$item['id'],
-                    'productMixCategoryId' => (string)$item['product_mix_category_id'],
-                    'productId' => (string)$item['product_id'],
-                    'productName' => $item['product_name'],
-                    'sku' => $item['sku'],
-                    'price' => (float)$item['price'],
-                    'unit' => $item['unit'],
-                    'quantity' => (int)$item['quantity'],
-                    'createdAt' => $item['created_at'],
+                    'id' => (string)$product['id'],
+                    'productMixCategoryId' => (string)$categoryId,
+                    'productId' => (string)$product['id'],
+                    'productName' => $product['name'],
+                    'sku' => $product['sku'],
+                    'price' => (float)$product['price'],
+                    'unit' => $product['unit'],
+                    'quantity' => 1,
+                    'createdAt' => $product['created_at'],
                 ]
             ];
         } catch (PDOException $e) {
             http_response_code(400);
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                return ['error' => 'This product is already in the mix.'];
-            }
-            // Return actual error message for debugging
             error_log('Product mix items error: ' . $e->getMessage());
             return ['error' => 'Failed to add product to mix: ' . $e->getMessage()];
         }
@@ -1005,20 +1013,26 @@ $routes = [
                 $id
             ]);
             
-            return ['success' => true];
-        } catch (PDOException $e) {
-            http_response_code(400);
-            return ['error' => 'Failed to update product mix item.'];
-        }
-    },
     
     'DELETE /api/product-mix-items/{id}' => function() use ($pdo) {
         try {
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $id = substr($uri, strrpos($uri, '/') + 1);
             
-            $stmt = $pdo->prepare('DELETE FROM product_mix_items WHERE id = ?');
-            $stmt->execute([$id]);
+            // id format: categoryId-productId
+            list($categoryId, $productId) = explode('-', $id, 2);
+            
+            $stmt = $pdo->prepare('SELECT product_ids FROM product_mix_categories WHERE id = ?');
+            $stmt->execute([$categoryId]);
+            $category = $stmt->fetch();
+            
+            $productIds = $category['product_ids'] ? json_decode($category['product_ids'], true) : [];
+            $productIds = array_filter($productIds, function($pid) use ($productId) {
+                return $pid != $productId;
+            });
+            
+            $stmt = $pdo->prepare('UPDATE product_mix_categories SET product_ids = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([json_encode(array_values($productIds)), $categoryId]);
             
             return ['success' => true];
         } catch (PDOException $e) {

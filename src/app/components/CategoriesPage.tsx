@@ -736,7 +736,7 @@ function AddCategoryModal({
         for (const existing of existingItems) {
           if (!selectedProducts.some((sp) => sp.productId === existing.productId)) {
             try {
-              await deleteProductMixItem(existing.id);
+              await deleteProductMixItem(`${category.id}-${existing.productId}`);
             } catch (error) {
               console.error("Error removing product:", error);
             }
