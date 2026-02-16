@@ -2087,8 +2087,13 @@ $routes = [
         }
         
         try {
-            // Get production record
-            $stmt = $pdo->prepare('SELECT * FROM production_records WHERE id = ?');
+            // Get production record with category name
+            $stmt = $pdo->prepare('
+                SELECT pr.*, pmc.name as category_name 
+                FROM production_records pr 
+                LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id
+                WHERE pr.id = ?
+            ');
             $stmt->execute([$id]);
             $production = $stmt->fetch();
             
@@ -2098,7 +2103,7 @@ $routes = [
             
             $mixWeight = $body['mixWeight'] ?? 0;
             $mixCategoryId = $production['product_mix_category_id'];
-            $mixCategoryName = $production['product_mix_category_name'];
+            $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'];
             
             // Calculate cost from initial ingredients
             $cost = 0;
@@ -2139,10 +2144,10 @@ $routes = [
             // Update production record to cooking phase
             $stmt = $pdo->prepare('
                 UPDATE production_records 
-                SET phase = ?, status = ?, mix_weight = ?, updated_at = NOW()
+                SET phase = ?, status = ?, mix_weight = ?, product_mix_category_name = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['cooking', 'cooking', $mixWeight, $id]);
+            $stmt->execute(['cooking', 'cooking', $mixWeight, $mixCategoryName, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('
