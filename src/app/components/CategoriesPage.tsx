@@ -561,6 +561,7 @@ export function CategoriesPage() {
       {/* Add/Edit Product Mix Category Modal */}
       {(showAddProductMixModal || editingProductMixCategory) && (
         <AddCategoryModal
+          key={editingProductMixCategory?.id || 'new'}
           type="product-mix"
           category={editingProductMixCategory}
           onClose={() => {
@@ -606,24 +607,12 @@ function AddCategoryModal({
   const isProductMix = type === "product-mix";
   const isEditing = !!category;
 
-  // Reset form data when category changes
-  useEffect(() => {
-    setFormData({
-      name: category?.name ?? "",
-      description: category?.description ?? "",
-    });
-  }, [category?.id]);
-
+  // Load product data for product mix categories
   useEffect(() => {
     if (isProductMix) {
-      // Clear previous data first
-      setSelectedProducts([]);
       loadProductData();
-    } else {
-      // Clear products if not product mix
-      setSelectedProducts([]);
     }
-  }, [isProductMix, category?.id]);
+  }, [isProductMix]);
 
   const loadProductData = async () => {
     setLoadingProducts(true);
@@ -632,9 +621,7 @@ function AddCategoryModal({
       setAvailableProducts(products);
 
       if (category?.id) {
-        console.log('Loading product mix items for category:', category.id, category.name);
         const items = await getProductMixItems(category.id);
-        console.log('Loaded product mix items:', items);
         setSelectedProducts(items);
       }
     } catch (error) {
