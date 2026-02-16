@@ -988,7 +988,9 @@ $routes = [
             if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
                 return ['error' => 'This product is already in the mix.'];
             }
-            return ['error' => 'Product mix items table not created yet. Please run the database migration.'];
+            // Return actual error message for debugging
+            error_log('Product mix items error: ' . $e->getMessage());
+            return ['error' => 'Failed to add product to mix: ' . $e->getMessage()];
         }
     },
     
