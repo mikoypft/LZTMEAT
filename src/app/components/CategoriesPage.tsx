@@ -561,7 +561,7 @@ export function CategoriesPage() {
       {/* Add/Edit Product Mix Category Modal */}
       {(showAddProductMixModal || editingProductMixCategory) && (
         <AddCategoryModal
-          key={editingProductMixCategory?.id || 'new'}
+          key={editingProductMixCategory?.id || "new"}
           type="product-mix"
           category={editingProductMixCategory}
           onClose={() => {
@@ -575,8 +575,6 @@ export function CategoriesPage() {
           }}
         />
       )}
-
-
     </div>
   );
 }
@@ -598,7 +596,9 @@ function AddCategoryModal({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<ProductMixItem[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<ProductMixItem[]>(
+    [],
+  );
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [showProductList, setShowProductList] = useState(false);
@@ -668,7 +668,9 @@ function AddCategoryModal({
   };
 
   const handleRemoveProduct = async (mixItemId: string, productId: string) => {
-    setSelectedProducts(selectedProducts.filter((p) => p.productId !== productId));
+    setSelectedProducts(
+      selectedProducts.filter((p) => p.productId !== productId),
+    );
 
     // If editing an existing category, remove from backend immediately
     if (category?.id) {
@@ -865,7 +867,9 @@ function AddCategoryModal({
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleRemoveProduct(item.id, item.productId)}
+                            onClick={() =>
+                              handleRemoveProduct(item.id, item.productId)
+                            }
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

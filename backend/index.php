@@ -914,7 +914,7 @@ $routes = [
         try {
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $segments = explode('/', trim($uri, '/'));
-            $categoryId = $segments[3];
+            $categoryId = $segments[2]; // api/product-mix-categories/{id}/items
             
             $stmt = $pdo->prepare('
                 SELECT 
@@ -957,7 +957,7 @@ $routes = [
         try {
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $segments = explode('/', trim($uri, '/'));
-            $categoryId = $segments[3];
+            $categoryId = $segments[2]; // api/product-mix-categories/{id}/items
             $productId = $body['productId'] ?? '';
             
             // Insert into product_mix_items table
