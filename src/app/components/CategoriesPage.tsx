@@ -8,8 +8,6 @@ import {
   Package,
   Beef,
   Edit2,
-  ListPlus,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -57,8 +55,14 @@ export function CategoriesPage() {
     useState<Category | null>(null);
   const [editingProductMixCategory, setEditingProductMixCategory] =
     useState<Category | null>(null);
-  const [managingProductMixCategory, setManagingProductMixCategory] =
-    useState<Category | null>(null);
+  const [expandedProductMixId, setExpandedProductMixId] = useState<
+    string | null
+  >(null);
+  const [mixProducts, setMixProducts] = useState<Product[]>([]);
+  const [mixItems, setMixItems] = useState<ProductMixItem[]>([]);
+  const [loadingMixProducts, setLoadingMixProducts] = useState(false);
+  const [showAddProductsSection, setShowAddProductsSection] = useState(false);
+  const [mixProductSearchTerm, setMixProductSearchTerm] = useState("");
 
   useEffect(() => {
     loadProductCategories();
@@ -173,6 +177,74 @@ export function CategoriesPage() {
 
   const handleEditProductMixCategory = (category: Category) => {
     setEditingProductMixCategory(category);
+  };
+
+  const handleToggleProductMix = async (
+    categoryId: string,
+    isCurrentlyExpanded: boolean,
+  ) => {
+    if (isCurrentlyExpanded) {
+      setExpandedProductMixId(null);
+      setMixItems([]);
+      setMixProducts([]);
+      setShowAddProductsSection(false);
+      setMixProductSearchTerm("");
+      return;
+    }
+
+    setExpandedProductMixId(categoryId);
+    setLoadingMixProducts(true);
+    setShowAddProductsSection(false);
+    setMixProductSearchTerm("");
+
+    try {
+      const [allProducts, items] = await Promise.all([
+        getProducts(),
+        getProductMixItems(categoryId),
+      ]);
+      setMixProducts(allProducts);
+      setMixItems(items);
+    } catch (error) {
+      console.error("Error loading products:", error);
+      toast.error("Failed to load products");
+    } finally {
+      setLoadingMixProducts(false);
+    }
+  };
+
+  const handleAddProductToMix = async (
+    categoryId: string,
+    productId: string,
+  ) => {
+    try {
+      await addProductToMix(categoryId, productId);
+      toast.success("Product added to mix");
+      const items = await getProductMixItems(categoryId);
+      setMixItems(items);
+      setMixProductSearchTerm("");
+    } catch (error: any) {
+      console.error("Error adding product:", error);
+      toast.error(error.message || "Failed to add product");
+    }
+  };
+
+  const handleRemoveProductFromMix = async (
+    itemId: string,
+    productName: string,
+  ) => {
+    if (!confirm(`Remove ${productName} from this mix?`)) return;
+
+    try {
+      await deleteProductMixItem(itemId);
+      toast.success("Product removed from mix");
+      if (expandedProductMixId) {
+        const items = await getProductMixItems(expandedProductMixId);
+        setMixItems(items);
+      }
+    } catch (error) {
+      console.error("Error removing product:", error);
+      toast.error("Failed to remove product");
+    }
   };
 
   const filteredProductCategories = productCategories.filter(
@@ -479,54 +551,204 @@ export function CategoriesPage() {
                 )}
               </div>
             ) : (
-              <div className="divide-y divide-border max-h-96 overflow-y-auto">
+              <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
                 {filteredProductMixCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="p-4 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Tag className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                          <h3 className="font-medium truncate">
-                            {category.name}
-                          </h3>
-                        </div>
-                        {category.description && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {category.description}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => setManagingProductMixCategory(category)}
-                          className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors text-xs"
-                          title="Manage Products"
-                        >
-                          <ListPlus className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => handleEditProductMixCategory(category)}
-                          className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors text-xs"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
+                  <div key={category.id}>
+                    <div className="p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
                         <button
                           onClick={() =>
-                            handleDeleteProductMixCategory(
+                            handleToggleProductMix(
                               category.id,
-                              category.name,
+                              expandedProductMixId === category.id,
                             )
                           }
-                          className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
+                          className="flex-1 min-w-0 text-left"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <div className="flex items-center gap-2 mb-1">
+                            <Tag className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                            <h3 className="font-medium truncate">
+                              {category.name}
+                            </h3>
+                            {expandedProductMixId === category.id && (
+                              <span className="text-xs text-purple-600">▼</span>
+                            )}
+                          </div>
+                          {category.description && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {category.description}
+                            </p>
+                          )}
                         </button>
+
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => handleEditProductMixCategory(category)}
+                            className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors text-xs"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteProductMixCategory(
+                                category.id,
+                                category.name,
+                              )
+                            }
+                            className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Expanded Product Management Section */}
+                    {expandedProductMixId === category.id && (
+                      <div className="px-4 pb-4 bg-purple-50/30 border-t border-purple-100">
+                        {loadingMixProducts ? (
+                          <div className="py-6 text-center">
+                            <RefreshCw className="w-5 h-5 animate-spin text-purple-600 mx-auto" />
+                          </div>
+                        ) : (
+                          <div className="space-y-3 mt-3">
+                            {/* Products in Mix */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium text-purple-900">
+                                  Products in Mix ({mixItems.length})
+                                </p>
+                                <button
+                                  onClick={() =>
+                                    setShowAddProductsSection(
+                                      !showAddProductsSection,
+                                    )
+                                  }
+                                  className="flex items-center gap-1 text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  Add Products
+                                </button>
+                              </div>
+
+                              {mixItems.length === 0 ? (
+                                <div className="text-center py-4 bg-white rounded-lg border border-purple-100">
+                                  <Package className="w-8 h-8 text-purple-300 mx-auto mb-1" />
+                                  <p className="text-xs text-muted-foreground">
+                                    No products yet
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {mixItems.map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center justify-between p-2 bg-white rounded border border-purple-100"
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {item.productName}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {item.sku} • ₱{item.price} / {item.unit}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() =>
+                                          handleRemoveProductFromMix(
+                                            item.id,
+                                            item.productName,
+                                          )
+                                        }
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                        title="Remove"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Add Products Section */}
+                            {showAddProductsSection && (
+                              <div className="border-t border-purple-200 pt-3">
+                                <p className="text-sm font-medium text-purple-900 mb-2">
+                                  Available Products
+                                </p>
+
+                                <div className="relative mb-2">
+                                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={mixProductSearchTerm}
+                                    onChange={(e) =>
+                                      setMixProductSearchTerm(e.target.value)
+                                    }
+                                    className="w-full pl-8 pr-3 py-1.5 bg-white border border-purple-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs"
+                                  />
+                                </div>
+
+                                {mixProducts.filter(
+                                  (p) =>
+                                    !mixItems.some(
+                                      (item) => item.productId === p.id,
+                                    ),
+                                ).length === 0 ? (
+                                  <p className="text-center text-xs text-muted-foreground py-3 bg-white rounded border border-purple-100">
+                                    All products added
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                    {mixProducts
+                                      .filter(
+                                        (p) =>
+                                          !mixItems.some(
+                                            (item) => item.productId === p.id,
+                                          ) &&
+                                          p.name
+                                            .toLowerCase()
+                                            .includes(
+                                              mixProductSearchTerm.toLowerCase(),
+                                            ),
+                                      )
+                                      .map((product) => (
+                                        <div
+                                          key={product.id}
+                                          className="flex items-center justify-between p-2 bg-white rounded border border-purple-100 hover:border-purple-300 transition-colors"
+                                        >
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                              {product.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                              {product.sku} • {product.category}
+                                            </p>
+                                          </div>
+                                          <button
+                                            onClick={() =>
+                                              handleAddProductToMix(
+                                                category.id,
+                                                product.id,
+                                              )
+                                            }
+                                            className="flex items-center gap-1 text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 transition-colors"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                            Add
+                                          </button>
+                                        </div>
+                                      ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -586,13 +808,7 @@ export function CategoriesPage() {
         />
       )}
 
-      {/* Manage Products in Mix Modal */}
-      {managingProductMixCategory && (
-        <ManageProductsModal
-          category={managingProductMixCategory}
-          onClose={() => setManagingProductMixCategory(null)}
-        />
-      )}
+
     </div>
   );
 }
@@ -772,220 +988,6 @@ function AddCategoryModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function ManageProductsModal({
-  category,
-  onClose,
-}: {
-  category: Category;
-  onClose: () => void;
-}) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [mixItems, setMixItems] = useState<ProductMixItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showAddProducts, setShowAddProducts] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, [category.id]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [allProducts, items] = await Promise.all([
-        getProducts(),
-        getProductMixItems(category.id),
-      ]);
-      setProducts(allProducts);
-      setMixItems(items);
-    } catch (error) {
-      console.error("Error loading data:", error);
-      toast.error("Failed to load products");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddProduct = async (productId: string) => {
-    try {
-      await addProductToMix(category.id, productId);
-      toast.success("Product added to mix");
-      loadData();
-      setShowAddProducts(false);
-    } catch (error: any) {
-      console.error("Error adding product:", error);
-      toast.error(error.message || "Failed to add product");
-    }
-  };
-
-  const handleRemoveProduct = async (itemId: string, productName: string) => {
-    if (!confirm(`Remove ${productName} from this mix?`)) return;
-
-    try {
-      await deleteProductMixItem(itemId);
-      toast.success("Product removed from mix");
-      loadData();
-    } catch (error) {
-      console.error("Error removing product:", error);
-      toast.error("Failed to remove product");
-    }
-  };
-
-  const availableProducts = products.filter(
-    (p) => !mixItems.some((item) => item.productId === p.id),
-  );
-
-  const filteredAvailableProducts = availableProducts.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg w-full max-w-2xl border border-border max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-border bg-purple-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-purple-700 flex items-center gap-2">
-                <ListPlus className="w-5 h-5" />
-                Manage Products
-              </h2>
-              <p className="text-sm text-purple-600 mt-1">{category.name}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-purple-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Current Products in Mix */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">
-                    Products in Mix ({mixItems.length})
-                  </h3>
-                  <button
-                    onClick={() => setShowAddProducts(!showAddProducts)}
-                    className="flex items-center gap-2 text-sm bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Products
-                  </button>
-                </div>
-
-                {mixItems.length === 0 ? (
-                  <div className="text-center py-8 bg-muted/50 rounded-lg">
-                    <Package className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">
-                      No products in this mix yet
-                    </p>
-                    <button
-                      onClick={() => setShowAddProducts(true)}
-                      className="mt-3 text-sm text-purple-600 hover:text-purple-700"
-                    >
-                      Add your first product
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {mixItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{item.productName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.sku} • ₱{item.price} / {item.unit}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleRemoveProduct(item.id, item.productName)
-                          }
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Remove from mix"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add Products Section */}
-              {showAddProducts && (
-                <div className="border-t border-border pt-4">
-                  <h3 className="font-semibold mb-3">Available Products</h3>
-                  
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search products..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    />
-                  </div>
-
-                  {availableProducts.length === 0 ? (
-                    <p className="text-center text-muted-foreground text-sm py-4">
-                      All products have been added to this mix
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {filteredAvailableProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="flex items-center justify-between p-3 bg-card border border-border rounded-lg hover:border-purple-300 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {product.sku} • {product.category}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleAddProduct(product.id)}
-                            className="flex items-center gap-1 text-sm bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 border-t border-border">
-          <button
-            onClick={onClose}
-            className="w-full py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
