@@ -381,15 +381,15 @@ export function ProductionDashboard() {
 
   // Calculate total produced today (only today's production)
   const totalProducedToday =
-    productions
+    (productions && productions
       .filter((p) => p.date === today)
-      .reduce((sum, p) => sum + (Number(p.weightKg) || 0), 0) || 0;
-  const inProgressCount = productions.filter(
+      .reduce((sum, p) => sum + (Number(p.weightKg) || 0), 0)) || 0;
+  const inProgressCount = (productions && productions.filter(
     (p) => p.status === "in-progress",
-  ).length;
-  const completedCount = productions.filter(
+  ).length) || 0;
+  const completedCount = (productions && productions.filter(
     (p) => p.status === "completed",
-  ).length;
+  ).length) || 0;
 
   // Calculate weekly production data (last 7 days)
   const getWeeklyProductionData = () => {
@@ -403,9 +403,9 @@ export function ProductionDashboard() {
       const dateStr = date.toISOString().split("T")[0];
       const dayName = days[date.getDay()];
 
-      const dayProduction = productions
+      const dayProduction = (productions && productions
         .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0);
+        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
 
       weekData.push({
         day: dayName,
@@ -427,9 +427,9 @@ export function ProductionDashboard() {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
 
-      thisWeekTotal += productions
+      thisWeekTotal += (productions && productions
         .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0);
+        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
     }
 
     // Calculate last week's production (days 7-13 ago)
@@ -439,9 +439,9 @@ export function ProductionDashboard() {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
 
-      lastWeekTotal += productions
+      lastWeekTotal += (productions && productions
         .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0);
+        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
     }
 
     // Calculate percentage change
@@ -466,13 +466,15 @@ export function ProductionDashboard() {
     const productTotals: { [key: string]: number } = {};
 
     // Sum up production quantities by product
-    productions.forEach((prod) => {
-      if (productTotals[prod.productName]) {
-        productTotals[prod.productName] += prod.weightKg;
-      } else {
-        productTotals[prod.productName] = prod.weightKg;
-      }
-    });
+    if (productions) {
+      productions.forEach((prod) => {
+        if (productTotals[prod.productName]) {
+          productTotals[prod.productName] += prod.weightKg;
+        } else {
+          productTotals[prod.productName] = prod.weightKg;
+        }
+      });
+    }
 
     // Calculate total
     const total = Object.values(productTotals).reduce(
@@ -508,7 +510,7 @@ export function ProductionDashboard() {
       if (defaults && defaults.length > 0) {
         const loadedIngredients = defaults.map((d) => {
           // Find the ingredient in the context by ID to get its code
-          const ing = ingredients.find(
+          const ing = ingredients && ingredients.find(
             (i) => String(i.id) === String(d.ingredientId),
           );
           return {
@@ -656,7 +658,7 @@ export function ProductionDashboard() {
     }> = [];
 
     for (const ing of validIngredients) {
-      const ingredient = ingredients.find((i) => i.code === ing.code);
+      const ingredient = ingredients && ingredients.find((i) => i.code === ing.code);
       if (!ingredient) {
         toast.error(`Ingredient ${ing.code} not found`);
         return;
@@ -701,7 +703,7 @@ export function ProductionDashboard() {
 
       // Also deduct ingredients from local state
       for (const ing of validIngredients) {
-        const ingredient = ingredients.find((i) => i.code === ing.code);
+        const ingredient = ingredients && ingredients.find((i) => i.code === ing.code);
         if (ingredient) {
           const qty = parseFloat(ing.quantity);
           await deductIngredient(ing.code, qty);
@@ -1144,7 +1146,7 @@ export function ProductionDashboard() {
               ) : (
                 mixCategories.map((category) => {
                   // Get mix inventory for this category
-                  const mixStock = mixInventory.find(
+                  const mixStock = mixInventory && mixInventory.find(
                     (inv) => String(inv.productMixCategoryId) === String(category.id)
                   );
 
@@ -1206,7 +1208,7 @@ export function ProductionDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {productions.map((production) => (
+                  {productions && productions.map((production) => (
                     <tr
                       key={production.id}
                       className="border-b border-border hover:bg-muted/50"
@@ -1398,7 +1400,7 @@ export function ProductionDashboard() {
                     </p>
                   ) : (
                     mixProducts.map((item) => {
-                      const product = products.find(p => String(p.id) === String(item.productId));
+                      const product = products && products.find(p => String(p.id) === String(item.productId));
                       return (
                         <div key={item.id} className="flex gap-2 items-center">
                           <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
@@ -1434,7 +1436,7 @@ export function ProductionDashboard() {
                     </p>
                   ) : (
                     mixDefaultIngredients.map((ing: any) => {
-                      const ingredient = ingredients.find(i => String(i.id) === String(ing.ingredientId));
+                      const ingredient = ingredients && ingredients.find(i => String(i.id) === String(ing.ingredientId));
                       return (
                         <div key={ing.ingredientId} className="flex gap-2 items-center">
                           <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
@@ -1839,7 +1841,7 @@ export function ProductionDashboard() {
                 completionConfirmation.additionalIngredients.length > 0 ? (
                   completionConfirmation.additionalIngredients.map(
                     (ing, idx) => {
-                      const selectedIngredient = ingredients.find(
+                      const selectedIngredient = ingredients && ingredients.find(
                         (i) => i.id.toString() === ing.code,
                       );
                       return (
