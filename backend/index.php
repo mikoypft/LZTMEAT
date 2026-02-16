@@ -922,7 +922,6 @@ $routes = [
                     pmi.product_mix_category_id,
                     pmi.product_id,
                     p.name as product_name,
-                    p.sku,
                     p.price,
                     p.unit,
                     pmi.created_at
@@ -941,7 +940,7 @@ $routes = [
                         'productMixCategoryId' => (string)$item['product_mix_category_id'],
                         'productId' => (string)$item['product_id'],
                         'productName' => $item['product_name'],
-                        'sku' => $item['sku'],
+                        'sku' => '',
                         'price' => (float)$item['price'],
                         'unit' => $item['unit'],
                         'quantity' => 1,
@@ -974,7 +973,6 @@ $routes = [
                     pmi.product_mix_category_id,
                     pmi.product_id,
                     p.name as product_name,
-                    p.sku,
                     p.price,
                     p.unit,
                     pmi.created_at
@@ -991,7 +989,7 @@ $routes = [
                     'productMixCategoryId' => (string)$item['product_mix_category_id'],
                     'productId' => (string)$item['product_id'],
                     'productName' => $item['product_name'],
-                    'sku' => $item['sku'],
+                    'sku' => '',
                     'price' => (float)$item['price'],
                     'unit' => $item['unit'],
                     'quantity' => 1,
