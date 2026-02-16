@@ -33,9 +33,18 @@ import {
   getEmployees,
   getProductDefaultIngredients,
   getInventory,
+  getProductMixCategories,
+  getProductMixItems,
+  getProductMixCategoryDefaultIngredients,
+  completeMixing,
+  completeCooking,
+  getProductMixInventory,
   type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
   type Employee,
+  type Category,
+  type ProductMixItem,
+  type ProductMixInventory,
 } from "@/utils/api";
 import { toast } from "sonner";
 
@@ -47,6 +56,11 @@ interface ProductionEntry {
   time: string;
   batchNumber: string;
   status: "in-progress" | "completed" | "quality-check";
+  phase?: "mixing" | "cooking" | "completed";
+  productMixCategoryId?: string | null;
+  productMixCategoryName?: string | null;
+  mixWeight?: number | null;
+  mixUsed?: number | null;
   ingredientsUsed: Array<{
     code: string;
     name: string;
@@ -177,6 +191,33 @@ export function ProductionDashboard() {
 
   const { ingredients, deductIngredient, refreshIngredients } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
+  
+  // Mix Categories and Inventory
+  const [mixCategories, setMixCategories] = useState<Category[]>([]);
+  const [mixInventory, setMixInventory] = useState<ProductMixInventory[]>([]);
+  
+  // Start Mixing Modal State
+  const [showStartMixingModal, setShowStartMixingModal] = useState(false);
+  const [selectedMixCategory, setSelectedMixCategory] = useState<Category | null>(null);
+  const [mixProducts, setMixProducts] = useState<ProductMixItem[]>([]);
+  const [mixDefaultIngredients, setMixDefaultIngredients] = useState<any[]>([]);
+  const [mixProductQuantities, setMixProductQuantities] = useState<{[key: string]: string}>({});
+  const [mixIngredientQuantities, setMixIngredientQuantities] = useState<{[key: string]: string}>({});
+  const [mixBatchNumber, setMixBatchNumber] = useState("");
+  const [mixOperator, setMixOperator] = useState("");
+  
+  // Complete Mixing Modal State
+  const [showCompleteMixingModal, setShowCompleteMixingModal] = useState(false);
+  const [selectedProductionForMixing, setSelectedProductionForMixing] = useState<APIProductionRecord | null>(null);
+  const [mixWeight, setMixWeight] = useState("");
+  
+  // Complete Cooking Modal State
+  const [showCompleteCookingModal, setShowCompleteCookingModal] = useState(false);
+  const [selectedProductionForCooking, setSelectedProductionForCooking] = useState<APIProductionRecord | null>(null);
+  const [mixUsed, setMixUsed] = useState("");
+  const [productsCreated, setProductsCreated] = useState<{productId: string; quantity: string}[]>([]);
+  
+  // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(
     null,
@@ -216,6 +257,8 @@ export function ProductionDashboard() {
     loadProductionRecords();
     loadEmployees();
     loadInventory();
+    loadMixCategories();
+    loadMixInventory();
   }, []);
 
   // Auto-generate batch number when modal is shown
@@ -272,12 +315,17 @@ export function ProductionDashboard() {
           const date = new Date(record.timestamp);
           return {
             id: record.id,
-            productName: record.productName,
+            productName: record.productName || record.productMixCategoryName || "Unknown",
             weightKg: record.quantity,
             date: date.toISOString().split("T")[0],
             time: date.toTimeString().split(" ")[0].substring(0, 5),
             batchNumber: record.batchNumber,
             status: record.status || "completed",
+            phase: record.phase,
+            productMixCategoryId: record.productMixCategoryId,
+            productMixCategoryName: record.productMixCategoryName,
+            mixWeight: record.mixWeight,
+            mixUsed: record.mixUsed,
             ingredientsUsed:
               record.initialIngredients &&
               Array.isArray(record.initialIngredients)
@@ -305,6 +353,26 @@ export function ProductionDashboard() {
     } catch (error) {
       console.error("Error loading employees:", error);
       toast.error("Failed to load employees");
+    }
+  };
+
+  const loadMixCategories = async () => {
+    try {
+      const categories = await getProductMixCategories();
+      setMixCategories(categories);
+    } catch (error) {
+      console.error("Error loading mix categories:", error);
+      toast.error("Failed to load product mix categories");
+    }
+  };
+
+  const loadMixInventory = async () => {
+    try {
+      const mixInv = await getProductMixInventory();
+      setMixInventory(mixInv.inventory);
+    } catch (error) {
+      console.error("Error loading mix inventory:", error);
+      toast.error("Failed to load mix inventory");
     }
   };
 
@@ -465,6 +533,56 @@ export function ProductionDashboard() {
     }
 
     setShowProductionModal(true);
+  };
+
+  const handleMixCategoryCardClick = async (category: Category) => {
+    setSelectedMixCategory(category);
+    
+    // Generate batch number
+    const batchNumbers = productions
+      .map((p) => {
+        const match = p.batchNumber.match(/^B(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num) => !isNaN(num));
+    const maxBatchNum = batchNumbers.length > 0 ? Math.max(...batchNumbers) : 0;
+    const nextBatchNum = maxBatchNum + 1;
+    const nextBatchNumber = `B${String(nextBatchNum).padStart(3, "0")}`;
+    setMixBatchNumber(nextBatchNumber);
+    
+    // Load mix products
+    try {
+      const items = await getProductMixItems(String(category.id));
+      setMixProducts(items);
+      
+      // Initialize product quantities
+      const prodQuantities: {[key: string]: string} = {};
+      items.forEach(item => {
+        prodQuantities[item.productId] = "";
+      });
+      setMixProductQuantities(prodQuantities);
+    } catch (error) {
+      console.error("Error loading mix products:", error);
+      toast.error("Failed to load mix products");
+    }
+    
+    // Load default ingredients
+    try {
+      const defaults = await getProductMixCategoryDefaultIngredients(String(category.id));
+      setMixDefaultIngredients(defaults);
+      
+      // Initialize ingredient quantities
+      const ingQuantities: {[key: string]: string} = {};
+      defaults.forEach((d: any) => {
+        ingQuantities[d.ingredientId] = "";
+      });
+      setMixIngredientQuantities(ingQuantities);
+    } catch (error) {
+      console.error("Error loading default ingredients:", error);
+      toast.error("Failed to load default ingredients");
+    }
+    
+    setShowStartMixingModal(true);
   };
 
   const weeklyProductionData = getWeeklyProductionData();
@@ -701,6 +819,141 @@ export function ProductionDashboard() {
     }
   };
 
+  // Start mixing production handler
+  const handleStartMixing = async () => {
+    if (!selectedMixCategory || !mixOperator) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate that at least one product quantity is entered
+    const hasProductQuantity = Object.values(mixProductQuantities).some(q => q && parseFloat(q) > 0);
+    if (!hasProductQuantity) {
+      toast.error("Please enter at least one product quantity");
+      return;
+    }
+
+    // Validate that at least one ingredient quantity is entered
+    const hasIngredientQuantity = Object.values(mixIngredientQuantities).some(q => q && parseFloat(q) > 0);
+    if (!hasIngredientQuantity) {
+      toast.error("Please enter at least one ingredient quantity");
+      return;
+    }
+
+    try {
+      // Prepare ingredients data
+      const ingredientsData = mixDefaultIngredients
+        .filter((ing: any) => mixIngredientQuantities[ing.ingredientId] && parseFloat(mixIngredientQuantities[ing.ingredientId]) > 0)
+        .map((ing: any) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(mixIngredientQuantities[ing.ingredientId]),
+        }));
+
+      // Create production record
+      const productionData = {
+        productMixCategoryId: String(selectedMixCategory.id),
+        batchNumber: mixBatchNumber,
+        operatorName: mixOperator,
+        ingredients: ingredientsData,
+      };
+
+      await createProductionRecord(productionData);
+
+      toast.success(`Mixing started for ${selectedMixCategory.name}!`);
+
+      // Reload data
+      await loadProductionRecords();
+      await refreshIngredients();
+      await loadMixInventory();
+
+      // Reset modal
+      setShowStartMixingModal(false);
+      setSelectedMixCategory(null);
+      setMixProducts([]);
+      setMixDefaultIngredients([]);
+      setMixProductQuantities({});
+      setMixIngredientQuantities({});
+      setMixBatchNumber("");
+      setMixOperator("");
+    } catch (error) {
+      console.error("Error starting mixing:", error);
+      toast.error("Failed to start mixing production");
+    }
+  };
+
+  // Complete mixing handler
+  const handleCompleteMixing = async () => {
+    if (!selectedProductionForMixing || !mixWeight || parseFloat(mixWeight) <= 0) {
+      toast.error("Please enter a valid weight");
+      return;
+    }
+
+    try {
+      await completeMixing(selectedProductionForMixing.id, parseFloat(mixWeight));
+      
+      toast.success(`Mixing completed! ${mixWeight} KG of mix added to inventory.`);
+
+      // Reload data
+      await loadProductionRecords();
+      await loadMixInventory();
+
+      // Reset modal
+      setShowCompleteMixingModal(false);
+      setSelectedProductionForMixing(null);
+      setMixWeight("");
+    } catch (error) {
+      console.error("Error completing mixing:", error);
+      toast.error("Failed to complete mixing");
+    }
+  };
+
+  // Complete cooking handler
+  const handleCompleteCooking = async () => {
+    if (!selectedProductionForCooking || !mixUsed || parseFloat(mixUsed) <= 0) {
+      toast.error("Please enter a valid mix amount used");
+      return;
+    }
+
+    // Validate at least one product is created
+    const hasProducts = productsCreated.some(p => p.productId && p.quantity && parseFloat(p.quantity) > 0);
+    if (!hasProducts) {
+      toast.error("Please add at least one product created");
+      return;
+    }
+
+    try {
+      // Prepare products data
+      const validProducts = productsCreated
+        .filter(p => p.productId && p.quantity && parseFloat(p.quantity) > 0)
+        .map(p => ({
+          productId: p.productId,
+          quantity: parseFloat(p.quantity),
+        }));
+
+      await completeCooking(
+        selectedProductionForCooking.id,
+        parseFloat(mixUsed),
+        validProducts
+      );
+
+      toast.success("Cooking completed! Products added to inventory.");
+
+      // Reload data
+      await loadProductionRecords();
+      await loadMixInventory();
+      await loadInventory();
+
+      // Reset modal
+      setShowCompleteCookingModal(false);
+      setSelectedProductionForCooking(null);
+      setMixUsed("");
+      setProductsCreated([]);
+    } catch (error) {
+      console.error("Error completing cooking:", error);
+      toast.error("Failed to complete cooking");
+    }
+  };
+
   const deleteProduction = async (id: string) => {
     // Show confirmation modal instead of browser confirm
     setDeleteConfirmation({ show: true, productionId: id });
@@ -833,104 +1086,105 @@ export function ProductionDashboard() {
           </div>
         </div>
 
-        {/* Select Product for Production */}
+        {/* Product Mix Inventory */}
+        <div className="bg-card rounded-lg border border-border">
+          <div className="p-6 border-b border-border flex items-center gap-3">
+            <Package className="w-6 h-6 text-primary" />
+            <h2>Product Mix Inventory</h2>
+          </div>
+          <div className="p-6">
+            {mixInventory.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No mix inventory available yet. Complete a mixing phase to create mix stock.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {mixInventory.map((mix) => (
+                  <div
+                    key={mix.id}
+                    className="bg-card border border-border rounded-lg p-4"
+                  >
+                    <div className="flex flex-col h-full">
+                      <h3 className="font-medium text-sm mb-2">
+                        {mix.productMixName}
+                      </h3>
+                      <div className="mt-auto">
+                        <p className="text-2xl text-primary font-bold">
+                          {mix.stock.toFixed(1)} KG
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Available for cooking
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Cost: ₱{mix.totalCost.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Select Product Mix Category for Production */}
         <div className="bg-card rounded-lg border border-border">
           <div className="p-6 border-b border-border flex items-center gap-3">
             <Factory className="w-6 h-6 text-primary" />
-            <h2>Select Product for Production</h2>
+            <h2>Select Product Mix Category for Production</h2>
           </div>
 
-          {/* Category Filters */}
-          <div className="p-6 border-b border-border">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory("All")}
-                className={`px-4 py-2 rounded-lg transition-all ${
-                  selectedCategory === "All"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary hover:bg-secondary/80"
-                }`}
-              >
-                All
-              </button>
-              {Array.from(new Set(products.map((p) => p.category)))
-                .filter(Boolean)
-                .sort()
-                .map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-lg transition-all ${
-                      selectedCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary hover:bg-secondary/80"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          {/* Products Grid */}
+          {/* Product Mix Categories Grid */}
           <div className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products
-                .filter(
-                  (product) =>
-                    selectedCategory === "All" ||
-                    product.category === selectedCategory,
-                )
-                .map((product) => {
-                  // Calculate total inventory for this product across all locations
-                  const productInventories = inventory.filter(
-                    (inv) => String(inv.productId) === String(product.id),
-                  );
-                  const currentStock = productInventories.reduce(
-                    (sum, inv) => sum + (inv.quantity || 0),
-                    0,
+              {mixCategories.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  No product mix categories available. Create one in the Product Mix page.
+                </div>
+              ) : (
+                mixCategories.map((category) => {
+                  // Get mix inventory for this category
+                  const mixStock = mixInventory.find(
+                    (inv) => String(inv.productMixCategoryId) === String(category.id)
                   );
 
                   return (
                     <div
-                      key={product.id}
-                      onClick={() => handleProductCardClick(product)}
+                      key={category.id}
+                      onClick={() => handleMixCategoryCardClick(category)}
                       className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all cursor-pointer group"
                     >
                       <div className="flex flex-col h-full">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-medium text-sm flex-1">
-                            {product.name}
+                            {category.name}
                           </h3>
                         </div>
                         <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
-                          {product.category}
+                          Product Mix
                         </span>
 
-                        {/* Show default ingredients */}
                         <div className="text-xs text-muted-foreground mb-3 flex-1">
                           <p className="font-medium mb-1">
-                            Default Ingredients:
+                            Click to start production
                           </p>
-                          <ProductIngredientsList
-                            productId={String(product.id)}
-                          />
                         </div>
 
                         <div className="mt-auto flex justify-between items-end">
                           <div>
                             <p className="text-xl text-primary">
-                              {currentStock} {product.unit}
+                              {mixStock?.stock.toFixed(1) || '0.0'} KG
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Current Stock
+                              Mix in Stock
                             </p>
                           </div>
                         </div>
                       </div>
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
           </div>
 
@@ -941,7 +1195,8 @@ export function ProductionDashboard() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4">Batch #</th>
-                    <th className="text-left py-3 px-4">Product Name</th>
+                    <th className="text-left py-3 px-4">Product / Mix Name</th>
+                    <th className="text-left py-3 px-4">Phase</th>
                     <th className="text-left py-3 px-4">Weight (KG)</th>
                     <th className="text-left py-3 px-4">Ingredients</th>
                     <th className="text-left py-3 px-4">Date</th>
@@ -958,8 +1213,37 @@ export function ProductionDashboard() {
                     >
                       <td className="py-3 px-4">{production.batchNumber}</td>
                       <td className="py-3 px-4">{production.productName}</td>
+                      <td className="py-3 px-4">
+                        {production.phase ? (
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              production.phase === "mixing"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : production.phase === "cooking"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            {production.phase === "mixing"
+                              ? "Mixing"
+                              : production.phase === "cooking"
+                                ? "Cooking"
+                                : "Completed"}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-primary">
-                        {(Number(production.weightKg) || 0).toFixed(1)} KG
+                        {production.phase === "cooking" && production.mixWeight ? (
+                          <>
+                            <div className="text-xs text-muted-foreground">
+                              Mix: {production.mixWeight.toFixed(1)} KG
+                            </div>
+                          </>
+                        ) : (
+                          <>{(Number(production.weightKg) || 0).toFixed(1)} KG</>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         {production.ingredientsUsed.length > 0 ? (
@@ -996,26 +1280,53 @@ export function ProductionDashboard() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <select
-                          value={production.status}
-                          onChange={(e) =>
-                            updateStatus(
-                              production.id,
-                              e.target.value as ProductionEntry["status"],
-                            )
-                          }
-                          className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="in-progress">In Progress</option>
-                          <option value="quality-check">Quality Check</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                        <button
-                          onClick={() => deleteProduction(production.id)}
-                          className="ml-2 px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* Phase-based action buttons */}
+                          {production.phase === "mixing" && (
+                            <button
+                              onClick={() => {
+                                setSelectedProductionForMixing(production as any);
+                                setShowCompleteMixingModal(true);
+                              }}
+                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                            >
+                              Complete Mixing
+                            </button>
+                          )}
+                          {production.phase === "cooking" && (
+                            <button
+                              onClick={() => {
+                                setSelectedProductionForCooking(production as any);
+                                setShowCompleteCookingModal(true);
+                              }}
+                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                            >
+                              Complete Cooking
+                            </button>
+                          )}
+                          {!production.phase && production.status !== "completed" && (
+                            <select
+                              value={production.status}
+                              onChange={(e) =>
+                                updateStatus(
+                                  production.id,
+                                  e.target.value as ProductionEntry["status"],
+                                )
+                              }
+                              className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                              <option value="in-progress">In Progress</option>
+                              <option value="quality-check">Quality Check</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          )}
+                          <button
+                            onClick={() => deleteProduction(production.id)}
+                            className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1025,6 +1336,356 @@ export function ProductionDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Start Mixing Modal */}
+      {showStartMixingModal && selectedMixCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-card rounded-lg max-w-3xl w-full p-6 border border-border my-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Factory className="w-6 h-6 text-primary" />
+                <h2 className="text-xl font-bold">
+                  Start Mixing - {selectedMixCategory.name}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowStartMixingModal(false);
+                  setSelectedMixCategory(null);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Batch Number and Operator */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm mb-2">Batch Number</label>
+                  <input
+                    type="text"
+                    value={mixBatchNumber}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg"
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-2">Operator *</label>
+                  <select
+                    value={mixOperator}
+                    onChange={(e) => setMixOperator(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select Operator</option>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.fullName}>
+                        {employee.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Mix Products */}
+              <div className="bg-secondary/50 rounded-lg p-4 border border-border">
+                <h3 className="text-sm font-medium mb-3">Mix Products</h3>
+                <div className="space-y-2">
+                  {mixProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No products configured for this mix
+                    </p>
+                  ) : (
+                    mixProducts.map((item) => {
+                      const product = products.find(p => String(p.id) === String(item.productId));
+                      return (
+                        <div key={item.id} className="flex gap-2 items-center">
+                          <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                            {product?.name || `Product ID: ${item.productId}`}
+                          </div>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={mixProductQuantities[item.productId] || ""}
+                            onChange={(e) =>
+                              setMixProductQuantities({
+                                ...mixProductQuantities,
+                                [item.productId]: e.target.value,
+                              })
+                            }
+                            placeholder="Qty (KG)"
+                            className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              <div className="bg-secondary/50 rounded-lg p-4 border border-border">
+                <h3 className="text-sm font-medium mb-3">Ingredients *</h3>
+                <div className="space-y-2">
+                  {mixDefaultIngredients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No default ingredients configured
+                    </p>
+                  ) : (
+                    mixDefaultIngredients.map((ing: any) => {
+                      const ingredient = ingredients.find(i => String(i.id) === String(ing.ingredientId));
+                      return (
+                        <div key={ing.ingredientId} className="flex gap-2 items-center">
+                          <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                            {ing.ingredientName} ({ingredient?.unit || 'kg'})
+                            <span className="text-muted-foreground ml-2">
+                              Stock: {ingredient?.stock || 0}
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={mixIngredientQuantities[ing.ingredientId] || ""}
+                            onChange={(e) =>
+                              setMixIngredientQuantities({
+                                ...mixIngredientQuantities,
+                                [ing.ingredientId]: e.target.value,
+                              })
+                            }
+                            placeholder="Qty"
+                            className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStartMixingModal(false);
+                    setSelectedMixCategory(null);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartMixing}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  Start Mixing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Mixing Modal */}
+      {showCompleteMixingModal && selectedProductionForMixing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Complete Mixing</h2>
+              <button
+                onClick={() => {
+                  setShowCompleteMixingModal(false);
+                  setSelectedProductionForMixing(null);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Mix Category</p>
+                <p className="font-semibold">
+                  {selectedProductionForMixing.productMixCategoryName}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">Batch Number</p>
+                <p className="font-semibold">
+                  {selectedProductionForMixing.batchNumber}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Final Mix Weight (KG) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={mixWeight}
+                  onChange={(e) => setMixWeight(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCompleteMixingModal(false);
+                    setSelectedProductionForMixing(null);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCompleteMixing}
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Complete Mixing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Cooking Modal */}
+      {showCompleteCookingModal && selectedProductionForCooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 border border-border my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Complete Cooking</h2>
+              <button
+                onClick={() => {
+                  setShowCompleteCookingModal(false);
+                  setSelectedProductionForCooking(null);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Mix Category</p>
+                <p className="font-semibold">
+                  {selectedProductionForCooking.productMixCategoryName}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">Batch Number</p>
+                <p className="font-semibold">
+                  {selectedProductionForCooking.batchNumber}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">Mix Weight Available</p>
+                <p className="font-semibold text-primary">
+                  {selectedProductionForCooking.mixWeight?.toFixed(1) || '0.0'} KG
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Mix Used (KG) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={mixUsed}
+                  onChange={(e) => setMixUsed(e.target.value)}
+                  placeholder="0.0"
+                  max={selectedProductionForCooking.mixWeight || 0}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="bg-secondary/50 rounded-lg p-4 border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">Products Created *</h3>
+                  <button
+                    onClick={() => {
+                      setProductsCreated([
+                        ...productsCreated,
+                        { productId: "", quantity: "" },
+                      ]);
+                    }}
+                    className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90 transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Product
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {productsCreated.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Click "Add Product" to record what was created
+                    </p>
+                  ) : (
+                    productsCreated.map((prod, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <select
+                          value={prod.productId}
+                          onChange={(e) => {
+                            const updated = [...productsCreated];
+                            updated[idx].productId = e.target.value;
+                            setProductsCreated(updated);
+                          }}
+                          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        >
+                          <option value="">Select Product</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={prod.quantity}
+                          onChange={(e) => {
+                            const updated = [...productsCreated];
+                            updated[idx].quantity = e.target.value;
+                            setProductsCreated(updated);
+                          }}
+                          placeholder="Qty"
+                          className="w-24 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            setProductsCreated(productsCreated.filter((_, i) => i !== idx));
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCompleteCookingModal(false);
+                    setSelectedProductionForCooking(null);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCompleteCooking}
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Complete Cooking
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmation.show && (
