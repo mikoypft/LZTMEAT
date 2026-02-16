@@ -298,6 +298,53 @@ export async function deleteIngredientCategory(id: string): Promise<void> {
   });
 }
 
+// Product Mix Categories API
+export async function getProductMixCategories(): Promise<Category[]> {
+  const data = await apiRequest<{ categories: Category[] }>(
+    "/product-mix-categories",
+  );
+  return data.categories;
+}
+
+export async function addProductMixCategory(
+  category: Omit<Category, "id" | "createdAt">,
+): Promise<Category> {
+  const data = await apiRequest<{ category: Category }>(
+    "/product-mix-categories",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: category.name,
+        description: category.description,
+      }),
+    },
+  );
+  return data.category;
+}
+
+export async function updateProductMixCategory(
+  id: string,
+  category: Omit<Category, "id" | "createdAt">,
+): Promise<Category> {
+  const data = await apiRequest<{ category: Category }>(
+    `/product-mix-categories/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        name: category.name,
+        description: category.description,
+      }),
+    },
+  );
+  return data.category;
+}
+
+export async function deleteProductMixCategory(id: string): Promise<void> {
+  await apiRequest<{ success: boolean }>(`/product-mix-categories/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ==================== INVENTORY API ====================
 
 export interface InventoryRecord {

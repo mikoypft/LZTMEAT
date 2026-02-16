@@ -815,6 +815,80 @@ $routes = [
         return ['success' => true];
     },
     
+    // Product Mix Categories API
+    'GET /api/product-mix-categories' => function() use ($pdo) {
+        $stmt = $pdo->query('SELECT * FROM product_mix_categories ORDER BY name');
+        $categories = $stmt->fetchAll();
+        
+        return [
+            'categories' => array_map(function($c) {
+                return [
+                    'id' => (string)$c['id'],
+                    'name' => $c['name'],
+                    'description' => $c['description'],
+                    'createdAt' => $c['created_at'],
+                ];
+            }, $categories),
+        ];
+    },
+    
+    'POST /api/product-mix-categories' => function() use ($pdo, $body) {
+        $stmt = $pdo->prepare('INSERT INTO product_mix_categories (name, description, created_at, updated_at) VALUES (?, ?, NOW(), NOW())');
+        $stmt->execute([
+            $body['name'] ?? '',
+            $body['description'] ?? '',
+        ]);
+        
+        $lastId = $pdo->lastInsertId();
+        $stmt = $pdo->prepare('SELECT * FROM product_mix_categories WHERE id = ?');
+        $stmt->execute([$lastId]);
+        $category = $stmt->fetch();
+        
+        return [
+            'category' => [
+                'id' => (string)$category['id'],
+                'name' => $category['name'],
+                'description' => $category['description'],
+                'createdAt' => $category['created_at'],
+            ]
+        ];
+    },
+    
+    'PUT /api/product-mix-categories/{id}' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $id = substr($uri, strrpos($uri, '/') + 1);
+        
+        $stmt = $pdo->prepare('UPDATE product_mix_categories SET name = ?, description = ?, updated_at = NOW() WHERE id = ?');
+        $stmt->execute([
+            $body['name'] ?? '',
+            $body['description'] ?? '',
+            $id
+        ]);
+        
+        $stmt = $pdo->prepare('SELECT * FROM product_mix_categories WHERE id = ?');
+        $stmt->execute([$id]);
+        $category = $stmt->fetch();
+        
+        return [
+            'category' => [
+                'id' => (string)$category['id'],
+                'name' => $category['name'],
+                'description' => $category['description'],
+                'createdAt' => $category['created_at'],
+            ]
+        ];
+    },
+    
+    'DELETE /api/product-mix-categories/{id}' => function() use ($pdo) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $id = substr($uri, strrpos($uri, '/') + 1);
+        
+        $stmt = $pdo->prepare('DELETE FROM product_mix_categories WHERE id = ?');
+        $stmt->execute([$id]);
+        
+        return ['success' => true];
+    },
+    
     'GET /api/stores' => function() use ($pdo) {
         $stmt = $pdo->query('SELECT * FROM stores ORDER BY name');
         $stores = $stmt->fetchAll();
