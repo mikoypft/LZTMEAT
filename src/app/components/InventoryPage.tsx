@@ -1641,20 +1641,14 @@ function EditItemModal({
   };
 
   const addIngredientRow = () => {
-    setDefaultIngredients([
-      ...defaultIngredients,
-      { ingredientId: "" },
-    ]);
+    setDefaultIngredients([...defaultIngredients, { ingredientId: "" }]);
   };
 
   const removeIngredientRow = (index: number) => {
     setDefaultIngredients(defaultIngredients.filter((_, i) => i !== index));
   };
 
-  const updateDefaultIngredient = (
-    index: number,
-    value: string,
-  ) => {
+  const updateDefaultIngredient = (index: number, value: string) => {
     const updated = [...defaultIngredients];
     updated[index] = { ingredientId: value };
     setDefaultIngredients(updated);
@@ -1665,15 +1659,12 @@ function EditItemModal({
 
     // Save default ingredients
     const validIngredients = defaultIngredients.filter(
-      (ing) => ing.ingredientId
+      (ing) => ing.ingredientId,
     );
 
     try {
       setSavingIngredients(true);
-      await saveProductDefaultIngredients(
-        item.id,
-        validIngredients,
-      );
+      await saveProductDefaultIngredients(item.id, validIngredients);
     } catch (err) {
       console.error("Error saving default ingredients:", err);
       toast.error("Failed to save default ingredients");
@@ -1766,8 +1757,8 @@ function EditItemModal({
             />
           </div>
 
-          {/* Default Ingredients Section */}
-          <div className="bg-background rounded-lg p-4 border border-border">
+          {/* Default Ingredients Section - HIDDEN */}
+          {/* <div className="bg-background rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm font-medium">
@@ -1831,7 +1822,7 @@ function EditItemModal({
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           <div className="flex gap-2 pt-4">
             <button
@@ -1905,20 +1896,14 @@ function EncodeProductModal({
   };
 
   const addIngredientRow = () => {
-    setDefaultIngredients([
-      ...defaultIngredients,
-      { ingredientId: "" },
-    ]);
+    setDefaultIngredients([...defaultIngredients, { ingredientId: "" }]);
   };
 
   const removeIngredientRow = (index: number) => {
     setDefaultIngredients(defaultIngredients.filter((_, i) => i !== index));
   };
 
-  const updateDefaultIngredient = (
-    index: number,
-    value: string,
-  ) => {
+  const updateDefaultIngredient = (index: number, value: string) => {
     const updated = [...defaultIngredients];
     updated[index] = { ingredientId: value };
     setDefaultIngredients(updated);
@@ -1956,7 +1941,7 @@ function EncodeProductModal({
 
       // Save default ingredients if any were added
       const validIngredients = defaultIngredients.filter(
-        (ing) => ing.ingredientId
+        (ing) => ing.ingredientId,
       );
       if (validIngredients.length > 0 && newProduct.id) {
         try {
@@ -2070,8 +2055,8 @@ function EncodeProductModal({
             />
           </div>
 
-          {/* Default Ingredients Section */}
-          <div className="bg-background rounded-lg p-4 border border-border">
+          {/* Default Ingredients Section - HIDDEN */}
+          {/* <div className="bg-background rounded-lg p-4 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-sm font-medium">
@@ -2133,7 +2118,7 @@ function EncodeProductModal({
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           <div className="flex gap-2 pt-4">
             <button
