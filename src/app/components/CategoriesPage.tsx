@@ -89,7 +89,8 @@ export function CategoriesPage() {
       setProductMixCategories(data);
     } catch (error) {
       console.error("Error loading product mix categories:", error);
-      toast.error("Failed to load product mix categories");
+      // Silently fail if table doesn't exist yet - just show empty state
+      setProductMixCategories([]);
     } finally {
       setLoadingProductMix(false);
     }
@@ -675,7 +676,12 @@ function AddCategoryModal({
               <Package className="w-5 h-5" />
             )}
             {isEditing ? "Edit" : "Add"}{" "}
-            {isIngredient ? "Ingredient" : isProductMix ? "Product Mix" : "Product"} Category
+            {isIngredient
+              ? "Ingredient"
+              : isProductMix
+                ? "Product Mix"
+                : "Product"}{" "}
+            Category
           </h2>
         </div>
 
