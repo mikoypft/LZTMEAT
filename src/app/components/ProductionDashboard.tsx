@@ -884,7 +884,7 @@ export function ProductionDashboard() {
                 .map((product) => {
                   // Calculate total inventory for this product across all locations
                   const productInventories = inventory.filter(
-                    (inv) => String(inv.product_id) === String(product.id),
+                    (inv) => String(inv.productId) === String(product.id),
                   );
                   const currentStock = productInventories.reduce(
                     (sum, inv) => sum + (inv.quantity || 0),
