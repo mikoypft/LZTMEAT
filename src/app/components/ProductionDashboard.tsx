@@ -371,10 +371,22 @@ export function ProductionDashboard() {
     try {
       const mixInv = await getProductMixInventory();
       console.log('Mix inventory raw response:', mixInv);
+      console.log('Mix inventory array:', mixInv.inventory);
+      
+      // Check if we have inventory data
+      if (!mixInv.inventory || !Array.isArray(mixInv.inventory)) {
+        console.warn('No inventory array found in response');
+        setMixInventory([]);
+        return;
+      }
+      
       // Aggregate inventory by category
       const aggregated: { [key: string]: ProductMixInventory } = {};
-      (mixInv.inventory || []).forEach((item) => {
+      mixInv.inventory.forEach((item, index) => {
+        console.log(`Item ${index}:`, item);
         const key = String(item.productMixCategoryId);
+        console.log(`Key for item ${index}:`, key);
+        
         if (aggregated[key]) {
           aggregated[key].stock += item.stock;
           aggregated[key].cost += item.cost;
@@ -382,6 +394,8 @@ export function ProductionDashboard() {
           aggregated[key] = { ...item };
         }
       });
+      
+      console.log('Aggregated object:', aggregated);
       const aggregatedArray = Object.values(aggregated);
       console.log('Aggregated mix inventory:', aggregatedArray);
       setMixInventory(aggregatedArray);
