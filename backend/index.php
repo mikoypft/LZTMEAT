@@ -229,6 +229,8 @@ try {
 
     // Add new columns to production_records table for mixing/cooking phases
     try {
+        // Make product_id nullable for mix productions
+        $pdo->exec("ALTER TABLE production_records MODIFY COLUMN product_id BIGINT UNSIGNED NULL");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS product_mix_category_id BIGINT UNSIGNED NULL AFTER product_id");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS product_mix_category_name VARCHAR(255) NULL AFTER product_mix_category_id");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS phase ENUM('mixing', 'cooking', 'completed') NOT NULL DEFAULT 'mixing' AFTER status");
