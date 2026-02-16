@@ -370,7 +370,18 @@ export function ProductionDashboard() {
   const loadMixInventory = async () => {
     try {
       const mixInv = await getProductMixInventory();
-      setMixInventory(mixInv.inventory);
+      // Aggregate inventory by category
+      const aggregated: { [key: string]: ProductMixInventory } = {};
+      (mixInv.inventory || []).forEach((item) => {
+        const key = String(item.productMixCategoryId);
+        if (aggregated[key]) {
+          aggregated[key].stock += item.stock;
+          aggregated[key].cost += item.cost;
+        } else {
+          aggregated[key] = { ...item };
+        }
+      });
+      setMixInventory(Object.values(aggregated));
     } catch (error) {
       console.error("Error loading mix inventory:", error);
       toast.error("Failed to load mix inventory");
@@ -1154,7 +1165,7 @@ export function ProductionDashboard() {
                           Available for cooking
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Cost: ₱{mix.totalCost.toFixed(2)}
+                          Cost: ₱{mix.cost.toFixed(2)}
                         </p>
                       </div>
                     </div>
