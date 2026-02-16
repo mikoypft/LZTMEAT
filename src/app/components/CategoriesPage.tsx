@@ -27,9 +27,14 @@ import {
   addProductToMix,
   deleteProductMixItem,
   getProducts,
+  getProductMixCategoryDefaultIngredients,
+  saveProductMixCategoryDefaultIngredients,
+  getIngredients,
   type Category,
   type ProductMixItem,
   type Product,
+  type Ingredient,
+  type DefaultIngredient,
 } from "@/utils/api";
 
 export function CategoriesPage() {
@@ -602,6 +607,12 @@ function AddCategoryModal({
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [showProductList, setShowProductList] = useState(false);
+  const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
+  const [defaultIngredients, setDefaultIngredients] = useState<
+    Array<{ ingredientId: string }>
+  >([]);
+  const [loadingIngredients, setLoadingIngredients] = useState(false);
+  const [showIngredientList, setShowIngredientList] = useState(false);
 
   const isIngredient = type === "ingredient";
   const isProductMix = type === "product-mix";
@@ -616,18 +627,32 @@ function AddCategoryModal({
 
   const loadProductData = async () => {
     setLoadingProducts(true);
+    setLoadingIngredients(true);
     try {
-      const products = await getProducts();
+      const [products, ingredients] = await Promise.all([
+        getProducts(),
+        getIngredients(),
+      ]);
       setAvailableProducts(products);
+      setAllIngredients(ingredients);
 
       if (category?.id) {
-        const items = await getProductMixItems(category.id);
+        const [items, defaults] = await Promise.all([
+          getProductMixItems(category.id),
+          getProductMixCategoryDefaultIngredients(category.id),
+        ]);
         setSelectedProducts(items);
+        setDefaultIngredients(
+          defaults.length > 0
+            ? defaults.map((d) => ({ ingredientId: d.ingredientId }))
+            : [],
+        );
       }
     } catch (error) {
       console.error("Error loading products:", error);
     } finally {
       setLoadingProducts(false);
+      setLoadingIngredients(false);
     }
   };
 
@@ -692,6 +717,42 @@ function AddCategoryModal({
       p.name.toLowerCase().includes(productSearchTerm.toLowerCase()),
   );
 
+  const addIngredientRow = () => {
+    setDefaultIngredients([...defaultIngredients, { ingredientId: "" }]);
+  };
+
+  const removeIngredientRow = (index: number) => {
+    setDefaultIngredients(defaultIngredients.filter((_, i) => i !== index));
+  };
+
+  const updateDefaultIngredient = (
+    index: number,
+    field: string,
+    value: string,
+  ) => {
+    const updated = [...defaultIngredients];
+    updated[index] = { ...updated[index], [field]: value };
+    setDefaultIngredients(updated);
+  };
+
+  const saveDefaultIngredients = async (categoryId: string) => {
+    try {
+      const validIngredients = defaultIngredients.filter(
+        (ing) => ing.ingredientId,
+      );
+
+      if (validIngredients.length > 0) {
+        await saveProductMixCategoryDefaultIngredients(
+          categoryId,
+          validIngredients,
+        );
+      }
+    } catch (error) {
+      console.error("Error saving default ingredients:", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -716,6 +777,8 @@ function AddCategoryModal({
             name: formData.name.trim(),
             description: formData.description.trim(),
           });
+          // Save default ingredients for edited category
+          await saveDefaultIngredients(category!.id);
         } else {
           await updateCategory(category!.id, {
             name: formData.name.trim(),
@@ -746,6 +809,11 @@ function AddCategoryModal({
                 console.error("Error adding product to mix:", error);
               }
             }
+          }
+
+          // Save default ingredients for new category
+          if (newCategory.id) {
+            await saveDefaultIngredients(newCategory.id);
           }
         } else {
           await addCategory({
@@ -939,6 +1007,75 @@ function AddCategoryModal({
                     </div>
                   )}
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Default Ingredients Section for Product Mix */}
+          {isProductMix && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-purple-700">
+                    Default Ingredients ({defaultIngredients.length})
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ingredients that will be used for this product mix
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addIngredientRow}
+                  className="flex items-center gap-1 text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              </div>
+
+              {loadingIngredients ? (
+                <p className="text-sm text-muted-foreground text-center py-3">
+                  Loading ingredients...
+                </p>
+              ) : defaultIngredients.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3 bg-purple-50 rounded border border-purple-200">
+                  No default ingredients set. Click "Add" to define ingredients.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {defaultIngredients.map((ing, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <select
+                          value={ing.ingredientId}
+                          onChange={(e) =>
+                            updateDefaultIngredient(
+                              index,
+                              "ingredientId",
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        >
+                          <option value="">Select Ingredient</option>
+                          {allIngredients.map((ingredient) => (
+                            <option key={ingredient.id} value={ingredient.id}>
+                              {ingredient.name} ({ingredient.unit})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeIngredientRow(index)}
+                        className="p-2 hover:bg-red-100 text-red-600 rounded"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}

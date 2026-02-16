@@ -403,6 +403,29 @@ export async function deleteProductMixItem(itemId: string): Promise<void> {
   });
 }
 
+export async function getProductMixCategoryDefaultIngredients(
+  categoryId: string,
+): Promise<DefaultIngredient[]> {
+  const data = await apiRequest<{ defaultIngredients: DefaultIngredient[] }>(
+    `/product-mix-categories/${categoryId}/default-ingredients`,
+  );
+  return data.defaultIngredients;
+}
+
+export async function saveProductMixCategoryDefaultIngredients(
+  categoryId: string,
+  ingredients: { ingredientId: string }[],
+): Promise<DefaultIngredient[]> {
+  const data = await apiRequest<{ defaultIngredients: DefaultIngredient[] }>(
+    `/product-mix-categories/${categoryId}/default-ingredients`,
+    {
+      method: "POST",
+      body: JSON.stringify({ ingredients }),
+    },
+  );
+  return data.defaultIngredients;
+}
+
 // ==================== INVENTORY API ====================
 
 export interface InventoryRecord {
