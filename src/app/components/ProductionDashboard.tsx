@@ -201,6 +201,7 @@ export function ProductionDashboard() {
   const [selectedMixCategory, setSelectedMixCategory] = useState<Category | null>(null);
   const [mixProducts, setMixProducts] = useState<ProductMixItem[]>([]);
   const [mixDefaultIngredients, setMixDefaultIngredients] = useState<any[]>([]);
+  const [mixAdditionalIngredients, setMixAdditionalIngredients] = useState<{ingredientId: string; quantity: string}[]>([]);
   const [mixProductQuantities, setMixProductQuantities] = useState<{[key: string]: string}>({});
   const [mixIngredientQuantities, setMixIngredientQuantities] = useState<{[key: string]: string}>({});
   const [mixBatchNumber, setMixBatchNumber] = useState("");
@@ -836,20 +837,33 @@ export function ProductionDashboard() {
     }
 
     // Validate that at least one ingredient quantity is entered
-    const hasIngredientQuantity = Object.values(mixIngredientQuantities).some(q => q && parseFloat(q) > 0);
-    if (!hasIngredientQuantity) {
+    const hasDefaultIngredient = Object.values(mixIngredientQuantities).some(q => q && parseFloat(q) > 0);
+    const hasAdditionalIngredient = mixAdditionalIngredients.some(ing => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0);
+    
+    if (!hasDefaultIngredient && !hasAdditionalIngredient) {
       toast.error("Please enter at least one ingredient quantity");
       return;
     }
 
     try {
-      // Prepare ingredients data
-      const ingredientsData = mixDefaultIngredients
+      // Prepare ingredients data from defaults
+      const defaultIngredientsData = mixDefaultIngredients
         .filter((ing: any) => mixIngredientQuantities[ing.ingredientId] && parseFloat(mixIngredientQuantities[ing.ingredientId]) > 0)
         .map((ing: any) => ({
           ingredientId: ing.ingredientId,
           quantity: parseFloat(mixIngredientQuantities[ing.ingredientId]),
         }));
+      
+      // Prepare ingredients data from additional ingredients
+      const additionalIngredientsData = mixAdditionalIngredients
+        .filter(ing => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
+        .map(ing => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        }));
+      
+      // Combine all ingredients
+      const ingredientsData = [...defaultIngredientsData, ...additionalIngredientsData];
 
       // Create production record
       const productionData = {
@@ -873,6 +887,7 @@ export function ProductionDashboard() {
       setSelectedMixCategory(null);
       setMixProducts([]);
       setMixDefaultIngredients([]);
+      setMixAdditionalIngredients([]);
       setMixProductQuantities({});
       setMixIngredientQuantities({});
       setMixBatchNumber("");
@@ -954,6 +969,26 @@ export function ProductionDashboard() {
       console.error("Error completing cooking:", error);
       toast.error("Failed to complete cooking");
     }
+  };
+
+  // Helper functions for managing additional ingredients in mixing modal
+  const addMixIngredientRow = () => {
+    setMixAdditionalIngredients([
+      ...mixAdditionalIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
+  };
+
+  const removeMixIngredientRow = (index: number) => {
+    setMixAdditionalIngredients(
+      mixAdditionalIngredients.filter((_, i) => i !== index)
+    );
+  };
+
+  const updateMixIngredientRow = (index: number, field: "ingredientId" | "quantity", value: string) => {
+    const updated = [...mixAdditionalIngredients];
+    updated[index][field] = value;
+    setMixAdditionalIngredients(updated);
   };
 
   const deleteProduction = async (id: string) => {
@@ -1354,6 +1389,11 @@ export function ProductionDashboard() {
                 onClick={() => {
                   setShowStartMixingModal(false);
                   setSelectedMixCategory(null);
+                  setMixAdditionalIngredients([]);
+                  setMixProducts([]);
+                  setMixDefaultIngredients([]);
+                  setMixProductQuantities({});
+                  setMixIngredientQuantities({});
                 }}
                 className="p-2 hover:bg-accent rounded"
               >
@@ -1428,39 +1468,107 @@ export function ProductionDashboard() {
 
               {/* Ingredients */}
               <div className="bg-secondary/50 rounded-lg p-4 border border-border">
-                <h3 className="text-sm font-medium mb-3">Ingredients *</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">Ingredients *</h3>
+                  <button
+                    type="button"
+                    onClick={addMixIngredientRow}
+                    className="flex items-center gap-1 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Ingredient
+                  </button>
+                </div>
+                
                 <div className="space-y-2">
-                  {!mixDefaultIngredients || mixDefaultIngredients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No default ingredients configured
-                    </p>
-                  ) : (
-                    mixDefaultIngredients.map((ing: any) => {
-                      const ingredient = ingredients && ingredients.find(i => String(i.id) === String(ing.ingredientId));
-                      return (
-                        <div key={ing.ingredientId} className="flex gap-2 items-center">
-                          <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
-                            {ing.ingredientName} ({ingredient?.unit || 'kg'})
-                            <span className="text-muted-foreground ml-2">
-                              Stock: {ingredient?.stock || 0}
-                            </span>
+                  {/* Default ingredients */}
+                  {mixDefaultIngredients && mixDefaultIngredients.length > 0 && (
+                    <>
+                      <p className="text-xs text-muted-foreground mb-2">Default Ingredients:</p>
+                      {mixDefaultIngredients.map((ing: any) => {
+                        const ingredient = ingredients && ingredients.find(i => String(i.id) === String(ing.ingredientId));
+                        return (
+                          <div key={ing.ingredientId} className="flex gap-2 items-center">
+                            <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                              {ing.ingredientName} ({ingredient?.unit || 'kg'})
+                              <span className="text-muted-foreground ml-2">
+                                Stock: {ingredient?.stock || 0}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={mixIngredientQuantities[ing.ingredientId] || ""}
+                              onChange={(e) =>
+                                setMixIngredientQuantities({
+                                  ...mixIngredientQuantities,
+                                  [ing.ingredientId]: e.target.value,
+                                })
+                              }
+                              placeholder="Qty"
+                              className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                            />
                           </div>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={mixIngredientQuantities[ing.ingredientId] || ""}
-                            onChange={(e) =>
-                              setMixIngredientQuantities({
-                                ...mixIngredientQuantities,
-                                [ing.ingredientId]: e.target.value,
-                              })
-                            }
-                            placeholder="Qty"
-                            className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                          />
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </>
+                  )}
+                  
+                  {/* Additional ingredients */}
+                  {mixAdditionalIngredients.length > 0 && (
+                    <>
+                      {mixDefaultIngredients && mixDefaultIngredients.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-3 mb-2">Additional Ingredients:</p>
+                      )}
+                      {mixAdditionalIngredients.map((ing, index) => {
+                        const selectedIngredient = ingredients && ingredients.find(
+                          (i) => String(i.id) === ing.ingredientId
+                        );
+                        return (
+                          <div key={index} className="flex gap-2 items-start">
+                            <select
+                              value={ing.ingredientId}
+                              onChange={(e) =>
+                                updateMixIngredientRow(index, "ingredientId", e.target.value)
+                              }
+                              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                            >
+                              <option value="">Select Ingredient</option>
+                              {ingredients && ingredients.map((ingredient) => (
+                                <option key={ingredient.id} value={ingredient.id}>
+                                  {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={ing.quantity}
+                              onChange={(e) =>
+                                updateMixIngredientRow(index, "quantity", e.target.value)
+                              }
+                              placeholder="Qty"
+                              className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeMixIngredientRow(index)}
+                              className="p-2 hover:bg-red-100 text-red-600 rounded"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                  
+                  {/* Empty state */}
+                  {(!mixDefaultIngredients || mixDefaultIngredients.length === 0) && mixAdditionalIngredients.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Click "Add Ingredient" to add ingredients for this mix
+                    </p>
                   )}
                 </div>
               </div>
@@ -1472,6 +1580,11 @@ export function ProductionDashboard() {
                   onClick={() => {
                     setShowStartMixingModal(false);
                     setSelectedMixCategory(null);
+                    setMixAdditionalIngredients([]);
+                    setMixProducts([]);
+                    setMixDefaultIngredients([]);
+                    setMixProductQuantities({});
+                    setMixIngredientQuantities({});
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >
