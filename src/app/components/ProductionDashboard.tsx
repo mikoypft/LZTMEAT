@@ -370,6 +370,7 @@ export function ProductionDashboard() {
   const loadMixInventory = async () => {
     try {
       const mixInv = await getProductMixInventory();
+      console.log('Mix inventory raw response:', mixInv);
       // Aggregate inventory by category
       const aggregated: { [key: string]: ProductMixInventory } = {};
       (mixInv.inventory || []).forEach((item) => {
@@ -381,7 +382,9 @@ export function ProductionDashboard() {
           aggregated[key] = { ...item };
         }
       });
-      setMixInventory(Object.values(aggregated));
+      const aggregatedArray = Object.values(aggregated);
+      console.log('Aggregated mix inventory:', aggregatedArray);
+      setMixInventory(aggregatedArray);
     } catch (error) {
       console.error("Error loading mix inventory:", error);
       toast.error("Failed to load mix inventory");
@@ -881,8 +884,9 @@ export function ProductionDashboard() {
         productMixCategoryId: String(selectedMixCategory.id),
         productMixCategoryName: selectedMixCategory.name,
         batchNumber: mixBatchNumber,
-        operatorName: mixOperator,
-        ingredients: ingredientsData,
+        operator: mixOperator,
+        quantity: 0,
+        initialIngredients: ingredientsData,
       };
 
       await createProductionRecord(productionData);
