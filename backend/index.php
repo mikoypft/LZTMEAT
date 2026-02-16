@@ -909,6 +909,122 @@ $routes = [
         }
     },
     
+    // Product Mix Items API
+    'GET /api/product-mix-categories/{id}/items' => function() use ($pdo) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            $segments = explode('/', trim($uri, '/'));
+            $categoryId = $segments[3]; // api/product-mix-categories/{id}/items
+            
+            $stmt = $pdo->prepare('
+                SELECT pmi.*, p.name as product_name, p.sku, p.price, p.unit, p.category_id
+                FROM product_mix_items pmi
+                JOIN products p ON pmi.product_id = p.id
+                WHERE pmi.product_mix_category_id = ?
+                ORDER BY p.name
+            ');
+            $stmt->execute([$categoryId]);
+            $items = $stmt->fetchAll();
+            
+            return [
+                'items' => array_map(function($item) {
+                    return [
+                        'id' => (string)$item['id'],
+                        'productMixCategoryId' => (string)$item['product_mix_category_id'],
+                        'productId' => (string)$item['product_id'],
+                        'productName' => $item['product_name'],
+                        'sku' => $item['sku'],
+                        'price' => (float)$item['price'],
+                        'unit' => $item['unit'],
+                        'quantity' => (int)$item['quantity'],
+                        'createdAt' => $item['created_at'],
+                    ];
+                }, $items),
+            ];
+        } catch (PDOException $e) {
+            // Table doesn't exist yet - return empty array
+            return ['items' => []];
+        }
+    },
+    
+    'POST /api/product-mix-categories/{id}/items' => function() use ($pdo, $body) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            $segments = explode('/', trim($uri, '/'));
+            $categoryId = $segments[3];
+            
+            $stmt = $pdo->prepare('INSERT INTO product_mix_items (product_mix_category_id, product_id, quantity, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())');
+            $stmt->execute([
+                $categoryId,
+                $body['productId'] ?? '',
+                $body['quantity'] ?? 1,
+            ]);
+            
+            $lastId = $pdo->lastInsertId();
+            $stmt = $pdo->prepare('
+                SELECT pmi.*, p.name as product_name, p.sku, p.price, p.unit
+                FROM product_mix_items pmi
+                JOIN products p ON pmi.product_id = p.id
+                WHERE pmi.id = ?
+            ');
+            $stmt->execute([$lastId]);
+            $item = $stmt->fetch();
+            
+            return [
+                'item' => [
+                    'id' => (string)$item['id'],
+                    'productMixCategoryId' => (string)$item['product_mix_category_id'],
+                    'productId' => (string)$item['product_id'],
+                    'productName' => $item['product_name'],
+                    'sku' => $item['sku'],
+                    'price' => (float)$item['price'],
+                    'unit' => $item['unit'],
+                    'quantity' => (int)$item['quantity'],
+                    'createdAt' => $item['created_at'],
+                ]
+            ];
+        } catch (PDOException $e) {
+            http_response_code(400);
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return ['error' => 'This product is already in the mix.'];
+            }
+            return ['error' => 'Product mix items table not created yet. Please run the database migration.'];
+        }
+    },
+    
+    'PUT /api/product-mix-items/{id}' => function() use ($pdo, $body) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            $id = substr($uri, strrpos($uri, '/') + 1);
+            
+            $stmt = $pdo->prepare('UPDATE product_mix_items SET quantity = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([
+                $body['quantity'] ?? 1,
+                $id
+            ]);
+            
+            return ['success' => true];
+        } catch (PDOException $e) {
+            http_response_code(400);
+            return ['error' => 'Failed to update product mix item.'];
+        }
+    },
+    
+    'DELETE /api/product-mix-items/{id}' => function() use ($pdo) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            $id = substr($uri, strrpos($uri, '/') + 1);
+            
+            $stmt = $pdo->prepare('DELETE FROM product_mix_items WHERE id = ?');
+            $stmt->execute([$id]);
+            
+            return ['success' => true];
+        } catch (PDOException $e) {
+            http_response_code(400);
+            return ['error' => 'Failed to delete product mix item.'];
+        }
+    },
+    
     'GET /api/stores' => function() use ($pdo) {
         $stmt = $pdo->query('SELECT * FROM stores ORDER BY name');
         $stores = $stmt->fetchAll();

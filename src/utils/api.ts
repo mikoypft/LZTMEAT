@@ -345,6 +345,64 @@ export async function deleteProductMixCategory(id: string): Promise<void> {
   });
 }
 
+// Product Mix Items API
+export interface ProductMixItem {
+  id: string;
+  productMixCategoryId: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  price: number;
+  unit: string;
+  quantity: number;
+  createdAt: string;
+}
+
+export async function getProductMixItems(
+  categoryId: string,
+): Promise<ProductMixItem[]> {
+  const data = await apiRequest<{ items: ProductMixItem[] }>(
+    `/product-mix-categories/${categoryId}/items`,
+  );
+  return data.items;
+}
+
+export async function addProductToMix(
+  categoryId: string,
+  productId: string,
+  quantity: number = 1,
+): Promise<ProductMixItem> {
+  const data = await apiRequest<{ item: ProductMixItem }>(
+    `/product-mix-categories/${categoryId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        productId,
+        quantity,
+      }),
+    },
+  );
+  return data.item;
+}
+
+export async function updateProductMixItem(
+  itemId: string,
+  quantity: number,
+): Promise<void> {
+  await apiRequest<{ success: boolean }>(`/product-mix-items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      quantity,
+    }),
+  });
+}
+
+export async function deleteProductMixItem(itemId: string): Promise<void> {
+  await apiRequest<{ success: boolean }>(`/product-mix-items/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
 // ==================== INVENTORY API ====================
 
 export interface InventoryRecord {
