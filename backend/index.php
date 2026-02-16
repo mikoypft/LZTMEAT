@@ -916,6 +916,8 @@ $routes = [
             $segments = explode('/', trim($uri, '/'));
             $categoryId = $segments[3];
             
+            error_log("Getting product mix items for category: " . $categoryId);
+            
             $stmt = $pdo->prepare('
                 SELECT 
                     pmi.id as mix_item_id,
@@ -932,6 +934,8 @@ $routes = [
             ');
             $stmt->execute([$categoryId]);
             $items = $stmt->fetchAll();
+            
+            error_log("Found " . count($items) . " items for category " . $categoryId);
             
             return [
                 'items' => array_map(function($item) {

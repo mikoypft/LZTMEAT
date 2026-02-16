@@ -632,7 +632,9 @@ function AddCategoryModal({
       setAvailableProducts(products);
 
       if (category?.id) {
+        console.log('Loading product mix items for category:', category.id, category.name);
         const items = await getProductMixItems(category.id);
+        console.log('Loaded product mix items:', items);
         setSelectedProducts(items);
       }
     } catch (error) {
