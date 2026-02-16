@@ -1002,18 +1002,6 @@ $routes = [
         }
     },
     
-    'PUT /api/product-mix-items/{id}' => function() use ($pdo, $body) {
-        try {
-            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-            $id = substr($uri, strrpos($uri, '/') + 1);
-            
-            $stmt = $pdo->prepare('UPDATE product_mix_items SET quantity = ?, updated_at = NOW() WHERE id = ?');
-            $stmt->execute([
-                $body['quantity'] ?? 1,
-                $id
-            ]);
-            
-    
     'DELETE /api/product-mix-items/{id}' => function() use ($pdo) {
         try {
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
