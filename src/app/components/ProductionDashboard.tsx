@@ -229,6 +229,9 @@ export function ProductionDashboard() {
   const [productsCreated, setProductsCreated] = useState<
     { productId: string; productName: string; quantity: string }[]
   >([]);
+  const [cookingIngredients, setCookingIngredients] = useState<
+    { ingredientId: string; quantity: string }[]
+  >([]);
 
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
@@ -1033,10 +1036,19 @@ export function ProductionDashboard() {
           quantity: parseFloat(p.quantity),
         }));
 
+      // Prepare cooking ingredients data
+      const validIngredients = cookingIngredients
+        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
+        .map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        }));
+
       await completeCooking(
         selectedProductionForCooking.id,
         parseFloat(mixUsed),
         validProducts,
+        validIngredients,
       );
 
       toast.success("Cooking completed! Products added to inventory.");
@@ -1045,12 +1057,14 @@ export function ProductionDashboard() {
       await loadProductionRecords();
       await loadMixInventory();
       await loadInventory();
+      await refreshIngredients();
 
       // Reset modal
       setShowCompleteCookingModal(false);
       setSelectedProductionForCooking(null);
       setMixUsed("");
       setProductsCreated([]);
+      setCookingIngredients([]);
     } catch (error) {
       console.error("Error completing cooking:", error);
       toast.error("Failed to complete cooking");
@@ -1925,6 +1939,82 @@ export function ProductionDashboard() {
                           placeholder="Quantity"
                           className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-secondary/50 rounded-lg p-4 border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">
+                    Additional Ingredients Used
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setCookingIngredients([
+                        ...cookingIngredients,
+                        { ingredientId: "", quantity: "" },
+                      ]);
+                    }}
+                    className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90 transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Ingredient
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {!cookingIngredients || cookingIngredients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Click "Add Ingredient" to record wrappers or other ingredients used
+                    </p>
+                  ) : (
+                    cookingIngredients.map((ing, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <select
+                          value={ing.ingredientId}
+                          onChange={(e) => {
+                            const updated = [...cookingIngredients];
+                            updated[idx].ingredientId = e.target.value;
+                            setCookingIngredients(updated);
+                          }}
+                          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        >
+                          <option value="">Select Ingredient</option>
+                          {ingredients &&
+                            ingredients.map((ingredient) => (
+                              <option
+                                key={ingredient.id}
+                                value={ingredient.id}
+                              >
+                                {ingredient.name} (Stock: {ingredient.stock}{" "}
+                                {ingredient.unit})
+                              </option>
+                            ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={ing.quantity}
+                          onChange={(e) => {
+                            const updated = [...cookingIngredients];
+                            updated[idx].quantity = e.target.value;
+                            setCookingIngredients(updated);
+                          }}
+                          placeholder="Quantity"
+                          className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            setCookingIngredients(
+                              cookingIngredients.filter((_, i) => i !== idx),
+                            );
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))
                   )}

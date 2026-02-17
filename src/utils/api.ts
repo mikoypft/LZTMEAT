@@ -832,20 +832,23 @@ export async function completeCooking(
   id: string,
   mixUsed: number,
   products: Array<{ productId: string; quantity: number }>,
+  cookingIngredients?: Array<{ ingredientId: string; quantity: number }>,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-cooking`,
     {
       method: "POST",
-      body: JSON.stringify({ mixUsed, products }),
+      body: JSON.stringify({ 
+        mixUsed, 
+        products, 
+        cookingIngredients: cookingIngredients || [] 
+      }),
     },
   );
   return data.record;
 }
 
-export async function getProductMixInventory(): Promise<
-  ProductMixInventory[]
-> {
+export async function getProductMixInventory(): Promise<ProductMixInventory[]> {
   const data = await apiRequest<{ inventory: ProductMixInventory[] }>(
     "/product-mix-inventory",
   );

@@ -2307,6 +2307,28 @@ $routes = [
             
             $mixUsed = $body['mixUsed'] ?? 0;
             $products = $body['products'] ?? [];
+            $cookingIngredients = $body['cookingIngredients'] ?? [];
+            
+            // Deduct cooking ingredients from stock
+            if (is_array($cookingIngredients) && count($cookingIngredients) > 0) {
+                foreach ($cookingIngredients as $ing) {
+                    $ingredientId = $ing['ingredientId'] ?? null;
+                    $quantity = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    
+                    if ($ingredientId && $quantity > 0) {
+                        try {
+                            $stmt = $pdo->prepare('
+                                UPDATE ingredients 
+                                SET stock = stock - ?, updated_at = NOW()
+                                WHERE id = ?
+                            ');
+                            $stmt->execute([$quantity, $ingredientId]);
+                        } catch (Exception $ingredientError) {
+                            error_log('Cooking ingredient deduction failed for ID ' . $ingredientId . ': ' . $ingredientError->getMessage());
+                        }
+                    }
+                }
+            }
             
             // Deduct mix from product_mix_inventory
             if ($mixUsed > 0) {
