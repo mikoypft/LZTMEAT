@@ -227,7 +227,7 @@ export function ProductionDashboard() {
     useState<APIProductionRecord | null>(null);
   const [mixUsed, setMixUsed] = useState("");
   const [productsCreated, setProductsCreated] = useState<
-    { productId: string; quantity: string }[]
+    { productId: string; productName: string; quantity: string }[]
   >([]);
 
   // Legacy states (kept for compatibility)
@@ -1439,10 +1439,33 @@ export function ProductionDashboard() {
                             )}
                             {production.phase === "cooking" && (
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   setSelectedProductionForCooking(
                                     production as any,
                                   );
+                                  // Load default products for this category
+                                  if (production.productMixCategoryId) {
+                                    try {
+                                      const items = await getProductMixItems(
+                                        production.productMixCategoryId,
+                                      );
+                                      setProductsCreated(
+                                        items.map((item) => ({
+                                          productId: item.productId,
+                                          productName: item.productName,
+                                          quantity: "",
+                                        })),
+                                      );
+                                    } catch (error) {
+                                      console.error(
+                                        "Error loading mix products:",
+                                        error,
+                                      );
+                                      toast.error(
+                                        "Failed to load mix products",
+                                      );
+                                    }
+                                  }
                                   setShowCompleteCookingModal(true);
                                 }}
                                 className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
@@ -1877,47 +1900,19 @@ export function ProductionDashboard() {
               </div>
 
               <div className="bg-secondary/50 rounded-lg p-4 border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Products Created *</h3>
-                  <button
-                    onClick={() => {
-                      setProductsCreated([
-                        ...productsCreated,
-                        { productId: "", quantity: "" },
-                      ]);
-                    }}
-                    className="text-sm bg-primary text-primary-foreground px-3 py-1 rounded hover:bg-primary/90 transition-colors flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Product
-                  </button>
-                </div>
+                <h3 className="text-sm font-medium mb-3">Products Created *</h3>
 
                 <div className="space-y-2">
                   {!productsCreated || productsCreated.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Click "Add Product" to record what was created
+                      No products configured for this mix category
                     </p>
                   ) : (
                     productsCreated.map((prod, idx) => (
                       <div key={idx} className="flex gap-2 items-center">
-                        <select
-                          value={prod.productId}
-                          onChange={(e) => {
-                            const updated = [...productsCreated];
-                            updated[idx].productId = e.target.value;
-                            setProductsCreated(updated);
-                          }}
-                          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                        >
-                          <option value="">Select Product</option>
-                          {products &&
-                            products.map((product) => (
-                              <option key={product.id} value={product.id}>
-                                {product.name}
-                              </option>
-                            ))}
-                        </select>
+                        <div className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm">
+                          {prod.productName}
+                        </div>
                         <input
                           type="number"
                           step="0.1"
@@ -1927,19 +1922,9 @@ export function ProductionDashboard() {
                             updated[idx].quantity = e.target.value;
                             setProductsCreated(updated);
                           }}
-                          placeholder="Qty"
-                          className="w-24 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          placeholder="Quantity"
+                          className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         />
-                        <button
-                          onClick={() => {
-                            setProductsCreated(
-                              productsCreated.filter((_, i) => i !== idx),
-                            );
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     ))
                   )}
