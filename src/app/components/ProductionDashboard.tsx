@@ -191,33 +191,45 @@ export function ProductionDashboard() {
 
   const { ingredients, deductIngredient, refreshIngredients } = context;
   const [productions, setProductions] = useState<ProductionEntry[]>([]);
-  
+
   // Mix Categories and Inventory
   const [mixCategories, setMixCategories] = useState<Category[]>([]);
   const [mixInventory, setMixInventory] = useState<ProductMixInventory[]>([]);
-  
+
   // Start Mixing Modal State
   const [showStartMixingModal, setShowStartMixingModal] = useState(false);
-  const [selectedMixCategory, setSelectedMixCategory] = useState<Category | null>(null);
+  const [selectedMixCategory, setSelectedMixCategory] =
+    useState<Category | null>(null);
   const [mixProducts, setMixProducts] = useState<ProductMixItem[]>([]);
   const [mixDefaultIngredients, setMixDefaultIngredients] = useState<any[]>([]);
-  const [mixAdditionalIngredients, setMixAdditionalIngredients] = useState<{ingredientId: string; quantity: string}[]>([]);
-  const [mixProductQuantities, setMixProductQuantities] = useState<{[key: string]: string}>({});
-  const [mixIngredientQuantities, setMixIngredientQuantities] = useState<{[key: string]: string}>({});
+  const [mixAdditionalIngredients, setMixAdditionalIngredients] = useState<
+    { ingredientId: string; quantity: string }[]
+  >([]);
+  const [mixProductQuantities, setMixProductQuantities] = useState<{
+    [key: string]: string;
+  }>({});
+  const [mixIngredientQuantities, setMixIngredientQuantities] = useState<{
+    [key: string]: string;
+  }>({});
   const [mixBatchNumber, setMixBatchNumber] = useState("");
   const [mixOperator, setMixOperator] = useState("");
-  
+
   // Complete Mixing Modal State
   const [showCompleteMixingModal, setShowCompleteMixingModal] = useState(false);
-  const [selectedProductionForMixing, setSelectedProductionForMixing] = useState<APIProductionRecord | null>(null);
+  const [selectedProductionForMixing, setSelectedProductionForMixing] =
+    useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
-  
+
   // Complete Cooking Modal State
-  const [showCompleteCookingModal, setShowCompleteCookingModal] = useState(false);
-  const [selectedProductionForCooking, setSelectedProductionForCooking] = useState<APIProductionRecord | null>(null);
+  const [showCompleteCookingModal, setShowCompleteCookingModal] =
+    useState(false);
+  const [selectedProductionForCooking, setSelectedProductionForCooking] =
+    useState<APIProductionRecord | null>(null);
   const [mixUsed, setMixUsed] = useState("");
-  const [productsCreated, setProductsCreated] = useState<{productId: string; quantity: string}[]>([]);
-  
+  const [productsCreated, setProductsCreated] = useState<
+    { productId: string; quantity: string }[]
+  >([]);
+
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(
@@ -316,7 +328,8 @@ export function ProductionDashboard() {
           const date = new Date(record.timestamp);
           return {
             id: record.id,
-            productName: record.productName || record.productMixCategoryName || "Unknown",
+            productName:
+              record.productName || record.productMixCategoryName || "Unknown",
             weightKg: record.quantity,
             date: date.toISOString().split("T")[0],
             time: date.toTimeString().split(" ")[0].substring(0, 5),
@@ -370,23 +383,22 @@ export function ProductionDashboard() {
   const loadMixInventory = async () => {
     try {
       const mixInv = await getProductMixInventory();
-      console.log('Mix inventory raw response:', mixInv);
-      console.log('Mix inventory array:', mixInv.inventory);
-      
+      console.log("Mix inventory raw response:", mixInv);
+
       // Check if we have inventory data
-      if (!mixInv.inventory || !Array.isArray(mixInv.inventory)) {
-        console.warn('No inventory array found in response');
+      if (!mixInv || !Array.isArray(mixInv)) {
+        console.warn("No inventory array found in response");
         setMixInventory([]);
         return;
       }
-      
+
       // Aggregate inventory by category
       const aggregated: { [key: string]: ProductMixInventory } = {};
-      mixInv.inventory.forEach((item, index) => {
+      mixInv.forEach((item, index) => {
         console.log(`Item ${index}:`, item);
         const key = String(item.productMixCategoryId);
         console.log(`Key for item ${index}:`, key);
-        
+
         if (aggregated[key]) {
           aggregated[key].stock += item.stock;
           aggregated[key].cost += item.cost;
@@ -394,10 +406,10 @@ export function ProductionDashboard() {
           aggregated[key] = { ...item };
         }
       });
-      
-      console.log('Aggregated object:', aggregated);
+
+      console.log("Aggregated object:", aggregated);
       const aggregatedArray = Object.values(aggregated);
-      console.log('Aggregated mix inventory:', aggregatedArray);
+      console.log("Aggregated mix inventory:", aggregatedArray);
       setMixInventory(aggregatedArray);
     } catch (error) {
       console.error("Error loading mix inventory:", error);
@@ -410,15 +422,19 @@ export function ProductionDashboard() {
 
   // Calculate total produced today (only today's production)
   const totalProducedToday =
-    (productions && productions
-      .filter((p) => p.date === today)
-      .reduce((sum, p) => sum + (Number(p.weightKg) || 0), 0)) || 0;
-  const inProgressCount = (productions && productions.filter(
-    (p) => p.status === "in-progress",
-  ).length) || 0;
-  const completedCount = (productions && productions.filter(
-    (p) => p.status === "completed",
-  ).length) || 0;
+    (productions &&
+      productions
+        .filter((p) => p.date === today)
+        .reduce((sum, p) => sum + (Number(p.weightKg) || 0), 0)) ||
+    0;
+  const inProgressCount =
+    (productions &&
+      productions.filter((p) => p.status === "in-progress").length) ||
+    0;
+  const completedCount =
+    (productions &&
+      productions.filter((p) => p.status === "completed").length) ||
+    0;
 
   // Calculate weekly production data (last 7 days)
   const getWeeklyProductionData = () => {
@@ -432,9 +448,12 @@ export function ProductionDashboard() {
       const dateStr = date.toISOString().split("T")[0];
       const dayName = days[date.getDay()];
 
-      const dayProduction = (productions && productions
-        .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
+      const dayProduction =
+        (productions &&
+          productions
+            .filter((p) => p.date === dateStr)
+            .reduce((sum, p) => sum + p.weightKg, 0)) ||
+        0;
 
       weekData.push({
         day: dayName,
@@ -456,9 +475,12 @@ export function ProductionDashboard() {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
 
-      thisWeekTotal += (productions && productions
-        .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
+      thisWeekTotal +=
+        (productions &&
+          productions
+            .filter((p) => p.date === dateStr)
+            .reduce((sum, p) => sum + p.weightKg, 0)) ||
+        0;
     }
 
     // Calculate last week's production (days 7-13 ago)
@@ -468,9 +490,12 @@ export function ProductionDashboard() {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
 
-      lastWeekTotal += (productions && productions
-        .filter((p) => p.date === dateStr)
-        .reduce((sum, p) => sum + p.weightKg, 0)) || 0;
+      lastWeekTotal +=
+        (productions &&
+          productions
+            .filter((p) => p.date === dateStr)
+            .reduce((sum, p) => sum + p.weightKg, 0)) ||
+        0;
     }
 
     // Calculate percentage change
@@ -539,9 +564,9 @@ export function ProductionDashboard() {
       if (defaults && defaults.length > 0) {
         const loadedIngredients = defaults.map((d) => {
           // Find the ingredient in the context by ID to get its code
-          const ing = ingredients && ingredients.find(
-            (i) => String(i.id) === String(d.ingredientId),
-          );
+          const ing =
+            ingredients &&
+            ingredients.find((i) => String(i.id) === String(d.ingredientId));
           return {
             code: ing?.code || d.ingredientCode || "",
             quantity: "",
@@ -568,7 +593,7 @@ export function ProductionDashboard() {
 
   const handleMixCategoryCardClick = async (category: Category) => {
     setSelectedMixCategory(category);
-    
+
     // Generate batch number
     const batchNumbers = productions
       .map((p) => {
@@ -580,15 +605,15 @@ export function ProductionDashboard() {
     const nextBatchNum = maxBatchNum + 1;
     const nextBatchNumber = `B${String(nextBatchNum).padStart(3, "0")}`;
     setMixBatchNumber(nextBatchNumber);
-    
+
     // Load mix products
     try {
       const items = await getProductMixItems(String(category.id));
       setMixProducts(items);
-      
+
       // Initialize product quantities
-      const prodQuantities: {[key: string]: string} = {};
-      items.forEach(item => {
+      const prodQuantities: { [key: string]: string } = {};
+      items.forEach((item) => {
         prodQuantities[item.productId] = "";
       });
       setMixProductQuantities(prodQuantities);
@@ -596,14 +621,16 @@ export function ProductionDashboard() {
       console.error("Error loading mix products:", error);
       toast.error("Failed to load mix products");
     }
-    
+
     // Load default ingredients
     try {
-      const defaults = await getProductMixCategoryDefaultIngredients(String(category.id));
+      const defaults = await getProductMixCategoryDefaultIngredients(
+        String(category.id),
+      );
       setMixDefaultIngredients(defaults);
-      
+
       // Initialize ingredient quantities
-      const ingQuantities: {[key: string]: string} = {};
+      const ingQuantities: { [key: string]: string } = {};
       defaults.forEach((d: any) => {
         ingQuantities[d.ingredientId] = "";
       });
@@ -612,7 +639,7 @@ export function ProductionDashboard() {
       console.error("Error loading default ingredients:", error);
       toast.error("Failed to load default ingredients");
     }
-    
+
     setShowStartMixingModal(true);
   };
 
@@ -687,7 +714,8 @@ export function ProductionDashboard() {
     }> = [];
 
     for (const ing of validIngredients) {
-      const ingredient = ingredients && ingredients.find((i) => i.code === ing.code);
+      const ingredient =
+        ingredients && ingredients.find((i) => i.code === ing.code);
       if (!ingredient) {
         toast.error(`Ingredient ${ing.code} not found`);
         return;
@@ -732,7 +760,8 @@ export function ProductionDashboard() {
 
       // Also deduct ingredients from local state
       for (const ing of validIngredients) {
-        const ingredient = ingredients && ingredients.find((i) => i.code === ing.code);
+        const ingredient =
+          ingredients && ingredients.find((i) => i.code === ing.code);
         if (ingredient) {
           const qty = parseFloat(ing.quantity);
           await deductIngredient(ing.code, qty);
@@ -858,16 +887,22 @@ export function ProductionDashboard() {
     }
 
     // Validate that at least one product quantity is entered
-    const hasProductQuantity = Object.values(mixProductQuantities).some(q => q && parseFloat(q) > 0);
+    const hasProductQuantity = Object.values(mixProductQuantities).some(
+      (q) => q && parseFloat(q) > 0,
+    );
     if (!hasProductQuantity) {
       toast.error("Please enter at least one product quantity");
       return;
     }
 
     // Validate that at least one ingredient quantity is entered
-    const hasDefaultIngredient = Object.values(mixIngredientQuantities).some(q => q && parseFloat(q) > 0);
-    const hasAdditionalIngredient = mixAdditionalIngredients.some(ing => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0);
-    
+    const hasDefaultIngredient = Object.values(mixIngredientQuantities).some(
+      (q) => q && parseFloat(q) > 0,
+    );
+    const hasAdditionalIngredient = mixAdditionalIngredients.some(
+      (ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+    );
+
     if (!hasDefaultIngredient && !hasAdditionalIngredient) {
       toast.error("Please enter at least one ingredient quantity");
       return;
@@ -876,22 +911,32 @@ export function ProductionDashboard() {
     try {
       // Prepare ingredients data from defaults
       const defaultIngredientsData = mixDefaultIngredients
-        .filter((ing: any) => mixIngredientQuantities[ing.ingredientId] && parseFloat(mixIngredientQuantities[ing.ingredientId]) > 0)
+        .filter(
+          (ing: any) =>
+            mixIngredientQuantities[ing.ingredientId] &&
+            parseFloat(mixIngredientQuantities[ing.ingredientId]) > 0,
+        )
         .map((ing: any) => ({
           ingredientId: ing.ingredientId,
           quantity: parseFloat(mixIngredientQuantities[ing.ingredientId]),
         }));
-      
+
       // Prepare ingredients data from additional ingredients
       const additionalIngredientsData = mixAdditionalIngredients
-        .filter(ing => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
-        .map(ing => ({
+        .filter(
+          (ing) =>
+            ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        )
+        .map((ing) => ({
           ingredientId: ing.ingredientId,
           quantity: parseFloat(ing.quantity),
         }));
-      
+
       // Combine all ingredients
-      const ingredientsData = [...defaultIngredientsData, ...additionalIngredientsData];
+      const ingredientsData = [
+        ...defaultIngredientsData,
+        ...additionalIngredientsData,
+      ];
 
       // Create production record
       const productionData = {
@@ -930,15 +975,24 @@ export function ProductionDashboard() {
 
   // Complete mixing handler
   const handleCompleteMixing = async () => {
-    if (!selectedProductionForMixing || !mixWeight || parseFloat(mixWeight) <= 0) {
+    if (
+      !selectedProductionForMixing ||
+      !mixWeight ||
+      parseFloat(mixWeight) <= 0
+    ) {
       toast.error("Please enter a valid weight");
       return;
     }
 
     try {
-      await completeMixing(selectedProductionForMixing.id, parseFloat(mixWeight));
-      
-      toast.success(`Mixing completed! ${mixWeight} KG of mix added to inventory.`);
+      await completeMixing(
+        selectedProductionForMixing.id,
+        parseFloat(mixWeight),
+      );
+
+      toast.success(
+        `Mixing completed! ${mixWeight} KG of mix added to inventory.`,
+      );
 
       // Reload data
       await loadProductionRecords();
@@ -962,7 +1016,9 @@ export function ProductionDashboard() {
     }
 
     // Validate at least one product is created
-    const hasProducts = productsCreated.some(p => p.productId && p.quantity && parseFloat(p.quantity) > 0);
+    const hasProducts = productsCreated.some(
+      (p) => p.productId && p.quantity && parseFloat(p.quantity) > 0,
+    );
     if (!hasProducts) {
       toast.error("Please add at least one product created");
       return;
@@ -971,8 +1027,8 @@ export function ProductionDashboard() {
     try {
       // Prepare products data
       const validProducts = productsCreated
-        .filter(p => p.productId && p.quantity && parseFloat(p.quantity) > 0)
-        .map(p => ({
+        .filter((p) => p.productId && p.quantity && parseFloat(p.quantity) > 0)
+        .map((p) => ({
           productId: p.productId,
           quantity: parseFloat(p.quantity),
         }));
@@ -980,7 +1036,7 @@ export function ProductionDashboard() {
       await completeCooking(
         selectedProductionForCooking.id,
         parseFloat(mixUsed),
-        validProducts
+        validProducts,
       );
 
       toast.success("Cooking completed! Products added to inventory.");
@@ -1011,11 +1067,15 @@ export function ProductionDashboard() {
 
   const removeMixIngredientRow = (index: number) => {
     setMixAdditionalIngredients(
-      mixAdditionalIngredients.filter((_, i) => i !== index)
+      mixAdditionalIngredients.filter((_, i) => i !== index),
     );
   };
 
-  const updateMixIngredientRow = (index: number, field: "ingredientId" | "quantity", value: string) => {
+  const updateMixIngredientRow = (
+    index: number,
+    field: "ingredientId" | "quantity",
+    value: string,
+  ) => {
     const updated = [...mixAdditionalIngredients];
     updated[index][field] = value;
     setMixAdditionalIngredients(updated);
@@ -1162,7 +1222,8 @@ export function ProductionDashboard() {
           <div className="p-6">
             {!mixInventory || mixInventory.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No mix inventory available yet. Complete a mixing phase to create mix stock.
+                No mix inventory available yet. Complete a mixing phase to
+                create mix stock.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1206,14 +1267,19 @@ export function ProductionDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {!mixCategories || mixCategories.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-muted-foreground">
-                  No product mix categories available. Create one in the Product Mix page.
+                  No product mix categories available. Create one in the Product
+                  Mix page.
                 </div>
               ) : (
                 mixCategories.map((category) => {
                   // Get mix inventory for this category
-                  const mixStock = mixInventory && mixInventory.find(
-                    (inv) => String(inv.productMixCategoryId) === String(category.id)
-                  );
+                  const mixStock =
+                    mixInventory &&
+                    mixInventory.find(
+                      (inv) =>
+                        String(inv.productMixCategoryId) ===
+                        String(category.id),
+                    );
 
                   return (
                     <div
@@ -1240,7 +1306,7 @@ export function ProductionDashboard() {
                         <div className="mt-auto flex justify-between items-end">
                           <div>
                             <p className="text-xl text-primary">
-                              {mixStock?.stock.toFixed(1) || '0.0'} KG
+                              {mixStock?.stock.toFixed(1) || "0.0"} KG
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Mix in Stock
@@ -1273,130 +1339,149 @@ export function ProductionDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {productions && productions.map((production) => (
-                    <tr
-                      key={production.id}
-                      className="border-b border-border hover:bg-muted/50"
-                    >
-                      <td className="py-3 px-4">{production.batchNumber}</td>
-                      <td className="py-3 px-4">{production.productName}</td>
-                      <td className="py-3 px-4">
-                        {production.phase ? (
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
-                              production.phase === "mixing"
-                                ? "bg-yellow-100 text-yellow-700"
+                  {productions &&
+                    productions.map((production) => (
+                      <tr
+                        key={production.id}
+                        className="border-b border-border hover:bg-muted/50"
+                      >
+                        <td className="py-3 px-4">{production.batchNumber}</td>
+                        <td className="py-3 px-4">{production.productName}</td>
+                        <td className="py-3 px-4">
+                          {production.phase ? (
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                production.phase === "mixing"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : production.phase === "cooking"
+                                    ? "bg-orange-100 text-orange-700"
+                                    : "bg-green-100 text-green-700"
+                              }`}
+                            >
+                              {production.phase === "mixing"
+                                ? "Mixing"
                                 : production.phase === "cooking"
-                                  ? "bg-orange-100 text-orange-700"
-                                  : "bg-green-100 text-green-700"
+                                  ? "Cooking"
+                                  : "Completed"}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              -
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-primary">
+                          {production.phase === "cooking" &&
+                          production.mixWeight ? (
+                            <>
+                              <div className="text-xs text-muted-foreground">
+                                Mix: {production.mixWeight.toFixed(1)} KG
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {(Number(production.weightKg) || 0).toFixed(1)} KG
+                            </>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          {production.ingredientsUsed.length > 0 ? (
+                            <div className="text-xs">
+                              {production.ingredientsUsed.map((ing, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-muted-foreground"
+                                >
+                                  {ing.name}: {ing.quantity} {ing.unit}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              No ingredients recorded
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">{production.date}</td>
+                        <td className="py-3 px-4">{production.time}</td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs ${
+                              production.status === "completed"
+                                ? "bg-green-100 text-green-700"
+                                : production.status === "in-progress"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-yellow-100 text-yellow-700"
                             }`}
                           >
-                            {production.phase === "mixing"
-                              ? "Mixing"
-                              : production.phase === "cooking"
-                                ? "Cooking"
-                                : "Completed"}
+                            {production.status === "in-progress"
+                              ? "In Progress"
+                              : production.status === "completed"
+                                ? "Completed"
+                                : "Quality Check"}
                           </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-primary">
-                        {production.phase === "cooking" && production.mixWeight ? (
-                          <>
-                            <div className="text-xs text-muted-foreground">
-                              Mix: {production.mixWeight.toFixed(1)} KG
-                            </div>
-                          </>
-                        ) : (
-                          <>{(Number(production.weightKg) || 0).toFixed(1)} KG</>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {production.ingredientsUsed.length > 0 ? (
-                          <div className="text-xs">
-                            {production.ingredientsUsed.map((ing, idx) => (
-                              <div key={idx} className="text-muted-foreground">
-                                {ing.name}: {ing.quantity} {ing.unit}
-                              </div>
-                            ))}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            {/* Phase-based action buttons */}
+                            {production.phase === "mixing" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedProductionForMixing(
+                                    production as any,
+                                  );
+                                  setShowCompleteMixingModal(true);
+                                }}
+                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                              >
+                                Complete Mixing
+                              </button>
+                            )}
+                            {production.phase === "cooking" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedProductionForCooking(
+                                    production as any,
+                                  );
+                                  setShowCompleteCookingModal(true);
+                                }}
+                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                              >
+                                Complete Cooking
+                              </button>
+                            )}
+                            {!production.phase &&
+                              production.status !== "completed" && (
+                                <select
+                                  value={production.status}
+                                  onChange={(e) =>
+                                    updateStatus(
+                                      production.id,
+                                      e.target
+                                        .value as ProductionEntry["status"],
+                                    )
+                                  }
+                                  className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                  <option value="in-progress">
+                                    In Progress
+                                  </option>
+                                  <option value="quality-check">
+                                    Quality Check
+                                  </option>
+                                  <option value="completed">Completed</option>
+                                </select>
+                              )}
+                            <button
+                              onClick={() => deleteProduction(production.id)}
+                              className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            No ingredients recorded
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">{production.date}</td>
-                      <td className="py-3 px-4">{production.time}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs ${
-                            production.status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : production.status === "in-progress"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {production.status === "in-progress"
-                            ? "In Progress"
-                            : production.status === "completed"
-                              ? "Completed"
-                              : "Quality Check"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          {/* Phase-based action buttons */}
-                          {production.phase === "mixing" && (
-                            <button
-                              onClick={() => {
-                                setSelectedProductionForMixing(production as any);
-                                setShowCompleteMixingModal(true);
-                              }}
-                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                            >
-                              Complete Mixing
-                            </button>
-                          )}
-                          {production.phase === "cooking" && (
-                            <button
-                              onClick={() => {
-                                setSelectedProductionForCooking(production as any);
-                                setShowCompleteCookingModal(true);
-                              }}
-                              className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                            >
-                              Complete Cooking
-                            </button>
-                          )}
-                          {!production.phase && production.status !== "completed" && (
-                            <select
-                              value={production.status}
-                              onChange={(e) =>
-                                updateStatus(
-                                  production.id,
-                                  e.target.value as ProductionEntry["status"],
-                                )
-                              }
-                              className="px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                              <option value="in-progress">In Progress</option>
-                              <option value="quality-check">Quality Check</option>
-                              <option value="completed">Completed</option>
-                            </select>
-                          )}
-                          <button
-                            onClick={() => deleteProduction(production.id)}
-                            className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -1451,11 +1536,12 @@ export function ProductionDashboard() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Operator</option>
-                    {employees && employees.map((employee) => (
-                      <option key={employee.id} value={employee.fullName}>
-                        {employee.fullName}
-                      </option>
-                    ))}
+                    {employees &&
+                      employees.map((employee) => (
+                        <option key={employee.id} value={employee.fullName}>
+                          {employee.fullName}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -1470,7 +1556,11 @@ export function ProductionDashboard() {
                     </p>
                   ) : (
                     mixProducts.map((item) => {
-                      const product = products && products.find(p => String(p.id) === String(item.productId));
+                      const product =
+                        products &&
+                        products.find(
+                          (p) => String(p.id) === String(item.productId),
+                        );
                       return (
                         <div key={item.id} className="flex gap-2 items-center">
                           <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
@@ -1509,73 +1599,105 @@ export function ProductionDashboard() {
                     Add Ingredient
                   </button>
                 </div>
-                
+
                 <div className="space-y-2">
                   {/* Default ingredients */}
-                  {mixDefaultIngredients && mixDefaultIngredients.length > 0 && (
-                    <>
-                      <p className="text-xs text-muted-foreground mb-2">Default Ingredients:</p>
-                      {mixDefaultIngredients.map((ing: any) => {
-                        const ingredient = ingredients && ingredients.find(i => String(i.id) === String(ing.ingredientId));
-                        return (
-                          <div key={ing.ingredientId} className="flex gap-2 items-center">
-                            <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
-                              {ing.ingredientName} ({ingredient?.unit || 'kg'})
-                              <span className="text-muted-foreground ml-2">
-                                Stock: {ingredient?.stock || 0}
-                              </span>
+                  {mixDefaultIngredients &&
+                    mixDefaultIngredients.length > 0 && (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Default Ingredients:
+                        </p>
+                        {mixDefaultIngredients.map((ing: any) => {
+                          const ingredient =
+                            ingredients &&
+                            ingredients.find(
+                              (i) => String(i.id) === String(ing.ingredientId),
+                            );
+                          return (
+                            <div
+                              key={ing.ingredientId}
+                              className="flex gap-2 items-center"
+                            >
+                              <div className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                                {ing.ingredientName} ({ingredient?.unit || "kg"}
+                                )
+                                <span className="text-muted-foreground ml-2">
+                                  Stock: {ingredient?.stock || 0}
+                                </span>
+                              </div>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={
+                                  mixIngredientQuantities[ing.ingredientId] ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  setMixIngredientQuantities({
+                                    ...mixIngredientQuantities,
+                                    [ing.ingredientId]: e.target.value,
+                                  })
+                                }
+                                placeholder="Qty"
+                                className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              />
                             </div>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={mixIngredientQuantities[ing.ingredientId] || ""}
-                              onChange={(e) =>
-                                setMixIngredientQuantities({
-                                  ...mixIngredientQuantities,
-                                  [ing.ingredientId]: e.target.value,
-                                })
-                              }
-                              placeholder="Qty"
-                              className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                            />
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                  
+                          );
+                        })}
+                      </>
+                    )}
+
                   {/* Additional ingredients */}
                   {mixAdditionalIngredients.length > 0 && (
                     <>
-                      {mixDefaultIngredients && mixDefaultIngredients.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-3 mb-2">Additional Ingredients:</p>
-                      )}
+                      {mixDefaultIngredients &&
+                        mixDefaultIngredients.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-3 mb-2">
+                            Additional Ingredients:
+                          </p>
+                        )}
                       {mixAdditionalIngredients.map((ing, index) => {
-                        const selectedIngredient = ingredients && ingredients.find(
-                          (i) => String(i.id) === ing.ingredientId
-                        );
+                        const selectedIngredient =
+                          ingredients &&
+                          ingredients.find(
+                            (i) => String(i.id) === ing.ingredientId,
+                          );
                         return (
                           <div key={index} className="flex gap-2 items-start">
                             <select
                               value={ing.ingredientId}
                               onChange={(e) =>
-                                updateMixIngredientRow(index, "ingredientId", e.target.value)
+                                updateMixIngredientRow(
+                                  index,
+                                  "ingredientId",
+                                  e.target.value,
+                                )
                               }
                               className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                             >
                               <option value="">Select Ingredient</option>
-                              {ingredients && ingredients.map((ingredient) => (
-                                <option key={ingredient.id} value={ingredient.id}>
-                                  {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
-                                </option>
-                              ))}
+                              {ingredients &&
+                                ingredients.map((ingredient) => (
+                                  <option
+                                    key={ingredient.id}
+                                    value={ingredient.id}
+                                  >
+                                    {ingredient.name} ({ingredient.unit}) -
+                                    Stock: {ingredient.stock}
+                                  </option>
+                                ))}
                             </select>
                             <input
                               type="number"
                               step="0.1"
                               value={ing.quantity}
                               onChange={(e) =>
-                                updateMixIngredientRow(index, "quantity", e.target.value)
+                                updateMixIngredientRow(
+                                  index,
+                                  "quantity",
+                                  e.target.value,
+                                )
                               }
                               placeholder="Qty"
                               className="w-32 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
@@ -1593,13 +1715,15 @@ export function ProductionDashboard() {
                       })}
                     </>
                   )}
-                  
+
                   {/* Empty state */}
-                  {(!mixDefaultIngredients || mixDefaultIngredients.length === 0) && mixAdditionalIngredients.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      Click "Add Ingredient" to add ingredients for this mix
-                    </p>
-                  )}
+                  {(!mixDefaultIngredients ||
+                    mixDefaultIngredients.length === 0) &&
+                    mixAdditionalIngredients.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        Click "Add Ingredient" to add ingredients for this mix
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -1657,14 +1781,18 @@ export function ProductionDashboard() {
                 <p className="font-semibold">
                   {selectedProductionForMixing.productMixCategoryName}
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">Batch Number</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Batch Number
+                </p>
                 <p className="font-semibold">
                   {selectedProductionForMixing.batchNumber}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Final Mix Weight (KG) *</label>
+                <label className="block text-sm mb-2">
+                  Final Mix Weight (KG) *
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -1720,13 +1848,18 @@ export function ProductionDashboard() {
                 <p className="font-semibold">
                   {selectedProductionForCooking.productMixCategoryName}
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">Batch Number</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Batch Number
+                </p>
                 <p className="font-semibold">
                   {selectedProductionForCooking.batchNumber}
                 </p>
-                <p className="text-sm text-muted-foreground mt-2">Mix Weight Available</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Mix Weight Available
+                </p>
                 <p className="font-semibold text-primary">
-                  {selectedProductionForCooking.mixWeight?.toFixed(1) || '0.0'} KG
+                  {selectedProductionForCooking.mixWeight?.toFixed(1) || "0.0"}{" "}
+                  KG
                 </p>
               </div>
 
@@ -1778,11 +1911,12 @@ export function ProductionDashboard() {
                           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         >
                           <option value="">Select Product</option>
-                          {products && products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name}
-                            </option>
-                          ))}
+                          {products &&
+                            products.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name}
+                              </option>
+                            ))}
                         </select>
                         <input
                           type="number"
@@ -1798,7 +1932,9 @@ export function ProductionDashboard() {
                         />
                         <button
                           onClick={() => {
-                            setProductsCreated(productsCreated.filter((_, i) => i !== idx));
+                            setProductsCreated(
+                              productsCreated.filter((_, i) => i !== idx),
+                            );
                           }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                         >
@@ -1984,9 +2120,9 @@ export function ProductionDashboard() {
                 completionConfirmation.additionalIngredients.length > 0 ? (
                   completionConfirmation.additionalIngredients.map(
                     (ing, idx) => {
-                      const selectedIngredient = ingredients && ingredients.find(
-                        (i) => i.id.toString() === ing.code,
-                      );
+                      const selectedIngredient =
+                        ingredients &&
+                        ingredients.find((i) => i.id.toString() === ing.code);
                       return (
                         <div key={idx} className="flex gap-2 items-start">
                           <select
@@ -2005,15 +2141,16 @@ export function ProductionDashboard() {
                             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           >
                             <option value="">Select ingredient</option>
-                            {ingredients && ingredients.map((ingredient) => (
-                              <option
-                                key={ingredient.id}
-                                value={ingredient.id.toString()}
-                              >
-                                {ingredient.name} (Stock: {ingredient.stock}{" "}
-                                {ingredient.unit})
-                              </option>
-                            ))}
+                            {ingredients &&
+                              ingredients.map((ingredient) => (
+                                <option
+                                  key={ingredient.id}
+                                  value={ingredient.id.toString()}
+                                >
+                                  {ingredient.name} (Stock: {ingredient.stock}{" "}
+                                  {ingredient.unit})
+                                </option>
+                              ))}
                           </select>
                           <input
                             type="number"
@@ -2152,11 +2289,12 @@ export function ProductionDashboard() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Employee</option>
-                    {employees && employees.map((employee) => (
-                      <option key={employee.id} value={employee.fullName}>
-                        {employee.fullName}
-                      </option>
-                    ))}
+                    {employees &&
+                      employees.map((employee) => (
+                        <option key={employee.id} value={employee.fullName}>
+                          {employee.fullName}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -2208,15 +2346,16 @@ export function ProductionDashboard() {
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                           >
                             <option value="">Select Ingredient</option>
-                            {ingredients && ingredients.map((ingredient) => (
-                              <option
-                                key={ingredient.code}
-                                value={ingredient.code}
-                              >
-                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
-                                {ingredient.stock}
-                              </option>
-                            ))}
+                            {ingredients &&
+                              ingredients.map((ingredient) => (
+                                <option
+                                  key={ingredient.code}
+                                  value={ingredient.code}
+                                >
+                                  {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                  {ingredient.stock}
+                                </option>
+                              ))}
                           </select>
                         </div>
                         <div className="w-32">
