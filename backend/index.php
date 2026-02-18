@@ -1809,7 +1809,32 @@ $routes = [
         error_log('[Production API] Result count: ' . count($records));
         
         return [
-            'records' => array_map(function($r) {
+            'records' => array_map(function($r) use ($pdo) {
+                // Enrich initialIngredients with ingredient details
+                $enrichedIngredients = null;
+                if ($r['initial_ingredients']) {
+                    $initialIngs = json_decode($r['initial_ingredients'], true);
+                    if (is_array($initialIngs)) {
+                        $enrichedIngredients = [];
+                        foreach ($initialIngs as $ing) {
+                            $ingredientId = $ing['ingredientId'] ?? null;
+                            if ($ingredientId) {
+                                $stmt = $pdo->prepare('SELECT name, unit FROM ingredients WHERE id = ?');
+                                $stmt->execute([$ingredientId]);
+                                $ingredientData = $stmt->fetch();
+                                if ($ingredientData) {
+                                    $enrichedIngredients[] = [
+                                        'ingredientId' => $ingredientId,
+                                        'ingredientName' => $ingredientData['name'],
+                                        'quantity' => $ing['quantity'] ?? 0,
+                                        'unit' => $ingredientData['unit'] ?? 'kg',
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 return [
                     'id' => (string)$r['id'],
                     'productId' => $r['product_id'] ? (string)$r['product_id'] : null,
@@ -1823,7 +1848,7 @@ $routes = [
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
                     'phase' => $r['phase'] ?? 'mixing',
-                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                    'initialIngredients' => $enrichedIngredients,
                     'timestamp' => $r['created_at'],
                 ];
             }, $records),
@@ -1910,6 +1935,31 @@ $routes = [
             $stmt->execute([$id]);
             $r = $stmt->fetch();
             
+            // Enrich initialIngredients with ingredient details
+            $enrichedIngredients = null;
+            if ($r['initial_ingredients']) {
+                $initialIngs = json_decode($r['initial_ingredients'], true);
+                if (is_array($initialIngs)) {
+                    $enrichedIngredients = [];
+                    foreach ($initialIngs as $ing) {
+                        $ingredientId = $ing['ingredientId'] ?? null;
+                        if ($ingredientId) {
+                            $stmt = $pdo->prepare('SELECT name, unit FROM ingredients WHERE id = ?');
+                            $stmt->execute([$ingredientId]);
+                            $ingredientData = $stmt->fetch();
+                            if ($ingredientData) {
+                                $enrichedIngredients[] = [
+                                    'ingredientId' => $ingredientId,
+                                    'ingredientName' => $ingredientData['name'],
+                                    'quantity' => $ing['quantity'] ?? 0,
+                                    'unit' => $ingredientData['unit'] ?? 'kg',
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+            
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -1924,7 +1974,7 @@ $routes = [
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'mixing',
                     'phase' => $r['phase'] ?? 'mixing',
-                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                    'initialIngredients' => $enrichedIngredients,
                     'timestamp' => $r['created_at'],
                 ]
             ];
@@ -2037,6 +2087,31 @@ $routes = [
                 return ['error' => 'Production record not found'];
             }
             
+            // Enrich initialIngredients with ingredient details
+            $enrichedIngredients = null;
+            if ($r['initial_ingredients']) {
+                $initialIngs = json_decode($r['initial_ingredients'], true);
+                if (is_array($initialIngs)) {
+                    $enrichedIngredients = [];
+                    foreach ($initialIngs as $ing) {
+                        $ingredientId = $ing['ingredientId'] ?? null;
+                        if ($ingredientId) {
+                            $stmt2 = $pdo->prepare('SELECT name, unit FROM ingredients WHERE id = ?');
+                            $stmt2->execute([$ingredientId]);
+                            $ingredientData = $stmt2->fetch();
+                            if ($ingredientData) {
+                                $enrichedIngredients[] = [
+                                    'ingredientId' => $ingredientId,
+                                    'ingredientName' => $ingredientData['name'],
+                                    'quantity' => $ing['quantity'] ?? 0,
+                                    'unit' => $ingredientData['unit'] ?? 'kg',
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+            
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -2046,7 +2121,7 @@ $routes = [
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
-                    'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                    'initialIngredients' => $enrichedIngredients,
                     'timestamp' => $r['created_at'],
                 ]
             ];
@@ -2080,6 +2155,31 @@ $routes = [
             return ['error' => 'Production record not found'];
         }
         
+        // Enrich initialIngredients with ingredient details
+        $enrichedIngredients = null;
+        if ($r['initial_ingredients']) {
+            $initialIngs = json_decode($r['initial_ingredients'], true);
+            if (is_array($initialIngs)) {
+                $enrichedIngredients = [];
+                foreach ($initialIngs as $ing) {
+                    $ingredientId = $ing['ingredientId'] ?? null;
+                    if ($ingredientId) {
+                        $stmt2 = $pdo->prepare('SELECT name, unit FROM ingredients WHERE id = ?');
+                        $stmt2->execute([$ingredientId]);
+                        $ingredientData = $stmt2->fetch();
+                        if ($ingredientData) {
+                            $enrichedIngredients[] = [
+                                'ingredientId' => $ingredientId,
+                                'ingredientName' => $ingredientData['name'],
+                                'quantity' => $ing['quantity'] ?? 0,
+                                'unit' => $ingredientData['unit'] ?? 'kg',
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
         return [
             'record' => [
                 'id' => (string)$r['id'],
@@ -2089,7 +2189,7 @@ $routes = [
                 'batchNumber' => $r['batch_number'],
                 'operator' => $r['operator'],
                 'status' => $r['status'] ?? 'in-progress',
-                'initialIngredients' => $r['initial_ingredients'] ? json_decode($r['initial_ingredients'], true) : null,
+                'initialIngredients' => $enrichedIngredients,
                 'timestamp' => $r['created_at'],
             ]
         ];
