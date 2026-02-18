@@ -46,6 +46,7 @@ import {
   type ProductMixItem,
   type ProductMixInventory,
 } from "@/utils/api";
+import { UserData } from "@/app/components/LoginPage";
 import { toast } from "sonner";
 
 interface ProductionEntry {
@@ -177,8 +178,14 @@ function ProductIngredientsList({ productId }: { productId: string }) {
   );
 }
 
-export function ProductionDashboard() {
+interface ProductionDashboardProps {
+  currentUser?: UserData | null;
+}
+
+export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const context = useContext(IngredientsContext);
+  const isAdmin = currentUser?.role === "ADMIN";
+  const isProduction = currentUser?.role === "PRODUCTION";
 
   // Safety check - shouldn't be needed but helps with hot reload issues
   if (!context) {
@@ -1439,8 +1446,9 @@ export function ProductionDashboard() {
           </div>
         </div>
 
-        {/* Select Product Mix Category for Production */}
-        <div className="bg-card rounded-lg border border-border">
+        {/* Select Product Mix Category for Production - Only visible for Admin */}
+        {isAdmin && (
+          <div className="bg-card rounded-lg border border-border">
           <div className="p-6 border-b border-border flex items-center gap-3">
             <Factory className="w-6 h-6 text-primary" />
             <h2>Select Product Mix Category for Production</h2>
@@ -1524,7 +1532,7 @@ export function ProductionDashboard() {
                     <th className="text-left py-3 px-4">Product / Mix Name</th>
                     <th className="text-left py-3 px-4">Phase</th>
                     <th className="text-left py-3 px-4">Weight (KG)</th>
-                    <th className="text-left py-3 px-4">Ingredients</th>
+                    {isAdmin && <th className="text-left py-3 px-4">Ingredients</th>}
                     <th className="text-left py-3 px-4">Date</th>
                     <th className="text-left py-3 px-4">Time</th>
                     <th className="text-left py-3 px-4">Status</th>
@@ -1577,24 +1585,26 @@ export function ProductionDashboard() {
                             </>
                           )}
                         </td>
-                        <td className="py-3 px-4">
-                          {production.ingredientsUsed.length > 0 ? (
-                            <div className="text-xs">
-                              {production.ingredientsUsed.map((ing, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-muted-foreground"
-                                >
-                                  {ing.name}: {ing.quantity} {ing.unit}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              No ingredients recorded
-                            </span>
-                          )}
-                        </td>
+                        {isAdmin && (
+                          <td className="py-3 px-4">
+                            {production.ingredientsUsed.length > 0 ? (
+                              <div className="text-xs">
+                                {production.ingredientsUsed.map((ing, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="text-muted-foreground"
+                                  >
+                                    {ing.name}: {ing.quantity} {ing.unit}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                No ingredients recorded
+                              </span>
+                            )}
+                          </td>
+                        )}
                         <td className="py-3 px-4">{production.date}</td>
                         <td className="py-3 px-4">{production.time}</td>
                         <td className="py-3 px-4">
@@ -1702,7 +1712,8 @@ export function ProductionDashboard() {
               </table>
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Start Mixing Modal */}

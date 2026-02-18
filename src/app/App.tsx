@@ -756,7 +756,7 @@ export default function App() {
               />
             )}
             {currentPage === "pos" && <POSPage currentUser={currentUser} />}
-            {currentPage === "production" && <ProductionDashboard />}
+            {currentPage === "production" && <ProductionDashboard currentUser={currentUser} />}
             {currentPage === "inventory" && (
               <InventoryPage key={inventoryKey} currentUser={currentUser} />
             )}
