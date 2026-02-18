@@ -838,10 +838,10 @@ export async function completeCooking(
     `/production/${id}/complete-cooking`,
     {
       method: "POST",
-      body: JSON.stringify({ 
-        mixUsed, 
-        products, 
-        cookingIngredients: cookingIngredients || [] 
+      body: JSON.stringify({
+        mixUsed,
+        products,
+        cookingIngredients: cookingIngredients || [],
       }),
     },
   );

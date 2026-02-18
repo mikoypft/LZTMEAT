@@ -923,6 +923,35 @@ export function ProductionDashboard() {
       return;
     }
 
+    // Validate ingredient stock availability
+    // Check default ingredients
+    for (const ing of mixDefaultIngredients) {
+      const requestedQty = parseFloat(mixIngredientQuantities[ing.ingredientId] || "0");
+      if (requestedQty > 0) {
+        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        if (!ingredient || ingredient.stock < requestedQty) {
+          toast.error(
+            `Insufficient stock for ${ing.ingredientName || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+          );
+          return;
+        }
+      }
+    }
+
+    // Check additional ingredients
+    for (const ing of mixAdditionalIngredients) {
+      const requestedQty = parseFloat(ing.quantity || "0");
+      if (requestedQty > 0 && ing.ingredientId) {
+        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        if (!ingredient || ingredient.stock < requestedQty) {
+          toast.error(
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+          );
+          return;
+        }
+      }
+    }
+
     try {
       // Prepare ingredients data from defaults
       const defaultIngredientsData = mixDefaultIngredients
@@ -1037,6 +1066,36 @@ export function ProductionDashboard() {
     if (!hasProducts) {
       toast.error("Please add at least one product created");
       return;
+    }
+
+    // Validate mix stock availability
+    if (selectedProductionForCooking.productMixCategoryId) {
+      const categoryMixStock = mixInventory.find(
+        (mix) => String(mix.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
+      );
+      const requestedMixQty = parseFloat(mixUsed);
+      const availableMixQty = categoryMixStock?.totalQuantity || 0;
+      
+      if (availableMixQty < requestedMixQty) {
+        toast.error(
+          `Insufficient mix stock for ${categoryMixStock?.productMixCategoryName || "this category"}. Available: ${availableMixQty} KG, Required: ${requestedMixQty} KG`
+        );
+        return;
+      }
+    }
+
+    // Validate cooking ingredient stock availability
+    for (const ing of cookingIngredients) {
+      const requestedQty = parseFloat(ing.quantity || "0");
+      if (requestedQty > 0 && ing.ingredientId) {
+        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        if (!ingredient || ingredient.stock < requestedQty) {
+          toast.error(
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+          );
+          return;
+        }
+      }
     }
 
     try {
