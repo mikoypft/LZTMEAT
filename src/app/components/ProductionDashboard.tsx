@@ -1205,6 +1205,7 @@ export function ProductionDashboard() {
         batchNumber: cookingBatchNumber,
         operator: cookingOperator,
         quantity: 0,
+        mixWeight: plannedWeight,
         phase: "cooking" as const,
         status: "cooking" as const,
       };
