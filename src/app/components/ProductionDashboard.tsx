@@ -1722,7 +1722,7 @@ export function ProductionDashboard() {
                   <input
                     type="text"
                     value={mixBatchNumber}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg cursor-not-allowed opacity-60"
                     readOnly
                   />
                 </div>
@@ -2242,9 +2242,8 @@ export function ProductionDashboard() {
                 <input
                   type="text"
                   value={cookingBatchNumber}
-                  onChange={(e) => setCookingBatchNumber(e.target.value)}
-                  placeholder="B001"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  readOnly
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg cursor-not-allowed opacity-60"
                 />
               </div>
 
