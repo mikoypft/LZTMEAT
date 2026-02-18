@@ -1881,19 +1881,21 @@ $routes = [
                     product_mix_category_id, 
                     product_mix_category_name,
                     quantity, 
+                    mix_weight,
                     batch_number, 
                     operator, 
                     status, 
                     phase,
                     initial_ingredients, 
                     created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ');
             $stmt->execute([
                 $body['productId'] ?? null,
                 $body['productMixCategoryId'] ?? null,
                 $body['productMixCategoryName'] ?? null,
                 $body['quantity'] ?? 0,
+                $body['mixWeight'] ?? null,
                 $body['batchNumber'] ?? '',
                 $body['operator'] ?? '',
                 $status,
