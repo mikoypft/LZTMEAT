@@ -2355,13 +2355,13 @@ $routes = [
                 throw $mixInsertError;
             }
             
-            // Update production record to cooking phase
+            // Update production record to completed (mixing is done)
             $stmt = $pdo->prepare('
                 UPDATE production_records 
                 SET phase = ?, status = ?, mix_weight = ?, product_mix_category_name = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['cooking', 'cooking', $mixWeight, $mixCategoryName, $id]);
+            $stmt->execute(['completed', 'completed', $mixWeight, $mixCategoryName, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('
