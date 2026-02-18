@@ -184,15 +184,8 @@ interface ProductionDashboardProps {
 
 export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const context = useContext(IngredientsContext);
-  
-  // Debug: Log the current user role
-  console.log("ProductionDashboard currentUser:", currentUser);
-  console.log("ProductionDashboard role:", currentUser?.role);
-  
   const isAdmin = currentUser?.role === "ADMIN";
   const isProduction = currentUser?.role === "PRODUCTION";
-  
-  console.log("isAdmin:", isAdmin, "isProduction:", isProduction);
 
   // Safety check - shouldn't be needed but helps with hot reload issues
   if (!context) {
@@ -1453,16 +1446,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
           </div>
         </div>
 
-        {/* Select Product Mix Category for Production - Only visible for Admin */}
-        {isAdmin && (
-          <div className="bg-card rounded-lg border border-border">
-          <div className="p-6 border-b border-border flex items-center gap-3">
-            <Factory className="w-6 h-6 text-primary" />
-            <h2>Select Product Mix Category for Production</h2>
-          </div>
+        {/* Production Records Section */}
+        <div className="bg-card rounded-lg border border-border">
+          {/* Mix Category Cards - Only visible for Admin */}
+          {isAdmin && (
+            <>
+              <div className="p-6 border-b border-border flex items-center gap-3">
+                <Factory className="w-6 h-6 text-primary" />
+                <h2>Select Product Mix Category for Production</h2>
+              </div>
 
-          {/* Product Mix Categories Grid */}
-          <div className="p-6">
+              {/* Product Mix Categories Grid */}
+              <div className="p-6 border-b border-border">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {!mixCategories || mixCategories.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-muted-foreground">
@@ -1528,8 +1523,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               )}
             </div>
           </div>
+            </>
+          )}
 
-          {/* Production List */}
+          {/* Production List - Visible to all users */}
           <div className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -1719,8 +1716,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               </table>
             </div>
           </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Start Mixing Modal */}
