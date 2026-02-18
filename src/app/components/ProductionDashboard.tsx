@@ -184,8 +184,15 @@ interface ProductionDashboardProps {
 
 export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const context = useContext(IngredientsContext);
+  
+  // Debug: Log the current user role
+  console.log("ProductionDashboard currentUser:", currentUser);
+  console.log("ProductionDashboard role:", currentUser?.role);
+  
   const isAdmin = currentUser?.role === "ADMIN";
   const isProduction = currentUser?.role === "PRODUCTION";
+  
+  console.log("isAdmin:", isAdmin, "isProduction:", isProduction);
 
   // Safety check - shouldn't be needed but helps with hot reload issues
   if (!context) {
