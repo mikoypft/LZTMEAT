@@ -2257,8 +2257,8 @@ export function ProductionDashboard() {
                   <option value="">Select Operator</option>
                   {employees &&
                     employees.map((emp) => (
-                      <option key={emp.id} value={emp.name}>
-                        {emp.name}
+                      <option key={emp.id} value={emp.fullName}>
+                        {emp.fullName}
                       </option>
                     ))}
                 </select>
