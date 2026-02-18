@@ -1378,29 +1378,44 @@ export function ProductionDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {mixInventory.map((mix) => (
-                  <div
-                    key={mix.id}
-                    className="bg-card border border-border rounded-lg p-4"
-                  >
-                    <div className="flex flex-col h-full">
-                      <h3 className="font-medium text-sm mb-2">
-                        {mix.productMixName}
-                      </h3>
-                      <div className="mt-auto">
-                        <p className="text-2xl text-primary font-bold">
-                          {mix.stock.toFixed(1)} KG
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Available for cooking
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Cost: ₱{mix.cost.toFixed(2)}
-                        </p>
+                {mixInventory.map((mix) => {
+                  // Find the matching category for this mix
+                  const matchingCategory = mixCategories?.find(
+                    (cat) => String(cat.id) === String(mix.productMixCategoryId)
+                  );
+                  
+                  return (
+                    <div
+                      key={mix.id}
+                      className="bg-card border border-border rounded-lg p-4"
+                    >
+                      <div className="flex flex-col h-full">
+                        <h3 className="font-medium text-sm mb-2">
+                          {mix.productMixName}
+                        </h3>
+                        <div className="mt-auto">
+                          <p className="text-2xl text-primary font-bold">
+                            {mix.stock.toFixed(1)} KG
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Available for cooking
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Cost: ₱{mix.cost.toFixed(2)}
+                          </p>
+                          {matchingCategory && mix.stock > 0 && (
+                            <button
+                              onClick={() => handleStartCookingFromMix(matchingCategory, mix)}
+                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            >
+                              Start Cooking
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1462,7 +1477,7 @@ export function ProductionDashboard() {
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-2 mt-auto">
+                        <div className="mt-auto">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1472,17 +1487,6 @@ export function ProductionDashboard() {
                           >
                             Start Mixing
                           </button>
-                          {mixStock && mixStock.stock > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleStartCookingFromMix(category, mixStock);
-                              }}
-                              className="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                            >
-                              Start Cooking
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
