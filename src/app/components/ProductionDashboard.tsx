@@ -233,6 +233,14 @@ export function ProductionDashboard() {
     { ingredientId: string; quantity: string }[]
   >([]);
 
+  // Start Cooking from Mix Modal State
+  const [showStartCookingFromMixModal, setShowStartCookingFromMixModal] =
+    useState(false);
+  const [selectedMixCategoryForCooking, setSelectedMixCategoryForCooking] =
+    useState<Category | null>(null);
+  const [cookingBatchNumber, setCookingBatchNumber] = useState("");
+  const [cookingOperator, setCookingOperator] = useState("");
+
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<APIProduct | null>(
@@ -594,10 +602,7 @@ export function ProductionDashboard() {
     setShowProductionModal(true);
   };
 
-  const handleMixCategoryCardClick = async (category: Category) => {
-    setSelectedMixCategory(category);
-
-    // Generate batch number
+  const generateBatchNumber = () => {
     const batchNumbers = productions
       .map((p) => {
         const match = p.batchNumber.match(/^B(\d+)$/);
@@ -606,7 +611,14 @@ export function ProductionDashboard() {
       .filter((num) => !isNaN(num));
     const maxBatchNum = batchNumbers.length > 0 ? Math.max(...batchNumbers) : 0;
     const nextBatchNum = maxBatchNum + 1;
-    const nextBatchNumber = `B${String(nextBatchNum).padStart(3, "0")}`;
+    return `B${String(nextBatchNum).padStart(3, "0")}`;
+  };
+
+  const handleMixCategoryCardClick = async (category: Category) => {
+    setSelectedMixCategory(category);
+
+    // Generate batch number
+    const nextBatchNumber = generateBatchNumber();
     setMixBatchNumber(nextBatchNumber);
 
     // Load mix products
@@ -1038,7 +1050,10 @@ export function ProductionDashboard() {
 
       // Prepare cooking ingredients data
       const validIngredients = cookingIngredients
-        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
+        .filter(
+          (ing) =>
+            ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        )
         .map((ing) => ({
           ingredientId: ing.ingredientId,
           quantity: parseFloat(ing.quantity),
@@ -1068,6 +1083,69 @@ export function ProductionDashboard() {
     } catch (error) {
       console.error("Error completing cooking:", error);
       toast.error("Failed to complete cooking");
+    }
+  };
+
+  // Handle opening Start Cooking from Mix modal
+  const handleStartCookingFromMix = async (category: Category, mixStock: ProductMixInventory) => {
+    setSelectedMixCategoryForCooking(category);
+    
+    // Generate batch number
+    const nextBatchNumber = generateBatchNumber();
+    setCookingBatchNumber(nextBatchNumber);
+    
+    // Load products for this category
+    try {
+      const items = await getProductMixItems(String(category.id));
+      setProductsCreated(
+        items.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          quantity: "",
+        })),
+      );
+    } catch (error) {
+      console.error("Error loading mix products:", error);
+      toast.error("Failed to load mix products");
+    }
+    
+    setShowStartCookingFromMixModal(true);
+  };
+
+  // Handle creating a cooking batch from existing mix
+  const handleCreateCookingFromMix = async () => {
+    if (!selectedMixCategoryForCooking || !cookingBatchNumber || !cookingOperator) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      // Create production record directly in cooking phase
+      const productionData = {
+        productMixCategoryId: String(selectedMixCategoryForCooking.id),
+        productMixCategoryName: selectedMixCategoryForCooking.name,
+        batchNumber: cookingBatchNumber,
+        operator: cookingOperator,
+        quantity: 0,
+        phase: "cooking" as const,
+        status: "cooking" as const,
+      };
+
+      await createProductionRecord(productionData);
+
+      toast.success(`Cooking batch ${cookingBatchNumber} started!`);
+
+      // Reload data
+      await loadProductionRecords();
+
+      // Reset modal
+      setShowStartCookingFromMixModal(false);
+      setSelectedMixCategoryForCooking(null);
+      setCookingBatchNumber("");
+      setCookingOperator("");
+    } catch (error) {
+      console.error("Error starting cooking from mix:", error);
+      toast.error("Failed to start cooking batch");
     }
   };
 
@@ -1298,8 +1376,7 @@ export function ProductionDashboard() {
                   return (
                     <div
                       key={category.id}
-                      onClick={() => handleMixCategoryCardClick(category)}
-                      className="bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all cursor-pointer group"
+                      className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all"
                     >
                       <div className="flex flex-col h-full">
                         <div className="flex justify-between items-start mb-2">
@@ -1313,19 +1390,40 @@ export function ProductionDashboard() {
 
                         <div className="text-xs text-muted-foreground mb-3 flex-1">
                           <p className="font-medium mb-1">
-                            Click to start production
+                            Available Actions
                           </p>
                         </div>
 
-                        <div className="mt-auto flex justify-between items-end">
-                          <div>
-                            <p className="text-xl text-primary">
-                              {mixStock?.stock.toFixed(1) || "0.0"} KG
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Mix in Stock
-                            </p>
-                          </div>
+                        <div className="mb-3">
+                          <p className="text-xl text-primary">
+                            {mixStock?.stock.toFixed(1) || "0.0"} KG
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Mix in Stock
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 mt-auto">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMixCategoryCardClick(category);
+                            }}
+                            className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Start Mixing
+                          </button>
+                          {mixStock && mixStock.stock > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartCookingFromMix(category, mixStock);
+                              }}
+                              className="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            >
+                              Start Cooking
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1967,7 +2065,8 @@ export function ProductionDashboard() {
                 <div className="space-y-2">
                   {!cookingIngredients || cookingIngredients.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Click "Add Ingredient" to record wrappers or other ingredients used
+                      Click "Add Ingredient" to record wrappers or other
+                      ingredients used
                     </p>
                   ) : (
                     cookingIngredients.map((ing, idx) => (
@@ -1984,10 +2083,7 @@ export function ProductionDashboard() {
                           <option value="">Select Ingredient</option>
                           {ingredients &&
                             ingredients.map((ingredient) => (
-                              <option
-                                key={ingredient.id}
-                                value={ingredient.id}
-                              >
+                              <option key={ingredient.id} value={ingredient.id}>
                                 {ingredient.name} (Stock: {ingredient.stock}{" "}
                                 {ingredient.unit})
                               </option>
@@ -2036,6 +2132,98 @@ export function ProductionDashboard() {
                   className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Complete Cooking
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Cooking from Mix Modal */}
+      {showStartCookingFromMixModal && selectedMixCategoryForCooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Start Cooking from Mix</h2>
+              <button
+                onClick={() => {
+                  setShowStartCookingFromMixModal(false);
+                  setSelectedMixCategoryForCooking(null);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Mix Category</p>
+                <p className="font-semibold">
+                  {selectedMixCategoryForCooking.name}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Mix Available
+                </p>
+                <p className="font-semibold text-primary">
+                  {mixInventory && mixInventory.find(
+                    (inv) =>
+                      String(inv.productMixCategoryId) ===
+                      String(selectedMixCategoryForCooking.id),
+                  )?.stock.toFixed(1) || "0.0"} KG
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Batch Number *</label>
+                <input
+                  type="text"
+                  value={cookingBatchNumber}
+                  onChange={(e) => setCookingBatchNumber(e.target.value)}
+                  placeholder="B001"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Operator *</label>
+                <select
+                  value={cookingOperator}
+                  onChange={(e) => setCookingOperator(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select Operator</option>
+                  {employees &&
+                    employees.map((emp) => (
+                      <option key={emp.id} value={emp.name}>
+                        {emp.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> This will create a new cooking batch using existing mix inventory. 
+                  You'll be able to specify mix used and products created when you complete the cooking phase.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowStartCookingFromMixModal(false);
+                    setSelectedMixCategoryForCooking(null);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateCookingFromMix}
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Start Cooking Batch
                 </button>
               </div>
             </div>

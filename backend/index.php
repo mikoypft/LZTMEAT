@@ -1837,10 +1837,18 @@ $routes = [
         }
         
         try {
-            // For product mix production - start with mixing phase
+            // For product mix production - determine phase and status
             $isProductMix = !empty($body['productMixCategoryId']);
-            $phase = $isProductMix ? 'mixing' : 'cooking';
-            $status = $isProductMix ? 'mixing' : 'in-progress';
+            
+            // Allow explicit phase/status override (for starting cooking from existing mix)
+            if (!empty($body['phase']) && !empty($body['status'])) {
+                $phase = $body['phase'];
+                $status = $body['status'];
+            } else {
+                // Default behavior: mixing for new mix production, cooking for regular products
+                $phase = $isProductMix ? 'mixing' : 'cooking';
+                $status = $isProductMix ? 'mixing' : 'in-progress';
+            }
             
             $stmt = $pdo->prepare('
                 INSERT INTO production_records (
