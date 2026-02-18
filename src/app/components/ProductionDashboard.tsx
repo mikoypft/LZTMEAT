@@ -1071,15 +1071,12 @@ export function ProductionDashboard() {
 
     // Validate mix stock availability
     if (selectedProductionForCooking.productMixCategoryId) {
-      const categoryMixStock = mixInventory.find(
-        (mix) => String(mix.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
-      );
       const requestedMixQty = parseFloat(mixUsed);
-      const availableMixQty = categoryMixStock?.totalQuantity || 0;
+      const availableMixQty = selectedProductionForCooking.mixWeight || 0;
       
       if (availableMixQty < requestedMixQty) {
         toast.error(
-          `Insufficient mix stock for ${categoryMixStock?.productMixCategoryName || "this category"}. Available: ${availableMixQty} KG, Required: ${requestedMixQty} KG`
+          `Insufficient mix allocated for this batch. Available: ${availableMixQty.toFixed(1)} KG, Required: ${requestedMixQty.toFixed(1)} KG`
         );
         return;
       }
