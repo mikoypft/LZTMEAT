@@ -240,6 +240,7 @@ export function ProductionDashboard() {
     useState<Category | null>(null);
   const [cookingBatchNumber, setCookingBatchNumber] = useState("");
   const [cookingOperator, setCookingOperator] = useState("");
+  const [cookingMixWeight, setCookingMixWeight] = useState("");
 
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
@@ -1152,6 +1153,8 @@ export function ProductionDashboard() {
     // Generate batch number
     const nextBatchNumber = generateBatchNumber();
     setCookingBatchNumber(nextBatchNumber);
+    setCookingOperator("");
+    setCookingMixWeight("");
     
     // Load products for this category
     try {
@@ -1173,8 +1176,24 @@ export function ProductionDashboard() {
 
   // Handle creating a cooking batch from existing mix
   const handleCreateCookingFromMix = async () => {
-    if (!selectedMixCategoryForCooking || !cookingBatchNumber || !cookingOperator) {
+    if (!selectedMixCategoryForCooking || !cookingBatchNumber || !cookingOperator || !cookingMixWeight) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate mix weight
+    const plannedWeight = parseFloat(cookingMixWeight);
+    if (isNaN(plannedWeight) || plannedWeight <= 0) {
+      toast.error("Please enter a valid mix weight");
+      return;
+    }
+
+    // Validate against available mix stock
+    const availableMix = mixInventory?.find(
+      (inv) => String(inv.productMixCategoryId) === String(selectedMixCategoryForCooking.id)
+    );
+    if (availableMix && plannedWeight > availableMix.stock) {
+      toast.error(`Insufficient mix stock. Available: ${availableMix.stock.toFixed(1)} KG, Requested: ${plannedWeight.toFixed(1)} KG`);
       return;
     }
 
@@ -1202,6 +1221,7 @@ export function ProductionDashboard() {
       setSelectedMixCategoryForCooking(null);
       setCookingBatchNumber("");
       setCookingOperator("");
+      setCookingMixWeight("");
     } catch (error) {
       console.error("Error starting cooking from mix:", error);
       toast.error("Failed to start cooking batch");
@@ -2212,6 +2232,9 @@ export function ProductionDashboard() {
                 onClick={() => {
                   setShowStartCookingFromMixModal(false);
                   setSelectedMixCategoryForCooking(null);
+                  setCookingBatchNumber("");
+                  setCookingOperator("");
+                  setCookingMixWeight("");
                 }}
                 className="p-2 hover:bg-accent rounded"
               >
@@ -2264,10 +2287,22 @@ export function ProductionDashboard() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm mb-2">Planned Mix Weight (KG) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={cookingMixWeight}
+                  onChange={(e) => setCookingMixWeight(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
                   <strong>Note:</strong> This will create a new cooking batch using existing mix inventory. 
-                  You'll be able to specify mix used and products created when you complete the cooking phase.
+                  You'll be able to specify products created when you complete the cooking phase.
                 </p>
               </div>
 
@@ -2276,6 +2311,9 @@ export function ProductionDashboard() {
                   onClick={() => {
                     setShowStartCookingFromMixModal(false);
                     setSelectedMixCategoryForCooking(null);
+                    setCookingBatchNumber("");
+                    setCookingOperator("");
+                    setCookingMixWeight("");
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >
