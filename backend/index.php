@@ -3992,6 +3992,7 @@ $routes = [
             $totalScrapBO = 0;
             $totalTurnOver = 0;
             $totalTotalSales = 0;
+            $totalTotalWeight = 0;
             $totalWholesaleKg = 0;
             $totalWholesaleDisc = 0;
 
@@ -4015,6 +4016,7 @@ $routes = [
                 $totalStocks += $stock;
                 $totalPickUp += $quantity;
                 $totalTotalSales += $productTotalSales;
+                $totalTotalWeight += $quantity;
 
                 $productTableRows .= '<tr>';
                 $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
@@ -4026,6 +4028,7 @@ $routes = [
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
                 $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
                 $productTableRows .= '<td class="number">0</td>';
@@ -4077,8 +4080,8 @@ $routes = [
             $html .= '</div></div>';
             $html .= '<div class="section-title">PRODUCTS</div>';
             $html .= '<table class="products-table"><thead>';
-            $html .= '<tr><th colspan="11"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th></tr>';
-            $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th></tr>';
+            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th></tr>';
+            $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL WEIGHT</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th></tr>';
             $html .= '</thead><tbody>';
             $html .= $productTableRows;
             $html .= '<tr class="total-row">';
@@ -4092,6 +4095,7 @@ $routes = [
             $html .= '<td class="number"><strong>' . number_format($totalScrapBO, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalTurnOver, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalKgSales, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>' . number_format($totalTotalWeight, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalTotalSales, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleKg, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleDisc, 2) . '</strong></td>';
