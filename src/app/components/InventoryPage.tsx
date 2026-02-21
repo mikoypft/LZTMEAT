@@ -292,16 +292,16 @@ export function InventoryPage({
     loadCategories();
     loadStoreLocations();
 
-    // Auto-refresh inventory every 1 second for real-time updates
+    // Auto-refresh inventory every 30 seconds for real-time updates
     const interval = setInterval(() => {
-      loadInventoryData();
-    }, 1000);
+      loadInventoryData(false); // false = silent refresh, no loading spinner
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadInventoryData = async () => {
+  const loadInventoryData = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
       console.log("Loading inventory data...");
       const [productsData, inventoryData, storesData] = await Promise.all([
         getProducts(),
