@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -15,17 +16,14 @@ class ReportController extends Controller
             $date = $request->query('date') ?? date('Y-m-d');
             $storeId = $request->query('storeId');
 
-            // Parse the date
             $startDate = Carbon::parse($date)->startOfDay();
             $endDate = Carbon::parse($date)->endOfDay();
 
-            // Get store info
             $store = null;
             if ($storeId) {
                 $store = \App\Models\Store::find($storeId);
             }
 
-            // Query sales for the date
             $query = Sale::with(['user', 'store'])
                 ->whereBetween('created_at', [$startDate, $endDate]);
 
@@ -34,30 +32,22 @@ class ReportController extends Controller
             }
 
             $sales = $query->get();
-
-            // Get all products with inventory
             $products = \App\Models\Product::with(['inventory'])->get();
-
-            // Calculate product details for the report
             $productRows = $this->buildProductReportData($products, $sales, $store, $date);
-
-            // Calculate totals and cash breakdown
             $totals = $this->calculateTotals($sales);
             $paymentBreakdown = $this->getPaymentBreakdown($sales);
 
-            // Return HTML for browser-based printing (works on any PHP version, no dompdf needed)
             $html = $this->generateInventoryReportHTML(
-                $date,
-                $store,
-                $productRows,
-                $totals,
-                $paymentBreakdown
+                $date, $store, $productRows, $totals, $paymentBreakdown
             );
 
-            return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+            $pdf = Pdf::loadHtml($html);
+            $pdf->setPaper('a4', 'portrait');
+
+            return $pdf->download("Daily-Report-{$date}.pdf");
         } catch (\Exception $e) {
-            \Log::error('Report Generation Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to generate report: ' . $e->getMessage()], 500);
+            \Log::error('PDF Generation Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
         }
     }
 
