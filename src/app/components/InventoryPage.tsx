@@ -525,6 +525,17 @@ export function InventoryPage({
       return;
     }
 
+    // Block transfers back to Production — use Return to Production instead
+    if (
+      adjustment.toLocation === "Production" ||
+      adjustment.toLocation === "Production Facility"
+    ) {
+      toast.error(
+        "Use the \"Return to Production\" button on the Transfer page to return items to production.",
+      );
+      return;
+    }
+
     try {
       console.log("Starting transfer:", { sourceStock, adjustment });
 
@@ -1506,7 +1517,6 @@ function StockAdjustmentModal({
                 required
               >
                 <option value="">Select Destination</option>
-                <option value="Production">Production</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.name}>
                     {store.name} (Current: {item.storeStocks[store.name] || 0}{" "}
