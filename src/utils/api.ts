@@ -1283,11 +1283,14 @@ export async function updateDiscountSettings(settings: {
 export async function exportDailyReportPDF(
   date: string,
   storeId?: string,
-  _userName?: string,
+  userName?: string,
 ): Promise<void> {
   let url = `${API_BASE}/reports/daily-pdf?date=${date}`;
   if (storeId) {
     url += `&storeId=${storeId}`;
+  }
+  if (userName) {
+    url += `&userName=${encodeURIComponent(userName)}`;
   }
 
   const response = await fetch(url);

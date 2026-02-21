@@ -38,7 +38,7 @@ class ReportController extends Controller
             $paymentBreakdown = $this->getPaymentBreakdown($sales);
 
             $html = $this->generateInventoryReportHTML(
-                $date, $store, $productRows, $totals, $paymentBreakdown
+                $date, $store, $productRows, $totals, $paymentBreakdown, $userName
             );
 
             $pdf = Pdf::loadHtml($html);
@@ -51,11 +51,11 @@ class ReportController extends Controller
         }
     }
 
-    private function generateInventoryReportHTML($date, $store, $productRows, $totals, $paymentBreakdown)
+    private function generateInventoryReportHTML($date, $store, $productRows, $totals, $paymentBreakdown, $userName = 'Unknown')
     {
         $date_formatted = date('m/d/Y', strtotime($date));
         $storeName = $store ? $store->name : 'All Stores';
-        $storeLocation = $store ? ($store->address ?? $store->name) : 'N/A';
+        $storeLocation = $store ? ($store->address ?? $store->name) : 'All Stores';
 
         // Build product table rows
         $productTableRows = '';
@@ -255,8 +255,8 @@ class ReportController extends Controller
 HTML;
 
         // Replace placeholders
-        $html = str_replace('{STORE_NAME}', htmlspecialchars($storeName), $html);
-        $html = str_replace('{STORE_LOCATION}', htmlspecialchars($storeLocation), $html);
+        $html = str_replace('{STORE_NAME}', htmlspecialchars($userName), $html);
+        $html = str_replace('{STORE_LOCATION}', htmlspecialchars($storeName), $html);
         $html = str_replace('{DATE}', $date_formatted, $html);
         $html = str_replace('{PRODUCT_ROWS}', $productTableRows, $html);
         $html = str_replace('{PAYMENT_ROWS}', $paymentRows, $html);
@@ -266,7 +266,7 @@ HTML;
         $html = str_replace('{SALES_TOTAL}', 'P ' . number_format($totalSales, 2), $html);
         $html = str_replace('{GROSS_SALES}', 'P ' . number_format($grossSales, 2), $html);
         $html = str_replace('{OVER}', 'P ' . number_format(0, 2), $html);
-        $html = str_replace('{PREPARED_BY}', htmlspecialchars(auth()->user()?->full_name ?? '_____________________'), $html);
+        $html = str_replace('{PREPARED_BY}', htmlspecialchars($userName), $html);
 
         return $html;
     }
