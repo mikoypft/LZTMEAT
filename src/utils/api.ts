@@ -908,6 +908,9 @@ export interface TransferRequest {
   date: string;
   time: string;
   status: "pending" | "in-transit" | "completed" | "cancelled" | "rejected";
+  /** Transfer direction/kind */
+  type: "forward" | "return_backorder" | "return_scrap";
+  returnNotes?: string;
   transferredBy: string;
   receivedBy?: string;
   createdAt: string;
@@ -931,6 +934,26 @@ export async function createTransfer(
     body: JSON.stringify(transfer),
   });
   console.log(`API: Transfer created:`, data.transfer);
+  return data.transfer;
+}
+
+export async function createReturnTransfer(payload: {
+  productId: number;
+  quantity: number;
+  from: string;
+  transferredBy: string;
+  type: "return_backorder" | "return_scrap";
+  returnNotes?: string;
+}): Promise<TransferRequest> {
+  console.log(`API: Creating return transfer:`, payload);
+  const data = await apiRequest<{ transfer: TransferRequest }>("/transfers", {
+    method: "POST",
+    body: JSON.stringify({
+      ...payload,
+      to: "Production Facility",
+    }),
+  });
+  console.log(`API: Return transfer created:`, data.transfer);
   return data.transfer;
 }
 

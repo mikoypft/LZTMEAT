@@ -9,31 +9,38 @@ use Illuminate\Http\Request;
 
 class TransferController extends Controller
 {
+    private function formatTransfer($t): array
+    {
+        return [
+            'id' => $t->id,
+            'productId' => $t->product_id,
+            'productName' => $t->product->name,
+            'sku' => $t->product->sku,
+            'unit' => $t->product->unit,
+            'from' => $t->from,
+            'to' => $t->to,
+            'quantity' => $t->quantity,
+            'quantityReceived' => $t->quantity_received,
+            'discrepancy' => $t->quantity_received !== null ? $t->quantity - $t->quantity_received : null,
+            'discrepancyReason' => $t->discrepancy_reason,
+            'date' => $t->created_at->toDateString(),
+            'time' => $t->created_at->format('H:i'),
+            'status' => strtolower(str_replace(' ', '-', $t->status)),
+            'type' => $t->type ?? 'forward',
+            'returnNotes' => $t->return_notes,
+            'transferredBy' => $t->requested_by,
+            'receivedBy' => $t->received_by,
+            'createdAt' => $t->created_at->toIso8601String(),
+            'updatedAt' => $t->updated_at->toIso8601String(),
+        ];
+    }
+
     public function index()
     {
         $transfers = Transfer::with('product')->get();
 
         return response()->json([
-            'transfers' => $transfers->map(fn($t) => [
-                'id' => $t->id,
-                'productId' => $t->product_id,
-                'productName' => $t->product->name,
-                'sku' => $t->product->sku,
-                'unit' => $t->product->unit,
-                'from' => $t->from,
-                'to' => $t->to,
-                'quantity' => $t->quantity,
-                'quantityReceived' => $t->quantity_received,
-                'discrepancy' => $t->quantity_received ? $t->quantity - $t->quantity_received : null,
-                'discrepancyReason' => $t->discrepancy_reason,
-                'date' => $t->created_at->toDateString(),
-                'time' => $t->created_at->format('H:i'),
-                'status' => strtolower(str_replace(' ', '-', $t->status)),
-                'transferredBy' => $t->requested_by,
-                'receivedBy' => $t->received_by,
-                'createdAt' => $t->created_at->toIso8601String(),
-                'updatedAt' => $t->updated_at->toIso8601String(),
-            ]),
+            'transfers' => $transfers->map(fn($t) => $this->formatTransfer($t)),
         ]);
     }
 
@@ -45,7 +52,16 @@ class TransferController extends Controller
             'to' => 'required|string',
             'quantity' => 'required|numeric|min:0.01',
             'transferredBy' => 'required|string',
+            'type' => 'nullable|in:forward,return_backorder,return_scrap',
+            'returnNotes' => 'nullable|string|max:500',
         ]);
+
+        $type = $request->type ?? 'forward';
+
+        // For returns, enforce destination is Production Facility
+        if (in_array($type, ['return_backorder', 'return_scrap'])) {
+            $request->merge(['to' => 'Production Facility']);
+        }
 
         $transfer = Transfer::create([
             'product_id' => $request->productId,
@@ -54,32 +70,13 @@ class TransferController extends Controller
             'quantity' => $request->quantity,
             'requested_by' => $request->transferredBy,
             'status' => 'In Transit',
+            'type' => $type,
+            'return_notes' => $request->returnNotes,
         ]);
 
         $transfer->load('product');
 
-        return response()->json([
-            'transfer' => [
-                'id' => $transfer->id,
-                'productId' => $transfer->product_id,
-                'productName' => $transfer->product->name,
-                'sku' => $transfer->product->sku,
-                'unit' => $transfer->product->unit,
-                'from' => $transfer->from,
-                'to' => $transfer->to,
-                'quantity' => $transfer->quantity,
-                'quantityReceived' => $transfer->quantity_received,
-                'discrepancy' => null,
-                'discrepancyReason' => $transfer->discrepancy_reason,
-                'date' => $transfer->created_at->toDateString(),
-                'time' => $transfer->created_at->format('H:i'),
-                'status' => strtolower(str_replace(' ', '-', $transfer->status)),
-                'transferredBy' => $transfer->requested_by,
-                'receivedBy' => $transfer->received_by,
-                'createdAt' => $transfer->created_at->toIso8601String(),
-                'updatedAt' => $transfer->updated_at->toIso8601String(),
-            ],
-        ], 201);
+        return response()->json(['transfer' => $this->formatTransfer($transfer)], 201);
     }
 
     public function updateStatus(Request $request, $id)
@@ -94,7 +91,7 @@ class TransferController extends Controller
         
         // Only process inventory changes when status changes to "Completed"
         if ($status === 'Completed' && $oldStatus !== 'Completed') {
-            // Update inventory: decrease from source, increase at destination
+            $transferType = $transfer->type ?? 'forward';
             $productId = $transfer->product_id;
             $quantity = $transfer->quantity;
             $fromLocation = $transfer->from;
@@ -102,6 +99,7 @@ class TransferController extends Controller
             
             \Log::info("Processing transfer completion", [
                 'transfer_id' => $id,
+                'type' => $transferType,
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'from' => $fromLocation,
@@ -113,46 +111,37 @@ class TransferController extends Controller
                 ->where('location', $fromLocation)
                 ->first();
             
-            \Log::info("Source inventory check", [
-                'found' => $sourceInventory ? true : false,
-                'current_qty' => $sourceInventory?->quantity ?? 0,
-            ]);
-            
             if ($sourceInventory) {
                 $newQty = max(0, $sourceInventory->quantity - $quantity);
                 $sourceInventory->quantity = $newQty;
                 $sourceInventory->save();
-                \Log::info("Updated source inventory", [
-                    'new_qty' => $newQty,
-                ]);
+                \Log::info("Updated source inventory", ['new_qty' => $newQty]);
             }
             
-            // Increase quantity at destination location
-            $destInventory = Inventory::where('product_id', $productId)
-                ->where('location', $toLocation)
-                ->first();
-            
-            \Log::info("Destination inventory check", [
-                'found' => $destInventory ? true : false,
-                'current_qty' => $destInventory?->quantity ?? 0,
-            ]);
-            
-            if ($destInventory) {
-                $newQty = $destInventory->quantity + $quantity;
-                $destInventory->quantity = $newQty;
-                $destInventory->save();
-                \Log::info("Updated destination inventory", [
-                    'new_qty' => $newQty,
-                ]);
+            // Increase destination only for forward transfers and back-order returns.
+            // Scrap is waste — do not restock production.
+            if ($transferType !== 'return_scrap') {
+                $destInventory = Inventory::where('product_id', $productId)
+                    ->where('location', $toLocation)
+                    ->first();
+                
+                if ($destInventory) {
+                    $newQty = $destInventory->quantity + $quantity;
+                    $destInventory->quantity = $newQty;
+                    $destInventory->save();
+                    \Log::info("Updated destination inventory", ['new_qty' => $newQty]);
+                } else {
+                    Inventory::create([
+                        'product_id' => $productId,
+                        'location' => $toLocation,
+                        'quantity' => $quantity,
+                    ]);
+                    \Log::info("Created new destination inventory", ['qty' => $quantity]);
+                }
             } else {
-                // Create new inventory entry if it doesn't exist
-                Inventory::create([
+                \Log::info("Scrap return — destination inventory NOT increased", [
                     'product_id' => $productId,
-                    'location' => $toLocation,
-                    'quantity' => $quantity
-                ]);
-                \Log::info("Created new destination inventory", [
-                    'qty' => $quantity,
+                    'scrapped_qty' => $quantity,
                 ]);
             }
         }
@@ -161,28 +150,7 @@ class TransferController extends Controller
         
         $transfer->load('product');
         
-        return response()->json([
-            'transfer' => [
-                'id' => $transfer->id,
-                'productId' => $transfer->product_id,
-                'productName' => $transfer->product->name,
-                'sku' => $transfer->product->sku,
-                'unit' => $transfer->product->unit,
-                'from' => $transfer->from,
-                'to' => $transfer->to,
-                'quantity' => $transfer->quantity,
-                'quantityReceived' => $transfer->quantity_received,
-                'discrepancy' => $transfer->quantity_received ? $transfer->quantity - $transfer->quantity_received : null,
-                'discrepancyReason' => $transfer->discrepancy_reason,
-                'date' => $transfer->created_at->toDateString(),
-                'time' => $transfer->created_at->format('H:i'),
-                'status' => strtolower(str_replace(' ', '-', $transfer->status)),
-                'transferredBy' => $transfer->requested_by,
-                'receivedBy' => $transfer->received_by,
-                'createdAt' => $transfer->created_at->toIso8601String(),
-                'updatedAt' => $transfer->updated_at->toIso8601String(),
-            ],
-        ]);
+        return response()->json(['transfer' => $this->formatTransfer($transfer)]);
     }
 
     public function receiveTransfer(Request $request, $id)
@@ -215,27 +183,56 @@ class TransferController extends Controller
             'discrepancy_reason' => $request->discrepancyReason,
         ]);
 
-        // Update inventory at destination with only the received quantity
-        $destInventory = Inventory::where('product_id', $productId)
-            ->where('location', $toLocation)
-            ->first();
+        $transferType = $transfer->type ?? 'forward';
+        $fromLocation = $transfer->from;
 
-        if ($destInventory) {
-            $newQty = $destInventory->quantity + $quantityReceived;
-            $destInventory->quantity = $newQty;
-            $destInventory->save();
-            \Log::info("Updated destination inventory", [
-                'new_qty' => $newQty,
-            ]);
+        // For return transfers, decrease the source (store) inventory upon receipt.
+        // Forward transfers manage source inventory via updateStatus (Completed),
+        // so we skip the decrement here to avoid double-counting.
+        if (in_array($transferType, ['return_backorder', 'return_scrap'])) {
+            $sourceInventory = Inventory::where('product_id', $productId)
+                ->where('location', $fromLocation)
+                ->first();
+
+            if ($sourceInventory) {
+                $newSourceQty = max(0, $sourceInventory->quantity - $quantityReceived);
+                $sourceInventory->quantity = $newSourceQty;
+                $sourceInventory->save();
+                \Log::info("Decreased source inventory on return receipt", [
+                    'location' => $fromLocation,
+                    'new_qty' => $newSourceQty,
+                ]);
+            }
+        }
+
+        // Only increase destination inventory for back-order returns and forward transfers.
+        // Scrap returns are waste — do not add to production inventory.
+        if ($transferType !== 'return_scrap') {
+            $destInventory = Inventory::where('product_id', $productId)
+                ->where('location', $toLocation)
+                ->first();
+
+            if ($destInventory) {
+                $newQty = $destInventory->quantity + $quantityReceived;
+                $destInventory->quantity = $newQty;
+                $destInventory->save();
+                \Log::info("Updated destination inventory", [
+                    'new_qty' => $newQty,
+                ]);
+            } else {
+                Inventory::create([
+                    'product_id' => $productId,
+                    'location' => $toLocation,
+                    'quantity' => $quantityReceived,
+                ]);
+                \Log::info("Created new destination inventory", [
+                    'qty' => $quantityReceived,
+                ]);
+            }
         } else {
-            // Create new inventory entry if it doesn't exist
-            Inventory::create([
+            \Log::info("Scrap return — destination inventory NOT increased", [
                 'product_id' => $productId,
-                'location' => $toLocation,
-                'quantity' => $quantityReceived
-            ]);
-            \Log::info("Created new destination inventory", [
-                'qty' => $quantityReceived,
+                'scrapped_qty' => $quantityReceived,
             ]);
         }
 
@@ -250,28 +247,7 @@ class TransferController extends Controller
 
         $transfer->load('product');
 
-        return response()->json([
-            'transfer' => [
-                'id' => $transfer->id,
-                'productId' => $transfer->product_id,
-                'productName' => $transfer->product->name,
-                'sku' => $transfer->product->sku,
-                'unit' => $transfer->product->unit,
-                'from' => $transfer->from,
-                'to' => $transfer->to,
-                'quantity' => $transfer->quantity,
-                'quantityReceived' => $transfer->quantity_received,
-                'discrepancy' => $discrepancy,
-                'discrepancyReason' => $transfer->discrepancy_reason,
-                'date' => $transfer->created_at->toDateString(),
-                'time' => $transfer->created_at->format('H:i'),
-                'status' => strtolower(str_replace(' ', '-', $transfer->status)),
-                'transferredBy' => $transfer->requested_by,
-                'receivedBy' => $transfer->received_by,
-                'createdAt' => $transfer->created_at->toIso8601String(),
-                'updatedAt' => $transfer->updated_at->toIso8601String(),
-            ],
-        ]);
+        return response()->json(['transfer' => $this->formatTransfer($transfer)]);
     }
 }
 

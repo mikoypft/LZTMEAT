@@ -17,6 +17,8 @@ class Transfer extends Model
         'quantity',
         'quantity_received',
         'status',
+        'type',
+        'return_notes',
         'requested_by',
         'discrepancy_reason',
         'received_by',

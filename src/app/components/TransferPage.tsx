@@ -7,6 +7,8 @@ import {
   Plus,
   Package,
   RefreshCw,
+  Undo2,
+  Trash2,
 } from "lucide-react";
 import {
   getStores,
@@ -14,6 +16,7 @@ import {
   getProducts,
   getTransfers,
   createTransfer,
+  createReturnTransfer,
   updateTransferStatus,
   receiveTransfer,
   getAllUsers,
@@ -52,6 +55,7 @@ export function TransferPage() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedTransfer, setSelectedTransfer] =
     useState<TransferRequest | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,6 +63,14 @@ export function TransferPage() {
     quantityReceived: "",
     discrepancyReason: "",
     receivedBy: "",
+  });
+  const [returnData, setReturnData] = useState({
+    productId: "",
+    quantity: "",
+    from: "",
+    type: "return_backorder" as "return_backorder" | "return_scrap",
+    notes: "",
+    returnedBy: "",
   });
   const [newTransfer, setNewTransfer] = useState({
     productId: "",
@@ -262,8 +274,86 @@ export function TransferPage() {
     }
   };
 
-  const handleReceiveTransfer = async () => {
-    if (!selectedTransfer) return;
+  const handleReturnToProduction = async () => {
+    if (
+      !returnData.productId ||
+      !returnData.quantity ||
+      !returnData.from ||
+      !returnData.returnedBy
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const product = products.find(
+      (p) => String(p.id) === String(returnData.productId),
+    );
+    if (!product) {
+      toast.error("Product not found");
+      return;
+    }
+
+    const qty = parseFloat(returnData.quantity);
+    // Check store inventory
+    const storeInv = inventory.find(
+      (inv) =>
+        String(inv.productId) === String(returnData.productId) &&
+        inv.location === returnData.from,
+    );
+    const availableStock = storeInv ? Number(storeInv.quantity) || 0 : 0;
+    if (qty > availableStock) {
+      toast.error(
+        `Insufficient stock at ${returnData.from}. Available: ${availableStock} ${product.unit}`,
+      );
+      return;
+    }
+
+    try {
+      const created = await createReturnTransfer({
+        productId: Number(returnData.productId),
+        quantity: qty,
+        from: returnData.from,
+        transferredBy: returnData.returnedBy,
+        type: returnData.type,
+        returnNotes: returnData.notes || undefined,
+      });
+
+      const matchedProduct = products.find(
+        (p: Product) => String(p.id) === String(created.productId),
+      );
+
+      const enriched = {
+        ...created,
+        productName: created.productName || matchedProduct?.name || "",
+        sku: created.sku || matchedProduct?.sku || "",
+        unit: created.unit || matchedProduct?.unit || "kg",
+        type: created.type ?? returnData.type,
+      };
+
+      setTransfers([enriched, ...transfers]);
+      setCurrentPage(1);
+      setReturnData({
+        productId: "",
+        quantity: "",
+        from: stores.length > 0 ? stores[0].name : "",
+        type: "return_backorder",
+        notes: "",
+        returnedBy: "",
+      });
+      setShowReturnModal(false);
+
+      const label =
+        returnData.type === "return_scrap" ? "Scrap" : "Back Order Return";
+      toast.success(
+        `${label} of ${qty} ${product.unit} created — pending receipt at production`,
+      );
+    } catch (error) {
+      console.error("Return error:", error);
+      toast.error("Failed to create return");
+    }
+  };
+
+  const handleReceiveTransfer = async () => {    if (!selectedTransfer) return;
 
     if (!receiveData.quantityReceived || !receiveData.receivedBy) {
       toast.error("Please fill in all required fields");
@@ -410,13 +500,32 @@ export function TransferPage() {
               <ArrowRightLeft className="w-6 h-6 text-primary" />
               <h2>Transfer Management</h2>
             </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              New Transfer
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setReturnData({
+                    productId: "",
+                    quantity: "",
+                    from: stores.length > 0 ? stores[0].name : "",
+                    type: "return_backorder",
+                    notes: "",
+                    returnedBy: "",
+                  });
+                  setShowReturnModal(true);
+                }}
+                className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Undo2 className="w-5 h-5" />
+                Return to Production
+              </button>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                New Transfer
+              </button>
+            </div>
           </div>
 
           {showAddForm && (
@@ -565,6 +674,7 @@ export function TransferPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4">Product</th>
                     <th className="text-left py-3 px-4">SKU</th>
+                    <th className="text-left py-3 px-4">Type</th>
                     <th className="text-right py-3 px-4">Qty Sent</th>
                     <th className="text-right py-3 px-4">Qty Received</th>
                     <th className="text-right py-3 px-4">Discrepancy</th>
@@ -587,6 +697,24 @@ export function TransferPage() {
                       <td className="py-3 px-4">{transfer.productName}</td>
                       <td className="py-3 px-4 text-sm text-muted-foreground">
                         {transfer.sku}
+                      </td>
+                      <td className="py-3 px-4">
+                        {transfer.type === "return_backorder" ? (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs whitespace-nowrap">
+                            <Undo2 className="w-3 h-3" />
+                            Back Order
+                          </span>
+                        ) : transfer.type === "return_scrap" ? (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs whitespace-nowrap">
+                            <Trash2 className="w-3 h-3" />
+                            Scrap
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs whitespace-nowrap">
+                            <ArrowRightLeft className="w-3 h-3" />
+                            Transfer
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right text-primary">
                         {transfer.quantity} {transfer.unit}
@@ -929,6 +1057,248 @@ export function TransferPage() {
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
                   >
                     Confirm Receipt
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {/* Return to Production Modal */}
+        {showReturnModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Undo2 className="w-6 h-6 text-orange-600" />
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Return to Production
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowReturnModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Return type selector */}
+              <div className="flex gap-3 mb-5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReturnData({ ...returnData, type: "return_backorder" })
+                  }
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    returnData.type === "return_backorder"
+                      ? "bg-orange-600 text-white border-orange-600"
+                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <Undo2 className="w-4 h-4" />
+                  Back Order Return
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReturnData({ ...returnData, type: "return_scrap" })
+                  }
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    returnData.type === "return_scrap"
+                      ? "bg-red-600 text-white border-red-600"
+                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Scrap
+                </button>
+              </div>
+
+              {returnData.type === "return_scrap" && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  <strong>Scrap:</strong> Items removed from store inventory as
+                  waste. Production inventory will <strong>not</strong> be
+                  restocked.
+                </div>
+              )}
+              {returnData.type === "return_backorder" && (
+                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
+                  <strong>Back Order Return:</strong> Unsold items returned to
+                  production. Store inventory decreases and production inventory
+                  is restocked upon receipt.
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReturnToProduction();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Store (Source) *
+                  </label>
+                  <select
+                    value={returnData.from}
+                    onChange={(e) =>
+                      setReturnData({ ...returnData, from: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select store</option>
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product *
+                  </label>
+                  <select
+                    value={returnData.productId}
+                    onChange={(e) =>
+                      setReturnData({
+                        ...returnData,
+                        productId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select product</option>
+                    {products.map((p) => {
+                      const inv = returnData.from
+                        ? inventory.find(
+                            (i) =>
+                              String(i.productId) === String(p.id) &&
+                              i.location === returnData.from,
+                          )
+                        : undefined;
+                      const stock = inv ? Number(inv.quantity) || 0 : 0;
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.name} — Stock: {stock} {p.unit}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={returnData.quantity}
+                    onChange={(e) =>
+                      setReturnData({ ...returnData, quantity: e.target.value })
+                    }
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                  />
+                  {returnData.productId && returnData.from && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Available:{" "}
+                      {(() => {
+                        const inv = inventory.find(
+                          (i) =>
+                            String(i.productId) ===
+                              String(returnData.productId) &&
+                            i.location === returnData.from,
+                        );
+                        const prod = products.find(
+                          (p) => String(p.id) === String(returnData.productId),
+                        );
+                        return `${inv ? Number(inv.quantity) || 0 : 0} ${prod?.unit ?? ""}`;
+                      })()}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    value={returnData.notes}
+                    onChange={(e) =>
+                      setReturnData({ ...returnData, notes: e.target.value })
+                    }
+                    placeholder={
+                      returnData.type === "return_scrap"
+                        ? "e.g. expired, damaged, contaminated..."
+                        : "e.g. excess stock from weekend, order cancelled..."
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Returned By *
+                  </label>
+                  <select
+                    value={returnData.returnedBy}
+                    onChange={(e) =>
+                      setReturnData({
+                        ...returnData,
+                        returnedBy: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select a user</option>
+                    {users.map((user) => (
+                      <option
+                        key={user.id}
+                        value={user.fullName || user.username}
+                      >
+                        {user.fullName || user.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReturnModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md transition ${
+                      returnData.type === "return_scrap"
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-orange-600 hover:bg-orange-700"
+                    }`}
+                  >
+                    {returnData.type === "return_scrap" ? (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Log Scrap
+                      </>
+                    ) : (
+                      <>
+                        <Undo2 className="w-4 h-4" />
+                        Create Return
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
