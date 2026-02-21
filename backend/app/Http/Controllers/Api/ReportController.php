@@ -61,11 +61,13 @@ class ReportController extends Controller
         $productTableRows = '';
         $totalAmount = 0;
         $totalKgSales = 0;
+        $totalWeight = 0;
         
         foreach ($productRows as $product) {
             $amount = $product['total_sales'];
             $totalAmount += $amount;
             $totalKgSales += $product['kg_sales'];
+            $totalWeight += $product['kg_sales'];
             
             $productTableRows .= '<tr>';
             $productTableRows .= '<td>' . htmlspecialchars($product['name']) . '</td>';
@@ -78,6 +80,7 @@ class ReportController extends Controller
             $productTableRows .= '<td class="number">' . $product['scrap'] . '</td>';
             $productTableRows .= '<td class="number">' . $product['turn'] . '</td>';
             $productTableRows .= '<td class="number">' . $product['wo'] . '</td>';
+            $productTableRows .= '<td class="number">' . number_format($product['kg_sales'], 2) . '</td>';
             $productTableRows .= '<td class="number">' . number_format($product['kg_sales'], 2) . '</td>';
             $productTableRows .= '<td class="number">P ' . number_format($product['total_sales'], 2) . '</td>';
             $productTableRows .= '<td class="number">0</td>';
@@ -181,6 +184,7 @@ class ReportController extends Controller
                 <th>TURN</th>
                 <th>W/O</th>
                 <th>KG SALES</th>
+                <th>TOTAL WEIGHT</th>
                 <th>TOTAL SALES</th>
                 <th>KG</th>
                 <th>DISC</th>
@@ -192,6 +196,7 @@ class ReportController extends Controller
             <tr class="total-row">
                 <td colspan="10" style="text-align: right;"><strong>TOTAL</strong></td>
                 <td class="number"><strong>{TOTAL_KG_SALES}</strong></td>
+                <td class="number"><strong>{TOTAL_WEIGHT}</strong></td>
                 <td class="number"><strong>{TOTAL_SALES}</strong></td>
                 <td></td>
                 <td></td>
@@ -263,6 +268,7 @@ HTML;
         $html = str_replace('{TOTAL_SALES}', 'P ' . number_format($totalSales, 2), $html);
         $html = str_replace('{TOTAL_AMOUNT}', 'P ' . number_format($totalAmount, 2), $html);
         $html = str_replace('{TOTAL_KG_SALES}', number_format($totalKgSales, 2), $html);
+        $html = str_replace('{TOTAL_WEIGHT}', number_format($totalWeight, 2), $html);
         $html = str_replace('{SALES_TOTAL}', 'P ' . number_format($totalSales, 2), $html);
         $html = str_replace('{GROSS_SALES}', 'P ' . number_format($grossSales, 2), $html);
         $html = str_replace('{OVER}', 'P ' . number_format(0, 2), $html);
