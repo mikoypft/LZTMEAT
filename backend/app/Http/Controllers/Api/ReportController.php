@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -46,7 +45,7 @@ class ReportController extends Controller
             $totals = $this->calculateTotals($sales);
             $paymentBreakdown = $this->getPaymentBreakdown($sales);
 
-            // Generate the new format PDF
+            // Return HTML for browser-based printing (works on any PHP version, no dompdf needed)
             $html = $this->generateInventoryReportHTML(
                 $date,
                 $store,
@@ -55,17 +54,10 @@ class ReportController extends Controller
                 $paymentBreakdown
             );
 
-            $pdf = Pdf::loadHtml($html);
-            $pdf->setPaper('a4', 'portrait');
-            $pdf->setOption('margin-top', 5);
-            $pdf->setOption('margin-bottom', 5);
-            $pdf->setOption('margin-left', 5);
-            $pdf->setOption('margin-right', 5);
-
-            return $pdf->download("Daily-Report-{$date}.pdf");
+            return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
         } catch (\Exception $e) {
-            \Log::error('PDF Generation Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
+            \Log::error('Report Generation Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate report: ' . $e->getMessage()], 500);
         }
     }
 
@@ -123,10 +115,11 @@ class ReportController extends Controller
 <html>
 <head>
     <meta charset="utf-8">
+    <title>LZT Meat Daily Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 8px; color: #000; line-height: 1.2; margin: 0; padding: 0; }
-        .document-container { border: 3px solid #000; margin: 72px; padding: 20px; }
+        .document-container { border: 3px solid #000; margin: 20px; padding: 20px; }
         .header { text-align: center; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 5px; }
         .header h1 { font-size: 14px; font-weight: bold; margin-bottom: 3px; }
         .header-info { display: flex; justify-content: space-around; margin-top: 5px; font-size: 8px; }
@@ -157,7 +150,20 @@ class ReportController extends Controller
         .signature-box { display: flex; gap: 20px; margin-top: 10px; font-size: 7px; }
         .signature { text-align: center; width: 30%; }
         .signature-line { border-top: 1px solid #000; margin-top: 15px; font-size: 7px; }
+
+        @media print {
+            body { margin: 0; }
+            .document-container { margin: 5mm; border: 2px solid #000; }
+            .no-print { display: none; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
+    <script>
+        window.onload = function() {
+            // Small delay to ensure rendering is complete
+            setTimeout(function() { window.print(); }, 300);
+        };
+    </script>
 </head>
 <body>
 <div class="document-container">

@@ -1283,32 +1283,15 @@ export async function updateDiscountSettings(settings: {
 export async function exportDailyReportPDF(
   date: string,
   storeId?: string,
-  userName?: string,
+  _userName?: string,
 ): Promise<void> {
-  let endpoint = `/reports/daily-pdf?date=${date}`;
+  let url = `${API_BASE}/reports/daily-pdf?date=${date}`;
   if (storeId) {
-    endpoint += `&storeId=${storeId}`;
+    url += `&storeId=${storeId}`;
   }
-  if (userName) {
-    endpoint += `&userName=${encodeURIComponent(userName)}`;
-  }
-
-  const response = await fetch(`${API_BASE}${endpoint}`);
-  if (!response.ok) {
-    // Try to read the actual error from the server
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Failed to generate PDF report (${response.status})`);
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `Daily-Report-${date}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+  // Open in new tab — the page auto-triggers window.print(),
+  // allowing the user to "Save as PDF" or print directly.
+  window.open(url, '_blank');
 }
 
 export async function exportDailyReportCSV(
