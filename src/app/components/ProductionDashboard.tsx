@@ -891,6 +891,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       toast.success(
         `Production completed! ${quantity} KG ${productName} added to Production Facility inventory.`,
       );
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       // Refresh ingredients to reflect stock changes from additional ingredients
       await refreshIngredients();
@@ -1045,6 +1046,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       toast.success(
         `Mixing completed! ${mixWeight} KG of mix added to inventory.`,
       );
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       // Reload data
       await loadProductionRecords();
@@ -1131,6 +1133,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       );
 
       toast.success("Cooking completed! Products added to inventory.");
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       // Reload data
       await loadProductionRecords();

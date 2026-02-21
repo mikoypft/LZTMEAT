@@ -293,11 +293,10 @@ export function InventoryPage({
     loadCategories();
     loadStoreLocations();
 
-    // Auto-refresh inventory every 5 seconds silently for real-time updates
-    const interval = setInterval(() => {
-      loadInventoryData(false); // false = silent refresh, no loading spinner
-    }, 5000);
-    return () => clearInterval(interval);
+    // Refresh inventory whenever a stock-changing action fires the custom event
+    const handleInventoryChanged = () => loadInventoryData(false);
+    window.addEventListener("inventory-changed", handleInventoryChanged);
+    return () => window.removeEventListener("inventory-changed", handleInventoryChanged);
   }, []);
 
   const loadInventoryData = async (showLoader = true) => {

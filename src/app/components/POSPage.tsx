@@ -746,6 +746,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       await createSale(salePayload);
 
       toast.success(`Sale recorded successfully at ${selectedStore?.name}!`);
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       // Show receipt modal with sale data
       setReceiptData({

@@ -256,6 +256,7 @@ export function TransferPage() {
       });
       setShowAddForm(false);
       toast.success("Transfer created successfully");
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
     } catch (error) {
       console.error("Transfer error:", error);
       toast.error("Failed to create transfer");
@@ -267,6 +268,7 @@ export function TransferPage() {
       await updateTransferStatus(id, status);
       setTransfers(transfers.map((t) => (t.id === id ? { ...t, status } : t)));
       toast.success("Transfer status updated successfully");
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
     } catch (error) {
       toast.error("Failed to update transfer status");
     }
@@ -353,6 +355,7 @@ export function TransferPage() {
       toast.success(
         `Return of ${qty} ${product.unit} created — pending receipt at production`,
       );
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
     } catch (error) {
       console.error("Return error:", error);
       toast.error("Failed to create return");
@@ -402,6 +405,7 @@ export function TransferPage() {
       } else {
         toast.success("Transfer received successfully");
       }
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       setShowReceiveModal(false);
       setSelectedTransfer(null);
