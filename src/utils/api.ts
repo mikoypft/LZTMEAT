@@ -1295,7 +1295,9 @@ export async function exportDailyReportPDF(
 
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) {
-    throw new Error(`Failed to generate PDF report`);
+    // Try to read the actual error from the server
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to generate PDF report (${response.status})`);
   }
 
   const blob = await response.blob();
@@ -1320,7 +1322,8 @@ export async function exportDailyReportCSV(
 
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) {
-    throw new Error(`Failed to generate CSV report`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to generate CSV report (${response.status})`);
   }
 
   const blob = await response.blob();

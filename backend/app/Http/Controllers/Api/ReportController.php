@@ -412,68 +412,68 @@ HTML;
 
     public function exportCSV(Request $request)
     {
-        $date = $request->query('date') ?? date('Y-m-d');
-        $storeId = $request->query('storeId');
+        try {
+            $date = $request->query('date') ?? date('Y-m-d');
+            $storeId = $request->query('storeId');
 
-        // Parse the date
-        $startDate = Carbon::parse($date)->startOfDay();
-        $endDate = Carbon::parse($date)->endOfDay();
+            // Parse the date
+            $startDate = Carbon::parse($date)->startOfDay();
+            $endDate = Carbon::parse($date)->endOfDay();
 
-        // Query sales for the date
-        $query = Sale::with(['user', 'store'])
-            ->whereBetween('created_at', [$startDate, $endDate]);
+            // Query sales for the date
+            $query = Sale::with(['user', 'store'])
+                ->whereBetween('created_at', [$startDate, $endDate]);
 
-        if ($storeId) {
-            $query->where('store_id', $storeId);
-        }
+            if ($storeId) {
+                $query->where('store_id', $storeId);
+            }
 
-        $sales = $query->get();
+            $sales = $query->get();
 
-        $filename = "Daily-Report-{$date}.csv";
-        
-        header('Content-Type: text/csv');
-        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+            $filename = "Daily-Report-{$date}.csv";
+            $rows = [];
 
-        $output = fopen('php://output', 'w');
+            // Header row
+            $rows[] = [
+                'Transaction ID', 'Date', 'Time', 'Cashier', 'Customer',
+                'Store', 'Items Count', 'Subtotal', 'Global Discount',
+                'Total', 'Payment Method', 'Sales Type',
+            ];
 
-        // Header row
-        fputcsv($output, [
-            'Transaction ID',
-            'Date',
-            'Time',
-            'Cashier',
-            'Customer',
-            'Store',
-            'Items Count',
-            'Subtotal',
-            'Global Discount',
-            'Total',
-            'Payment Method',
-            'Sales Type',
-        ]);
+            // Data rows
+            foreach ($sales as $sale) {
+                $itemsArray = is_string($sale->items) ? json_decode($sale->items, true) : $sale->items;
+                $itemsCount = is_array($itemsArray) ? count($itemsArray) : 0;
 
-        // Data rows
-        foreach ($sales as $sale) {
-            $itemsArray = is_string($sale->items) ? json_decode($sale->items, true) : $sale->items;
-            $itemsCount = is_array($itemsArray) ? count($itemsArray) : 0;
+                $rows[] = [
+                    $sale->transaction_id,
+                    $sale->created_at->format('Y-m-d'),
+                    $sale->created_at->format('H:i:s'),
+                    $sale->user?->full_name ?? 'Unknown',
+                    isset($sale->customer['name']) ? $sale->customer['name'] : 'Walk-in',
+                    $sale->store?->name ?? 'Unknown',
+                    $itemsCount,
+                    number_format($sale->subtotal, 2),
+                    number_format($sale->global_discount, 2),
+                    number_format($sale->total, 2),
+                    $sale->payment_method,
+                    $sale->sales_type,
+                ];
+            }
 
-            fputcsv($output, [
-                $sale->transaction_id,
-                $sale->created_at->format('Y-m-d'),
-                $sale->created_at->format('H:i:s'),
-                $sale->user?->full_name ?? 'Unknown',
-                $sale->customer['name'] ?? 'Walk-in',
-                $sale->store?->name ?? 'Unknown',
-                $itemsCount,
-                number_format($sale->subtotal, 2),
-                number_format($sale->global_discount, 2),
-                number_format($sale->total, 2),
-                $sale->payment_method,
-                $sale->sales_type,
+            $csvContent = '';
+            foreach ($rows as $row) {
+                $escaped = array_map(fn($v) => '"' . str_replace('"', '""', (string)$v) . '"', $row);
+                $csvContent .= implode(',', $escaped) . "\n";
+            }
+
+            return response($csvContent, 200, [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ]);
+        } catch (\Exception $e) {
+            \Log::error('CSV Generation Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate CSV: ' . $e->getMessage()], 500);
         }
-
-        fclose($output);
-        exit;
     }
 }

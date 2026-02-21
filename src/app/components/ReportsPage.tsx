@@ -52,7 +52,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         {
           loading: "Generating PDF report...",
           success: "PDF report downloaded successfully!",
-          error: "Failed to generate PDF report",
+          error: (err) => err?.message || "Failed to generate PDF report",
         },
       );
     } catch (error) {
@@ -72,7 +72,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         {
           loading: "Generating CSV report...",
           success: "CSV report downloaded successfully!",
-          error: "Failed to generate CSV report",
+          error: (err) => err?.message || "Failed to generate CSV report",
         },
       );
     } catch (error) {
