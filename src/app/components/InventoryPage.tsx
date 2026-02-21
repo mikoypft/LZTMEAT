@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Package,
   Search,
@@ -274,6 +274,7 @@ export function InventoryPage({
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+  const isFetchingRef = useRef(false); // prevents overlapping silent refreshes
   const [showReorderReport, setShowReorderReport] = useState(false);
   const [showEncodeProductModal, setShowEncodeProductModal] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -292,14 +293,16 @@ export function InventoryPage({
     loadCategories();
     loadStoreLocations();
 
-    // Auto-refresh inventory every 30 seconds for real-time updates
+    // Auto-refresh inventory every 5 seconds silently for real-time updates
     const interval = setInterval(() => {
       loadInventoryData(false); // false = silent refresh, no loading spinner
-    }, 30000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const loadInventoryData = async (showLoader = true) => {
+    if (isFetchingRef.current) return; // skip if a fetch is already in progress
+    isFetchingRef.current = true;
     try {
       if (showLoader) setLoading(true);
       console.log("Loading inventory data...");
@@ -366,8 +369,9 @@ export function InventoryPage({
       setInventory(inventoryItems);
     } catch (error) {
       console.error("Error loading inventory:", error);
-      toast.error("Failed to load inventory data");
+      if (showLoader) toast.error("Failed to load inventory data");
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
