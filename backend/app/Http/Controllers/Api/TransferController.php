@@ -74,6 +74,22 @@ class TransferController extends Controller
             'return_notes' => $request->returnNotes,
         ]);
 
+        // For return transfers, immediately deduct the store inventory.
+        // Items leave the store the moment the return is initiated.
+        if (in_array($type, ['return_backorder', 'return_scrap'])) {
+            $sourceInventory = Inventory::where('product_id', $request->productId)
+                ->where('location', $request->from)
+                ->first();
+            if ($sourceInventory) {
+                $sourceInventory->quantity = max(0, $sourceInventory->quantity - $request->quantity);
+                $sourceInventory->save();
+                \Log::info("Return created: immediately deducted store inventory", [
+                    'location' => $request->from,
+                    'new_qty' => $sourceInventory->quantity,
+                ]);
+            }
+        }
+
         $transfer->load('product');
 
         return response()->json(['transfer' => $this->formatTransfer($transfer)], 201);
@@ -178,52 +194,29 @@ class TransferController extends Controller
         $transferType = $transfer->type ?? 'forward';
         $fromLocation = $transfer->from;
 
-        // For return transfers, decrease the source (store) inventory upon receipt.
-        // Forward transfers manage source inventory via updateStatus (Completed),
-        // so we skip the decrement here to avoid double-counting.
-        if (in_array($transferType, ['return_backorder', 'return_scrap'])) {
-            $sourceInventory = Inventory::where('product_id', $productId)
-                ->where('location', $fromLocation)
-                ->first();
+        // For return transfers the store inventory was already deducted at creation time.
+        // Here we only need to add to the production (destination) inventory upon receipt.
 
-            if ($sourceInventory) {
-                $newSourceQty = max(0, $sourceInventory->quantity - $quantityReceived);
-                $sourceInventory->quantity = $newSourceQty;
-                $sourceInventory->save();
-                \Log::info("Decreased source inventory on return receipt", [
-                    'location' => $fromLocation,
-                    'new_qty' => $newSourceQty,
-                ]);
-            }
-        }
+        // Increase destination inventory for all transfer types.
+        $destInventory = Inventory::where('product_id', $productId)
+            ->where('location', $toLocation)
+            ->first();
 
-        // Only increase destination inventory for back-order returns and forward transfers.
-        if ($transferType !== 'return_scrap') {
-            $destInventory = Inventory::where('product_id', $productId)
-                ->where('location', $toLocation)
-                ->first();
-
-            if ($destInventory) {
-                $newQty = $destInventory->quantity + $quantityReceived;
-                $destInventory->quantity = $newQty;
-                $destInventory->save();
-                \Log::info("Updated destination inventory", [
-                    'new_qty' => $newQty,
-                ]);
-            } else {
-                Inventory::create([
-                    'product_id' => $productId,
-                    'location' => $toLocation,
-                    'quantity' => $quantityReceived,
-                ]);
-                \Log::info("Created new destination inventory", [
-                    'qty' => $quantityReceived,
-                ]);
-            }
+        if ($destInventory) {
+            $newQty = $destInventory->quantity + $quantityReceived;
+            $destInventory->quantity = $newQty;
+            $destInventory->save();
+            \Log::info("Updated destination inventory", [
+                'new_qty' => $newQty,
+            ]);
         } else {
-            \Log::info("Scrap return — destination inventory NOT increased", [
+            Inventory::create([
                 'product_id' => $productId,
-                'scrapped_qty' => $quantityReceived,
+                'location' => $toLocation,
+                'quantity' => $quantityReceived,
+            ]);
+            \Log::info("Created new destination inventory", [
+                'qty' => $quantityReceived,
             ]);
         }
 

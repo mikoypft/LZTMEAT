@@ -330,6 +330,17 @@ export function TransferPage() {
 
       setTransfers([enriched, ...transfers]);
       setCurrentPage(1);
+
+      // Immediately reflect the store inventory deduction locally
+      setInventory((prev) =>
+        prev.map((inv) =>
+          String(inv.productId) === String(returnData.productId) &&
+          inv.location === returnData.from
+            ? { ...inv, quantity: Math.max(0, (inv.quantity as number) - qty) }
+            : inv,
+        ),
+      );
+
       setReturnData({
         productId: "",
         quantity: "",
