@@ -5,14 +5,22 @@
 -- Run once in Plesk phpMyAdmin then delete this file.
 -- =====================================================
 
--- Deduct store inventory for any return transfers that
--- are still In Transit (created before the fix, so the
--- store was never decremented).
-UPDATE inventory inv
-JOIN transfers t ON t.product_id = inv.product_id
-   AND t.from = inv.location
-   AND t.type IN ('return_backorder', 'return_scrap')
-   AND t.status = 'In Transit'
+-- Step 1: Mark any in-transit transfers going TO Production Facility
+-- as return_backorder (old transfers were created without a type).
+UPDATE `transfers`
+SET `type` = 'return_backorder'
+WHERE `to` = 'Production Facility'
+  AND `status` = 'In Transit'
+  AND (`type` = 'forward' OR `type` IS NULL);
+
+-- Step 2: Deduct store inventory for those in-transit returns.
+-- This fixes transfers that were created before the immediate-deduct fix.
+UPDATE `inventory` inv
+JOIN `transfers` t
+  ON t.product_id = inv.product_id
+ AND t.from = inv.location
+ AND t.to = 'Production Facility'
+ AND t.status = 'In Transit'
 SET inv.quantity = GREATEST(0, inv.quantity - t.quantity);
 
 -- =====================================================
