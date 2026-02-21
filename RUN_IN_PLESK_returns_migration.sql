@@ -13,10 +13,10 @@
 -- =====================================================
 
 ALTER TABLE `transfers`
-  ADD COLUMN `type` ENUM('forward', 'return_backorder', 'return_scrap')
+  ADD COLUMN IF NOT EXISTS `type` ENUM('forward', 'return_backorder', 'return_scrap')
       NOT NULL DEFAULT 'forward'
       AFTER `status`,
-  ADD COLUMN `return_notes` TEXT NULL
+  ADD COLUMN IF NOT EXISTS `return_notes` TEXT NULL
       AFTER `type`;
 
 -- =====================================================
@@ -25,10 +25,11 @@ ALTER TABLE `transfers`
 -- =====================================================
 INSERT INTO `migrations` (`migration`, `batch`)
 SELECT '2026_02_21_000000_add_type_to_transfers_table',
-       COALESCE((SELECT MAX(`batch`) FROM `migrations`), 0) + 1
+       COALESCE((SELECT MAX(b.`batch`) FROM `migrations` b), 0) + 1
+FROM DUAL
 WHERE NOT EXISTS (
-  SELECT 1 FROM `migrations`
-  WHERE `migration` = '2026_02_21_000000_add_type_to_transfers_table'
+  SELECT 1 FROM `migrations` m
+  WHERE m.`migration` = '2026_02_21_000000_add_type_to_transfers_table'
 );
 
 -- =====================================================
