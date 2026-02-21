@@ -619,9 +619,7 @@ export function TransferPage() {
                     }
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="Production Facility">
-                      Production Facility
-                    </option>
+                    <option value="">Select Destination</option>
                     {stores.map((location) => (
                       <option key={location.name} value={location.name}>
                         {location.name}

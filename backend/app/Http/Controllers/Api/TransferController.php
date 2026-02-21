@@ -58,9 +58,12 @@ class TransferController extends Controller
 
         $type = $request->type ?? 'forward';
 
-        // For returns, enforce destination is Production Facility
+        // For returns, enforce destination is Production Facility.
+        // For forward transfers, block Production Facility as destination.
         if (in_array($type, ['return_backorder', 'return_scrap'])) {
             $request->merge(['to' => 'Production Facility']);
+        } elseif ($request->to === 'Production Facility') {
+            return response()->json(['error' => 'Use Return to Production to send items back to the Production Facility.'], 422);
         }
 
         $transfer = Transfer::create([
