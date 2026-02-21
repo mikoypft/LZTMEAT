@@ -8,7 +8,6 @@ import {
   Package,
   RefreshCw,
   Undo2,
-  Trash2,
 } from "lucide-react";
 import {
   getStores,
@@ -68,7 +67,6 @@ export function TransferPage() {
     productId: "",
     quantity: "",
     from: "",
-    type: "return_backorder" as "return_backorder" | "return_scrap",
     notes: "",
     returnedBy: "",
   });
@@ -314,7 +312,7 @@ export function TransferPage() {
         quantity: qty,
         from: returnData.from,
         transferredBy: returnData.returnedBy,
-        type: returnData.type,
+        type: "return_backorder",
         returnNotes: returnData.notes || undefined,
       });
 
@@ -327,7 +325,7 @@ export function TransferPage() {
         productName: created.productName || matchedProduct?.name || "",
         sku: created.sku || matchedProduct?.sku || "",
         unit: created.unit || matchedProduct?.unit || "kg",
-        type: created.type ?? returnData.type,
+        type: created.type ?? "return_backorder",
       };
 
       setTransfers([enriched, ...transfers]);
@@ -336,16 +334,13 @@ export function TransferPage() {
         productId: "",
         quantity: "",
         from: stores.length > 0 ? stores[0].name : "",
-        type: "return_backorder",
         notes: "",
         returnedBy: "",
       });
       setShowReturnModal(false);
 
-      const label =
-        returnData.type === "return_scrap" ? "Scrap" : "Back Order Return";
       toast.success(
-        `${label} of ${qty} ${product.unit} created — pending receipt at production`,
+        `Return of ${qty} ${product.unit} created — pending receipt at production`,
       );
     } catch (error) {
       console.error("Return error:", error);
@@ -507,7 +502,6 @@ export function TransferPage() {
                     productId: "",
                     quantity: "",
                     from: stores.length > 0 ? stores[0].name : "",
-                    type: "return_backorder",
                     notes: "",
                     returnedBy: "",
                   });
@@ -703,11 +697,6 @@ export function TransferPage() {
                           <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs whitespace-nowrap">
                             <Undo2 className="w-3 h-3" />
                             Back Order
-                          </span>
-                        ) : transfer.type === "return_scrap" ? (
-                          <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs whitespace-nowrap">
-                            <Trash2 className="w-3 h-3" />
-                            Scrap
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs whitespace-nowrap">
@@ -1082,52 +1071,10 @@ export function TransferPage() {
                 </button>
               </div>
 
-              {/* Return type selector */}
-              <div className="flex gap-3 mb-5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setReturnData({ ...returnData, type: "return_backorder" })
-                  }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    returnData.type === "return_backorder"
-                      ? "bg-orange-600 text-white border-orange-600"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <Undo2 className="w-4 h-4" />
-                  Back Order Return
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setReturnData({ ...returnData, type: "return_scrap" })
-                  }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    returnData.type === "return_scrap"
-                      ? "bg-red-600 text-white border-red-600"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Scrap
-                </button>
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
+                Items will be removed from the store and restocked at the
+                Production Facility upon receipt.
               </div>
-
-              {returnData.type === "return_scrap" && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  <strong>Scrap:</strong> Items removed from store inventory as
-                  waste. Production inventory will <strong>not</strong> be
-                  restocked.
-                </div>
-              )}
-              {returnData.type === "return_backorder" && (
-                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
-                  <strong>Back Order Return:</strong> Unsold items returned to
-                  production. Store inventory decreases and production inventory
-                  is restocked upon receipt.
-                </div>
-              )}
 
               <form
                 onSubmit={(e) => {
@@ -1235,11 +1182,7 @@ export function TransferPage() {
                     onChange={(e) =>
                       setReturnData({ ...returnData, notes: e.target.value })
                     }
-                    placeholder={
-                      returnData.type === "return_scrap"
-                        ? "e.g. expired, damaged, contaminated..."
-                        : "e.g. excess stock from weekend, order cancelled..."
-                    }
+                    placeholder="e.g. excess stock, order cancelled, damaged..."
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   />
@@ -1282,23 +1225,10 @@ export function TransferPage() {
                   </button>
                   <button
                     type="submit"
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-md transition ${
-                      returnData.type === "return_scrap"
-                        ? "bg-red-600 hover:bg-red-700"
-                        : "bg-orange-600 hover:bg-orange-700"
-                    }`}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition"
                   >
-                    {returnData.type === "return_scrap" ? (
-                      <>
-                        <Trash2 className="w-4 h-4" />
-                        Log Scrap
-                      </>
-                    ) : (
-                      <>
-                        <Undo2 className="w-4 h-4" />
-                        Create Return
-                      </>
-                    )}
+                    <Undo2 className="w-4 h-4" />
+                    Create Return
                   </button>
                 </div>
               </form>

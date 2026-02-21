@@ -118,31 +118,23 @@ class TransferController extends Controller
                 \Log::info("Updated source inventory", ['new_qty' => $newQty]);
             }
             
-            // Increase destination only for forward transfers and back-order returns.
-            // Scrap is waste — do not restock production.
-            if ($transferType !== 'return_scrap') {
-                $destInventory = Inventory::where('product_id', $productId)
-                    ->where('location', $toLocation)
-                    ->first();
-                
-                if ($destInventory) {
-                    $newQty = $destInventory->quantity + $quantity;
-                    $destInventory->quantity = $newQty;
-                    $destInventory->save();
-                    \Log::info("Updated destination inventory", ['new_qty' => $newQty]);
-                } else {
-                    Inventory::create([
-                        'product_id' => $productId,
-                        'location' => $toLocation,
-                        'quantity' => $quantity,
-                    ]);
-                    \Log::info("Created new destination inventory", ['qty' => $quantity]);
-                }
+            // Increase destination for all transfer types (including returns).
+            $destInventory = Inventory::where('product_id', $productId)
+                ->where('location', $toLocation)
+                ->first();
+            
+            if ($destInventory) {
+                $newQty = $destInventory->quantity + $quantity;
+                $destInventory->quantity = $newQty;
+                $destInventory->save();
+                \Log::info("Updated destination inventory", ['new_qty' => $newQty]);
             } else {
-                \Log::info("Scrap return — destination inventory NOT increased", [
+                Inventory::create([
                     'product_id' => $productId,
-                    'scrapped_qty' => $quantity,
+                    'location' => $toLocation,
+                    'quantity' => $quantity,
                 ]);
+                \Log::info("Created new destination inventory", ['qty' => $quantity]);
             }
         }
         
@@ -206,7 +198,6 @@ class TransferController extends Controller
         }
 
         // Only increase destination inventory for back-order returns and forward transfers.
-        // Scrap returns are waste — do not add to production inventory.
         if ($transferType !== 'return_scrap') {
             $destInventory = Inventory::where('product_id', $productId)
                 ->where('location', $toLocation)
