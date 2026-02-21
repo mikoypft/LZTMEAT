@@ -1289,9 +1289,67 @@ export async function exportDailyReportPDF(
   if (storeId) {
     url += `&storeId=${storeId}`;
   }
-  // Open in new tab — the page auto-triggers window.print(),
-  // allowing the user to "Save as PDF" or print directly.
-  window.open(url, '_blank');
+
+  // Fetch the HTML from the backend
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to generate report (${response.status})`);
+  }
+  const html = await response.text();
+
+  // Render HTML in a hidden iframe to get accurate layout
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.top = '-10000px';
+  iframe.style.left = '-10000px';
+  iframe.style.width = '794px';  // A4 width in px at 96dpi
+  iframe.style.height = '1123px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  await new Promise<void>((resolve) => {
+    iframe.onload = () => resolve();
+    iframe.srcdoc = html;
+  });
+
+  // Wait for fonts/images to render
+  await new Promise((r) => setTimeout(r, 500));
+
+  const { default: html2canvas } = await import('html2canvas');
+  const { jsPDF } = await import('jspdf');
+
+  const iframeDoc = iframe.contentDocument!;
+  const canvas = await html2canvas(iframeDoc.body, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    width: 794,
+    windowWidth: 794,
+  });
+
+  document.body.removeChild(iframe);
+
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+  // If content is longer than one page, split across pages
+  let yPos = 0;
+  let remainingHeight = imgHeight;
+  let firstPage = true;
+  while (remainingHeight > 0) {
+    if (!firstPage) pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, -yPos, imgWidth, imgHeight);
+    yPos += pageHeight;
+    remainingHeight -= pageHeight;
+    firstPage = false;
+  }
+
+  pdf.save(`Daily-Report-${date}.pdf`);
 }
 
 export async function exportDailyReportCSV(

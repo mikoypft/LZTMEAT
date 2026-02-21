@@ -40,13 +40,26 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
   }, []);
 
   // Export to PDF
-  const handleExportPDF = () => {
-    exportDailyReportPDF(
-      selectedDate,
-      selectedStore || undefined,
-      currentUser?.fullName || currentUser?.username || "Unknown",
-    );
-    toast.success("Report opened in new tab — use Print → Save as PDF");
+  const handleExportPDF = async () => {
+    try {
+      setLoadingPdf(true);
+      await toast.promise(
+        exportDailyReportPDF(
+          selectedDate,
+          selectedStore || undefined,
+          currentUser?.fullName || currentUser?.username || "Unknown",
+        ),
+        {
+          loading: "Generating PDF...",
+          success: "PDF downloaded successfully!",
+          error: (err) => err?.message || "Failed to generate PDF",
+        },
+      );
+    } catch (_) {
+      // handled by toast.promise
+    } finally {
+      setLoadingPdf(false);
+    }
   };
 
   // Export to CSV
