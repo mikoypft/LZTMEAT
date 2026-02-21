@@ -93,10 +93,11 @@ class SaleController extends Controller
                     $quantity = $item['quantity'] ?? 0;
                     
                     if ($productId && $quantity > 0) {
+                        // Use GREATEST(0, quantity - X) to prevent going below zero
                         $updated = \DB::table('inventory')
                             ->where('product_id', $productId)
                             ->where('location', $location)
-                            ->decrement('quantity', $quantity);
+                            ->update(['quantity' => \DB::raw('GREATEST(0, quantity - ' . (int)$quantity . ')')]);
                         
                         \Log::info("Inventory deducted for product {$productId} at {$location}: {$quantity} units (rows affected: {$updated})");
                     }

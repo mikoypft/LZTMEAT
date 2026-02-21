@@ -337,12 +337,12 @@ export function InventoryPage({
             (i: InventoryRecord) =>
               i.productId === product.id && i.location === store.name,
           );
-          const quantity = storeInv?.quantity || 0;
+          const quantity = Math.max(0, storeInv?.quantity || 0);
           storeStocks[store.name] = quantity;
           totalStoreStock += quantity;
         });
 
-        const stockProduction = productionInv?.quantity || 0;
+        const stockProduction = Math.max(0, productionInv?.quantity || 0);
         const totalStock = stockProduction + totalStoreStock;
 
         return {

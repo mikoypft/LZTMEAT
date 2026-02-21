@@ -70,7 +70,7 @@ class InventoryController extends Controller
                 'location' => $request->location,
             ],
             [
-                'quantity' => $request->quantity,
+                'quantity' => max(0, $request->quantity),
             ]
         );
 
