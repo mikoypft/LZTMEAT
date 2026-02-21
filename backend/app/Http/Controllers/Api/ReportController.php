@@ -73,7 +73,7 @@ class ReportController extends Controller
     {
         $date_formatted = date('m/d/Y', strtotime($date));
         $storeName = $store ? $store->name : 'All Stores';
-        $storeLocation = $store ? $store->location : 'N/A';
+        $storeLocation = $store ? ($store->address ?? $store->name) : 'N/A';
 
         // Build product table rows
         $productTableRows = '';
@@ -306,7 +306,7 @@ HTML;
         // Build product array with inventory data
         foreach ($products as $product) {
             $inventory = $store && $product->inventory ? 
-                $product->inventory->where('location', $store->location)->first() : null;
+                $product->inventory->where('location', $store->name)->first() : null;
             
             $quantity = isset($salesByProduct[$product->name]) ? $salesByProduct[$product->name]['quantity'] : 0;
             $totalSales = isset($salesByProduct[$product->name]) ? $salesByProduct[$product->name]['total_sales'] : 0;
