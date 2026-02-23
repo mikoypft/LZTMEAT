@@ -2626,7 +2626,7 @@ $routes = [
             $stmt = $pdo->query('
                 SELECT pmi.*, pmc.name as category_name
                 FROM product_mix_inventory pmi
-                LEFT JOIN product_mix_categories pmc ON pmi.product_mix_category_id = pmc.id
+                INNER JOIN product_mix_categories pmc ON pmi.product_mix_category_id = pmc.id
                 ORDER BY pmi.created_at DESC
             ');
             $inventory = $stmt->fetchAll();
