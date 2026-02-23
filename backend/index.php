@@ -235,7 +235,9 @@ try {
         $pdo->exec("ALTER TABLE production_records MODIFY COLUMN product_id BIGINT UNSIGNED NULL");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS product_mix_category_id BIGINT UNSIGNED NULL AFTER product_id");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS product_mix_category_name VARCHAR(255) NULL AFTER product_mix_category_id");
-        $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS phase ENUM('mixing', 'cooking', 'completed') NOT NULL DEFAULT 'mixing' AFTER status");
+        $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS phase ENUM('mixing', 'packing', 'cooking', 'completed') NOT NULL DEFAULT 'mixing' AFTER status");
+        // Update ENUM if column already exists to include 'packing'
+        try { $pdo->exec("ALTER TABLE production_records MODIFY COLUMN phase ENUM('mixing', 'packing', 'cooking', 'completed') NOT NULL DEFAULT 'mixing'"); } catch(Exception $e2) {}
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS mix_weight DECIMAL(10,2) NULL AFTER quantity");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS mix_used DECIMAL(10,2) NULL AFTER mix_weight");
     } catch (Exception $tableErr) {
@@ -2304,66 +2306,13 @@ $routes = [
                 $mixCategoryName = 'Unknown Mix';
             }
             
-            // Calculate cost from initial ingredients
-            $cost = 0;
-            if (!empty($production['initial_ingredients'])) {
-                $ingredients = json_decode($production['initial_ingredients'], true);
-                if (is_array($ingredients)) {
-                    foreach ($ingredients as $ing) {
-                        // This is a simplified cost calculation
-                        // You might want to get actual ingredient costs from the database
-                        $cost += ($ing['quantity'] ?? 0) * 10; // placeholder cost per unit
-                    }
-                }
-            }
-            
-            // Create product mix inventory record
-            try {
-                error_log("Creating mix inventory: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$mixWeight, cost=$cost, prodId=$id");
-                
-                $stmt = $pdo->prepare('
-                    INSERT INTO product_mix_inventory (
-                        product_mix_category_id,
-                        product_mix_name,
-                        weight,
-                        unit,
-                        stock,
-                        cost,
-                        production_record_id,
-                        created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-                ');
-                $result = $stmt->execute([
-                    $mixCategoryId,
-                    $mixCategoryName,
-                    $mixWeight,
-                    'kg',
-                    $mixWeight,
-                    $cost,
-                    $id
-                ]);
-                
-                if (!$result) {
-                    $errorInfo = $stmt->errorInfo();
-                    error_log("Mix inventory INSERT failed: " . print_r($errorInfo, true));
-                    throw new Exception("Failed to insert mix inventory: " . $errorInfo[2]);
-                }
-                
-                $insertedId = $pdo->lastInsertId();
-                error_log("Mix inventory created successfully with ID: $insertedId");
-                
-            } catch (Exception $mixInsertError) {
-                error_log("Mix inventory creation error: " . $mixInsertError->getMessage());
-                throw $mixInsertError;
-            }
-            
-            // Update production record to completed (mixing is done)
+            // Transition to packing phase (mix inventory created after packing is done)
             $stmt = $pdo->prepare('
                 UPDATE production_records 
                 SET phase = ?, status = ?, mix_weight = ?, product_mix_category_name = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['completed', 'completed', $mixWeight, $mixCategoryName, $id]);
+            $stmt->execute(['packing', 'in-progress', $mixWeight, $mixCategoryName, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('
@@ -2395,6 +2344,128 @@ $routes = [
         }
     },
     
+    // Complete packing phase - create product mix inventory
+    'POST /api/production/{id}/complete-packing' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/production\/(\d+)\/complete-packing/', $uri, $matches);
+        $id = $matches[1] ?? null;
+
+        if (!$id) {
+            return ['error' => 'Production ID is required'];
+        }
+
+        try {
+            // Get production record with category name
+            $stmt = $pdo->prepare('
+                SELECT pr.*, pmc.name as category_name
+                FROM production_records pr
+                LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id
+                WHERE pr.id = ?
+            ');
+            $stmt->execute([$id]);
+            $production = $stmt->fetch();
+
+            if (!$production) {
+                return ['error' => 'Production record not found'];
+            }
+
+            $packWeight = $body['packWeight'] ?? $production['mix_weight'] ?? 0;
+            $mixCategoryId = $production['product_mix_category_id'];
+            $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
+
+            if (empty($mixCategoryName)) {
+                $mixCategoryName = 'Unknown Mix';
+            }
+
+            // Calculate cost from initial ingredients
+            $cost = 0;
+            if (!empty($production['initial_ingredients'])) {
+                $ingredients = json_decode($production['initial_ingredients'], true);
+                if (is_array($ingredients)) {
+                    foreach ($ingredients as $ing) {
+                        $cost += ($ing['quantity'] ?? 0) * 10;
+                    }
+                }
+            }
+
+            // Create product mix inventory record
+            try {
+                error_log("Creating mix inventory from packing: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$packWeight, cost=$cost, prodId=$id");
+
+                $stmt = $pdo->prepare('
+                    INSERT INTO product_mix_inventory (
+                        product_mix_category_id,
+                        product_mix_name,
+                        weight,
+                        unit,
+                        stock,
+                        cost,
+                        production_record_id,
+                        created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                ');
+                $result = $stmt->execute([
+                    $mixCategoryId,
+                    $mixCategoryName,
+                    $packWeight,
+                    'kg',
+                    $packWeight,
+                    $cost,
+                    $id
+                ]);
+
+                if (!$result) {
+                    $errorInfo = $stmt->errorInfo();
+                    error_log("Mix inventory INSERT failed: " . print_r($errorInfo, true));
+                    throw new Exception("Failed to insert mix inventory: " . $errorInfo[2]);
+                }
+
+                $insertedId = $pdo->lastInsertId();
+                error_log("Mix inventory created with ID: $insertedId");
+
+            } catch (Exception $mixInsertError) {
+                error_log("Mix inventory creation error: " . $mixInsertError->getMessage());
+                throw $mixInsertError;
+            }
+
+            // Update production record to completed (packing done, mix is in inventory)
+            $stmt = $pdo->prepare('
+                UPDATE production_records
+                SET phase = ?, status = ?, mix_weight = ?, updated_at = NOW()
+                WHERE id = ?
+            ');
+            $stmt->execute(['completed', 'completed', $packWeight, $id]);
+
+            // Return updated record
+            $stmt = $pdo->prepare('
+                SELECT pr.*, pmc.name as product_mix_category_name
+                FROM production_records pr
+                LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id
+                WHERE pr.id = ?
+            ');
+            $stmt->execute([$id]);
+            $r = $stmt->fetch();
+
+            return [
+                'record' => [
+                    'id' => (string)$r['id'],
+                    'productMixCategoryId' => $r['product_mix_category_id'] ? (string)$r['product_mix_category_id'] : null,
+                    'productMixCategoryName' => $r['product_mix_category_name'],
+                    'quantity' => (float)$r['quantity'],
+                    'mixWeight' => (float)$r['mix_weight'],
+                    'batchNumber' => $r['batch_number'],
+                    'operator' => $r['operator'],
+                    'status' => $r['status'],
+                    'phase' => $r['phase'],
+                    'timestamp' => $r['created_at'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to complete packing: ' . $e->getMessage()];
+        }
+    },
+
     // Complete cooking phase - deduct mix, create products
     'POST /api/production/{id}/complete-cooking' => function() use ($pdo, $body) {
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

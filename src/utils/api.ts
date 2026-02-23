@@ -762,8 +762,8 @@ export interface ProductionRecord {
   mixUsed?: number | null;
   batchNumber: string;
   operator: string;
-  status?: "mixing" | "cooking" | "completed" | "in-progress" | "quality-check";
-  phase?: "mixing" | "cooking" | "completed";
+  status?: "mixing" | "cooking" | "packing" | "completed" | "in-progress" | "quality-check";
+  phase?: "mixing" | "packing" | "cooking" | "completed";
   ingredientsUsed?: IngredientUsed[];
   initialIngredients?: any[];
   outputs?: ProductionOutput[];
@@ -823,6 +823,20 @@ export async function completeMixing(
     {
       method: "POST",
       body: JSON.stringify({ mixWeight }),
+    },
+  );
+  return data.record;
+}
+
+export async function completePacking(
+  id: string,
+  packWeight: number,
+): Promise<ProductionRecord> {
+  const data = await apiRequest<{ record: ProductionRecord }>(
+    `/production/${id}/complete-packing`,
+    {
+      method: "POST",
+      body: JSON.stringify({ packWeight }),
     },
   );
   return data.record;

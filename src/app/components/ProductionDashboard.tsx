@@ -37,6 +37,7 @@ import {
   getProductMixItems,
   getProductMixCategoryDefaultIngredients,
   completeMixing,
+  completePacking,
   completeCooking,
   getProductMixInventory,
   type Product as APIProduct,
@@ -57,7 +58,7 @@ interface ProductionEntry {
   time: string;
   batchNumber: string;
   status: "in-progress" | "completed" | "quality-check";
-  phase?: "mixing" | "cooking" | "completed";
+  phase?: "mixing" | "packing" | "cooking" | "completed";
   productMixCategoryId?: string | null;
   productMixCategoryName?: string | null;
   mixWeight?: number | null;
@@ -226,6 +227,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForMixing, setSelectedProductionForMixing] =
     useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
+
+  // Complete Packing Modal State
+  const [showCompletePackingModal, setShowCompletePackingModal] = useState(false);
+  const [selectedProductionForPacking, setSelectedProductionForPacking] =
+    useState<APIProductionRecord | null>(null);
+  const [packWeight, setPackWeight] = useState("");
 
   // Complete Cooking Modal State
   const [showCompleteCookingModal, setShowCompleteCookingModal] =
@@ -1044,13 +1051,11 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       );
 
       toast.success(
-        `Mixing completed! ${mixWeight} KG of mix added to inventory.`,
+        `Mixing completed! Batch is now in packing phase.`,
       );
-      window.dispatchEvent(new CustomEvent("inventory-changed"));
 
       // Reload data
       await loadProductionRecords();
-      await loadMixInventory();
 
       // Reset modal
       setShowCompleteMixingModal(false);
@@ -1059,6 +1064,42 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     } catch (error) {
       console.error("Error completing mixing:", error);
       toast.error("Failed to complete mixing");
+    }
+  };
+
+  // Complete packing handler
+  const handleCompletePacking = async () => {
+    if (
+      !selectedProductionForPacking ||
+      !packWeight ||
+      parseFloat(packWeight) <= 0
+    ) {
+      toast.error("Please enter a valid packed weight");
+      return;
+    }
+
+    try {
+      await completePacking(
+        selectedProductionForPacking.id,
+        parseFloat(packWeight),
+      );
+
+      toast.success(
+        `Packing completed! ${packWeight} KG of mix added to inventory.`,
+      );
+      window.dispatchEvent(new CustomEvent("inventory-changed"));
+
+      // Reload data
+      await loadProductionRecords();
+      await loadMixInventory();
+
+      // Reset modal
+      setShowCompletePackingModal(false);
+      setSelectedProductionForPacking(null);
+      setPackWeight("");
+    } catch (error) {
+      console.error("Error completing packing:", error);
+      toast.error("Failed to complete packing");
     }
   };
 
@@ -1561,16 +1602,20 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               className={`px-2 py-1 rounded text-xs font-medium ${
                                 production.phase === "mixing"
                                   ? "bg-yellow-100 text-yellow-700"
-                                  : production.phase === "cooking"
-                                    ? "bg-orange-100 text-orange-700"
-                                    : "bg-green-100 text-green-700"
+                                  : production.phase === "packing"
+                                    ? "bg-purple-100 text-purple-700"
+                                    : production.phase === "cooking"
+                                      ? "bg-orange-100 text-orange-700"
+                                      : "bg-green-100 text-green-700"
                               }`}
                             >
                               {production.phase === "mixing"
                                 ? "Mixing"
-                                : production.phase === "cooking"
-                                  ? "Cooking"
-                                  : "Completed"}
+                                : production.phase === "packing"
+                                  ? "Packing"
+                                  : production.phase === "cooking"
+                                    ? "Cooking"
+                                    : "Completed"}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">
@@ -1642,9 +1687,25 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                   );
                                   setShowCompleteMixingModal(true);
                                 }}
-                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
                               >
                                 Complete Mixing
+                              </button>
+                            )}
+                            {production.phase === "packing" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedProductionForPacking(
+                                    production as any,
+                                  );
+                                  setPackWeight(
+                                    String(production.mixWeight || ""),
+                                  );
+                                  setShowCompletePackingModal(true);
+                                }}
+                                className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                              >
+                                Complete Packing
                               </button>
                             )}
                             {production.phase === "cooking" && (
@@ -2051,6 +2112,82 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Complete Mixing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Packing Modal */}
+      {showCompletePackingModal && selectedProductionForPacking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-md w-full p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Complete Packing</h2>
+              <button
+                onClick={() => {
+                  setShowCompletePackingModal(false);
+                  setSelectedProductionForPacking(null);
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Mix Category</p>
+                <p className="font-semibold">
+                  {selectedProductionForPacking.productMixCategoryName}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Batch Number
+                </p>
+                <p className="font-semibold">
+                  {selectedProductionForPacking.batchNumber}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Mix Weight from Mixing
+                </p>
+                <p className="font-semibold">
+                  {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)} KG
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">
+                  Final Packed Weight (KG) *
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={packWeight}
+                  onChange={(e) => setPackWeight(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Confirm the final packed weight. This will be added to the mix inventory.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCompletePackingModal(false);
+                    setSelectedProductionForPacking(null);
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCompletePacking}
+                  className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Complete Packing
                 </button>
               </div>
             </div>
