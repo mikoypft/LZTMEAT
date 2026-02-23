@@ -762,7 +762,13 @@ export interface ProductionRecord {
   mixUsed?: number | null;
   batchNumber: string;
   operator: string;
-  status?: "mixing" | "cooking" | "packing" | "completed" | "in-progress" | "quality-check";
+  status?:
+    | "mixing"
+    | "cooking"
+    | "packing"
+    | "completed"
+    | "in-progress"
+    | "quality-check";
   phase?: "mixing" | "packing" | "cooking" | "completed";
   ingredientsUsed?: IngredientUsed[];
   initialIngredients?: any[];
@@ -1310,12 +1316,14 @@ export async function exportDailyReportPDF(
   const response = await fetch(url);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Failed to generate PDF (${response.status})`);
+    throw new Error(
+      errorData.error || `Failed to generate PDF (${response.status})`,
+    );
   }
 
   const blob = await response.blob();
   const objectUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = objectUrl;
   link.download = `Daily-Report-${date}.pdf`;
   document.body.appendChild(link);
@@ -1336,7 +1344,9 @@ export async function exportDailyReportCSV(
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Failed to generate CSV report (${response.status})`);
+    throw new Error(
+      errorData.error || `Failed to generate CSV report (${response.status})`,
+    );
   }
 
   const blob = await response.blob();

@@ -229,7 +229,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [mixWeight, setMixWeight] = useState("");
 
   // Complete Packing Modal State
-  const [showCompletePackingModal, setShowCompletePackingModal] = useState(false);
+  const [showCompletePackingModal, setShowCompletePackingModal] =
+    useState(false);
   const [selectedProductionForPacking, setSelectedProductionForPacking] =
     useState<APIProductionRecord | null>(null);
   const [packWeight, setPackWeight] = useState("");
@@ -942,12 +943,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     // Validate ingredient stock availability
     // Check default ingredients
     for (const ing of mixDefaultIngredients) {
-      const requestedQty = parseFloat(mixIngredientQuantities[ing.ingredientId] || "0");
+      const requestedQty = parseFloat(
+        mixIngredientQuantities[ing.ingredientId] || "0",
+      );
       if (requestedQty > 0) {
-        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        const ingredient = ingredients?.find(
+          (i) => String(i.id) === String(ing.ingredientId),
+        );
         if (!ingredient || ingredient.stock < requestedQty) {
           toast.error(
-            `Insufficient stock for ${ing.ingredientName || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+            `Insufficient stock for ${ing.ingredientName || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`,
           );
           return;
         }
@@ -958,10 +963,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     for (const ing of mixAdditionalIngredients) {
       const requestedQty = parseFloat(ing.quantity || "0");
       if (requestedQty > 0 && ing.ingredientId) {
-        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        const ingredient = ingredients?.find(
+          (i) => String(i.id) === String(ing.ingredientId),
+        );
         if (!ingredient || ingredient.stock < requestedQty) {
           toast.error(
-            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`,
           );
           return;
         }
@@ -1050,9 +1057,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         parseFloat(mixWeight),
       );
 
-      toast.success(
-        `Mixing completed! Batch is now in packing phase.`,
-      );
+      toast.success(`Mixing completed! Batch is now in packing phase.`);
 
       // Reload data
       await loadProductionRecords();
@@ -1119,14 +1124,27 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       return;
     }
 
+    // Validate total product quantities don't exceed mix used
+    const totalProductQty = productsCreated.reduce(
+      (sum, p) => sum + (parseFloat(p.quantity) || 0),
+      0,
+    );
+    const mixUsedQty = parseFloat(mixUsed);
+    if (totalProductQty > mixUsedQty) {
+      toast.error(
+        `Total product quantity (${totalProductQty.toFixed(1)} KG) exceeds mix used (${mixUsedQty.toFixed(1)} KG). Please adjust the quantities.`,
+      );
+      return;
+    }
+
     // Validate mix stock availability
     if (selectedProductionForCooking.productMixCategoryId) {
       const requestedMixQty = parseFloat(mixUsed);
       const availableMixQty = selectedProductionForCooking.mixWeight || 0;
-      
+
       if (availableMixQty < requestedMixQty) {
         toast.error(
-          `Insufficient mix allocated for this batch. Available: ${availableMixQty.toFixed(1)} KG, Required: ${requestedMixQty.toFixed(1)} KG`
+          `Insufficient mix allocated for this batch. Available: ${availableMixQty.toFixed(1)} KG, Required: ${requestedMixQty.toFixed(1)} KG`,
         );
         return;
       }
@@ -1136,10 +1154,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     for (const ing of cookingIngredients) {
       const requestedQty = parseFloat(ing.quantity || "0");
       if (requestedQty > 0 && ing.ingredientId) {
-        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        const ingredient = ingredients?.find(
+          (i) => String(i.id) === String(ing.ingredientId),
+        );
         if (!ingredient || ingredient.stock < requestedQty) {
           toast.error(
-            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock || 0}, Required: ${requestedQty}`,
           );
           return;
         }
@@ -1195,15 +1215,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   };
 
   // Handle opening Start Cooking from Mix modal
-  const handleStartCookingFromMix = async (category: Category, mixStock: ProductMixInventory) => {
+  const handleStartCookingFromMix = async (
+    category: Category,
+    mixStock: ProductMixInventory,
+  ) => {
     setSelectedMixCategoryForCooking(category);
-    
+
     // Generate batch number
     const nextBatchNumber = generateBatchNumber();
     setCookingBatchNumber(nextBatchNumber);
     setCookingOperator("");
     setCookingMixWeight("");
-    
+
     // Load products for this category
     try {
       const items = await getProductMixItems(String(category.id));
@@ -1218,13 +1241,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       console.error("Error loading mix products:", error);
       toast.error("Failed to load mix products");
     }
-    
+
     setShowStartCookingFromMixModal(true);
   };
 
   // Handle creating a cooking batch from existing mix
   const handleCreateCookingFromMix = async () => {
-    if (!selectedMixCategoryForCooking || !cookingBatchNumber || !cookingOperator || !cookingMixWeight) {
+    if (
+      !selectedMixCategoryForCooking ||
+      !cookingBatchNumber ||
+      !cookingOperator ||
+      !cookingMixWeight
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -1238,10 +1266,14 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
     // Validate against available mix stock
     const availableMix = mixInventory?.find(
-      (inv) => String(inv.productMixCategoryId) === String(selectedMixCategoryForCooking.id)
+      (inv) =>
+        String(inv.productMixCategoryId) ===
+        String(selectedMixCategoryForCooking.id),
     );
     if (availableMix && plannedWeight > availableMix.stock) {
-      toast.error(`Insufficient mix stock. Available: ${availableMix.stock.toFixed(1)} KG, Requested: ${plannedWeight.toFixed(1)} KG`);
+      toast.error(
+        `Insufficient mix stock. Available: ${availableMix.stock.toFixed(1)} KG, Requested: ${plannedWeight.toFixed(1)} KG`,
+      );
       return;
     }
 
@@ -1450,9 +1482,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 {mixInventory.map((mix) => {
                   // Find the matching category for this mix
                   const matchingCategory = mixCategories?.find(
-                    (cat) => String(cat.id) === String(mix.productMixCategoryId)
+                    (cat) =>
+                      String(cat.id) === String(mix.productMixCategoryId),
                   );
-                  
+
                   return (
                     <div
                       key={mix.id}
@@ -1474,7 +1507,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           </p>
                           {matchingCategory && mix.stock > 0 && (
                             <button
-                              onClick={() => handleStartCookingFromMix(matchingCategory, mix)}
+                              onClick={() =>
+                                handleStartCookingFromMix(matchingCategory, mix)
+                              }
                               className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                             >
                               Start Cooking
@@ -1502,71 +1537,71 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               {/* Product Mix Categories Grid */}
               <div className="p-6 border-b border-border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {!mixCategories || mixCategories.length === 0 ? (
-                <div className="col-span-full text-center py-8 text-muted-foreground">
-                  No product mix categories available. Create one in the Product
-                  Mix page.
-                </div>
-              ) : (
-                mixCategories.map((category) => {
-                  // Get mix inventory for this category
-                  const mixStock =
-                    mixInventory &&
-                    mixInventory.find(
-                      (inv) =>
-                        String(inv.productMixCategoryId) ===
-                        String(category.id),
-                    );
-
-                  return (
-                    <div
-                      key={category.id}
-                      className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all"
-                    >
-                      <div className="flex flex-col h-full">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-sm flex-1">
-                            {category.name}
-                          </h3>
-                        </div>
-                        <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
-                          Product Mix
-                        </span>
-
-                        <div className="text-xs text-muted-foreground mb-3 flex-1">
-                          <p className="font-medium mb-1">
-                            Available Actions
-                          </p>
-                        </div>
-
-                        <div className="mb-3">
-                          <p className="text-xl text-primary">
-                            {mixStock?.stock.toFixed(1) || "0.0"} KG
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Mix in Stock
-                          </p>
-                        </div>
-
-                        <div className="mt-auto">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMixCategoryCardClick(category);
-                            }}
-                            className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                          >
-                            Start Mixing
-                          </button>
-                        </div>
-                      </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {!mixCategories || mixCategories.length === 0 ? (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      No product mix categories available. Create one in the
+                      Product Mix page.
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                  ) : (
+                    mixCategories.map((category) => {
+                      // Get mix inventory for this category
+                      const mixStock =
+                        mixInventory &&
+                        mixInventory.find(
+                          (inv) =>
+                            String(inv.productMixCategoryId) ===
+                            String(category.id),
+                        );
+
+                      return (
+                        <div
+                          key={category.id}
+                          className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all"
+                        >
+                          <div className="flex flex-col h-full">
+                            <div className="flex justify-between items-start mb-2">
+                              <h3 className="font-medium text-sm flex-1">
+                                {category.name}
+                              </h3>
+                            </div>
+                            <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-3">
+                              Product Mix
+                            </span>
+
+                            <div className="text-xs text-muted-foreground mb-3 flex-1">
+                              <p className="font-medium mb-1">
+                                Available Actions
+                              </p>
+                            </div>
+
+                            <div className="mb-3">
+                              <p className="text-xl text-primary">
+                                {mixStock?.stock.toFixed(1) || "0.0"} KG
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Mix in Stock
+                              </p>
+                            </div>
+
+                            <div className="mt-auto">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMixCategoryCardClick(category);
+                                }}
+                                className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                              >
+                                Start Mixing
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </>
           )}
 
@@ -1580,7 +1615,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     <th className="text-left py-3 px-4">Product / Mix Name</th>
                     <th className="text-left py-3 px-4">Phase</th>
                     <th className="text-left py-3 px-4">Weight (KG)</th>
-                    {isAdmin && <th className="text-left py-3 px-4">Ingredients</th>}
+                    {isAdmin && (
+                      <th className="text-left py-3 px-4">Ingredients</th>
+                    )}
                     <th className="text-left py-3 px-4">Date</th>
                     <th className="text-left py-3 px-4">Time</th>
                     <th className="text-left py-3 px-4">Status</th>
@@ -2169,7 +2206,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Confirm the final packed weight. This will be added to the mix inventory.
+                  Confirm the final packed weight. This will be added to the mix
+                  inventory.
                 </p>
               </div>
 
@@ -2247,7 +2285,25 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               </div>
 
               <div className="bg-secondary/50 rounded-lg p-4 border border-border">
-                <h3 className="text-sm font-medium mb-3">Products Created *</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">Products Created *</h3>
+                  {(() => {
+                    const total = productsCreated.reduce(
+                      (sum, p) => sum + (parseFloat(p.quantity) || 0),
+                      0,
+                    );
+                    const limit = parseFloat(mixUsed) || 0;
+                    const over = limit > 0 && total > limit;
+                    return (
+                      <span className={`text-xs font-medium ${
+                        over ? "text-red-600" : "text-muted-foreground"
+                      }`}>
+                        Total: {total.toFixed(1)} / {limit > 0 ? limit.toFixed(1) : "—"} KG
+                        {over && " ⚠ Exceeds mix used"}
+                      </span>
+                    );
+                  })()}
+                </div>
 
                 <div className="space-y-2">
                   {!productsCreated || productsCreated.length === 0 ? (
@@ -2404,11 +2460,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   Mix Available
                 </p>
                 <p className="font-semibold text-primary">
-                  {mixInventory && mixInventory.find(
-                    (inv) =>
-                      String(inv.productMixCategoryId) ===
-                      String(selectedMixCategoryForCooking.id),
-                  )?.stock.toFixed(1) || "0.0"} KG
+                  {(mixInventory &&
+                    mixInventory
+                      .find(
+                        (inv) =>
+                          String(inv.productMixCategoryId) ===
+                          String(selectedMixCategoryForCooking.id),
+                      )
+                      ?.stock.toFixed(1)) ||
+                    "0.0"}{" "}
+                  KG
                 </p>
               </div>
 
@@ -2440,7 +2501,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Planned Mix Weight (KG) *</label>
+                <label className="block text-sm mb-2">
+                  Planned Mix Weight (KG) *
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -2453,8 +2516,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> This will create a new cooking batch using existing mix inventory. 
-                  You'll be able to specify products created when you complete the cooking phase.
+                  <strong>Note:</strong> This will create a new cooking batch
+                  using existing mix inventory. You'll be able to specify
+                  products created when you complete the cooking phase.
                 </p>
               </div>
 
