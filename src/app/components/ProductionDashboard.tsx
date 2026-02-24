@@ -1080,20 +1080,20 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     if (
       !selectedProductionForPacking ||
       !rawPackedItemsInput ||
-      parseInt(rawPackedItemsInput) <= 0
+      parseFloat(rawPackedItemsInput) <= 0
     ) {
-      toast.error("Please enter a valid raw packed items count");
+      toast.error("Please enter a valid raw packed items weight");
       return;
     }
 
     try {
       await completePacking(
         selectedProductionForPacking.id,
-        parseInt(rawPackedItemsInput),
+        parseFloat(rawPackedItemsInput),
       );
 
       toast.success(
-        `Packing completed! ${rawPackedItemsInput} pcs recorded as raw packed items. Batch is now ready for cooking.`,
+        `Packing completed! ${rawPackedItemsInput} KG recorded as raw packed items. Batch is now ready for cooking.`,
       );
       window.dispatchEvent(new CustomEvent("inventory-changed"));
 
@@ -1670,6 +1670,11 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               <div className="text-xs text-muted-foreground">
                                 Mix: {production.mixWeight.toFixed(1)} KG
                               </div>
+                              {(production as any).rawPackedItems != null && (
+                                <div className="text-xs text-purple-600 font-medium">
+                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
+                                </div>
+                              )}
                             </>
                           ) : production.phase === "packing" && production.mixWeight ? (
                             <>
@@ -1678,7 +1683,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               </div>
                               {(production as any).rawPackedItems != null && (
                                 <div className="text-xs text-purple-600 font-medium">
-                                  {(production as any).rawPackedItems} pcs raw
+                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
                                 </div>
                               )}
                             </>
@@ -1687,7 +1692,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               {(Number(production.weightKg) || 0).toFixed(1)} KG
                               {(production as any).rawPackedItems != null && (
                                 <div className="text-xs text-purple-600 font-medium">
-                                  {(production as any).rawPackedItems} pcs raw
+                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
                                 </div>
                               )}
                             </>
@@ -2214,7 +2219,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                       Raw Packed Items
                     </p>
                     <p className="font-semibold text-purple-600">
-                      {(selectedProductionForPacking as any).rawPackedItems} pcs
+                      {((selectedProductionForPacking as any).rawPackedItems as number).toFixed(1)} KG
                     </p>
                   </>
                 )}
@@ -2222,19 +2227,19 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               <div>
                 <label className="block text-sm mb-2">
-                  Raw Packed Items (pcs) *
+                  Raw Packed Items (KG) *
                 </label>
                 <input
                   type="number"
-                  step="1"
-                  min="1"
+                  step="0.1"
+                  min="0.1"
                   value={rawPackedItemsInput}
                   onChange={(e) => setRawPackedItemsInput(e.target.value)}
-                  placeholder="e.g. 50"
+                  placeholder="0.0"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Number of individual raw items packed — these will be cooked in the next phase.
+                  Weight of raw packed items in KG — these will be cooked in the next phase.
                 </p>
               </div>
 
