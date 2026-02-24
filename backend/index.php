@@ -2332,7 +2332,18 @@ $routes = [
             if (empty($mixCategoryName)) {
                 $mixCategoryName = 'Unknown Mix';
             }
-            
+
+            // Insert into product_mix_inventory with the mix weight
+            $cost = 0;
+            $stmt = $pdo->prepare('
+                INSERT INTO product_mix_inventory (
+                    product_mix_category_id, product_mix_name, weight, unit, stock, cost, production_record_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ');
+            $stmt->execute([
+                $mixCategoryId, $mixCategoryName, $mixWeight, 'kg', $mixWeight, $cost, $id
+            ]);
+
             // Transition to packing phase (mix inventory created after packing is done)
             $stmt = $pdo->prepare('
                 UPDATE production_records 
@@ -2416,6 +2427,18 @@ $routes = [
                         $cost += ($ing['quantity'] ?? 0) * 10;
                     }
                 }
+            }
+
+            // Deduct mix weight from product_mix_inventory (mix is consumed during packing)
+            if ($mixWeightForInventory > 0) {
+                $stmt = $pdo->prepare('
+                    UPDATE product_mix_inventory
+                    SET stock = GREATEST(0, stock - ?), updated_at = NOW()
+                    WHERE product_mix_category_id = ?
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                ');
+                $stmt->execute([$mixWeightForInventory, $mixCategoryId]);
             }
 
             // Create raw product inventory record using the raw packed items weight

@@ -1092,6 +1092,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
       // Reload data
       await loadProductionRecords();
+      await loadMixInventory();
 
       // Reset modal
       setShowCompleteMixingModal(false);
