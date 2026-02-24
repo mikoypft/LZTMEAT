@@ -236,6 +236,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForPacking, setSelectedProductionForPacking] =
     useState<APIProductionRecord | null>(null);
   const [packWeight, setPackWeight] = useState("");
+  const [rawPackedItemsInput, setRawPackedItemsInput] = useState("");
 
   // Complete Cooking Modal State
   const [showCompleteCookingModal, setShowCompleteCookingModal] =
@@ -1078,21 +1079,21 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const handleCompletePacking = async () => {
     if (
       !selectedProductionForPacking ||
-      !packWeight ||
-      parseFloat(packWeight) <= 0
+      !rawPackedItemsInput ||
+      parseInt(rawPackedItemsInput) <= 0
     ) {
-      toast.error("Please enter a valid packed weight");
+      toast.error("Please enter a valid raw packed items count");
       return;
     }
 
     try {
       await completePacking(
         selectedProductionForPacking.id,
-        parseFloat(packWeight),
+        parseInt(rawPackedItemsInput),
       );
 
       toast.success(
-        `Packing completed! ${packWeight} KG of mix added to inventory.`,
+        `Packing completed! ${rawPackedItemsInput} pcs recorded as raw packed items. Batch is now ready for cooking.`,
       );
       window.dispatchEvent(new CustomEvent("inventory-changed"));
 
@@ -1103,7 +1104,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       // Reset modal
       setShowCompletePackingModal(false);
       setSelectedProductionForPacking(null);
-      setPackWeight("");
+      setRawPackedItemsInput("");
     } catch (error) {
       console.error("Error completing packing:", error);
       toast.error("Failed to complete packing");
@@ -1753,9 +1754,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                   setSelectedProductionForPacking(
                                     production as any,
                                   );
-                                  setPackWeight(
-                                    String(production.mixWeight || ""),
-                                  );
+                                  setRawPackedItemsInput("");
                                   setShowCompletePackingModal(true);
                                 }}
                                 className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
@@ -2242,19 +2241,19 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               <div>
                 <label className="block text-sm mb-2">
-                  Final Packed Weight (KG) *
+                  Raw Packed Items (pcs) *
                 </label>
                 <input
                   type="number"
-                  step="0.1"
-                  value={packWeight}
-                  onChange={(e) => setPackWeight(e.target.value)}
-                  placeholder="0.0"
+                  step="1"
+                  min="1"
+                  value={rawPackedItemsInput}
+                  onChange={(e) => setRawPackedItemsInput(e.target.value)}
+                  placeholder="e.g. 50"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Confirm the final packed weight. This will be added to the mix
-                  inventory.
+                  Number of individual raw items packed — these will be cooked in the next phase.
                 </p>
               </div>
 

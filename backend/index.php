@@ -2374,7 +2374,9 @@ $routes = [
                 return ['error' => 'Production record not found'];
             }
 
-            $packWeight = $body['packWeight'] ?? $production['mix_weight'] ?? 0;
+            $rawPackedItems = isset($body['rawPackedItems']) ? (int)$body['rawPackedItems'] : null;
+            // Mix inventory weight comes from the original mix_weight recorded during mixing
+            $mixWeightForInventory = (float)($production['mix_weight'] ?? 0);
             $mixCategoryId = $production['product_mix_category_id'];
             $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
 
@@ -2393,9 +2395,9 @@ $routes = [
                 }
             }
 
-            // Create product mix inventory record
+            // Create product mix inventory record using the original mix weight (ready for cooking)
             try {
-                error_log("Creating mix inventory from packing: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$packWeight, cost=$cost, prodId=$id");
+                error_log("Creating mix inventory from packing: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$mixWeightForInventory, rawPackedItems=$rawPackedItems, prodId=$id");
 
                 $stmt = $pdo->prepare('
                     INSERT INTO product_mix_inventory (
@@ -2412,9 +2414,9 @@ $routes = [
                 $result = $stmt->execute([
                     $mixCategoryId,
                     $mixCategoryName,
-                    $packWeight,
+                    $mixWeightForInventory,
                     'kg',
-                    $packWeight,
+                    $mixWeightForInventory,
                     $cost,
                     $id
                 ]);
@@ -2433,13 +2435,13 @@ $routes = [
                 throw $mixInsertError;
             }
 
-            // Update production record to completed (packing done, mix is in inventory)
+            // Update production record: packing done → transition to cooking phase
             $stmt = $pdo->prepare('
                 UPDATE production_records
-                SET phase = ?, status = ?, mix_weight = ?, updated_at = NOW()
+                SET phase = ?, status = ?, raw_packed_items = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['completed', 'completed', $packWeight, $id]);
+            $stmt->execute(['cooking', 'in-progress', $rawPackedItems, $id]);
 
             // Return updated record
             $stmt = $pdo->prepare('
@@ -2458,6 +2460,7 @@ $routes = [
                     'productMixCategoryName' => $r['product_mix_category_name'],
                     'quantity' => (float)$r['quantity'],
                     'mixWeight' => (float)$r['mix_weight'],
+                    'rawPackedItems' => $r['raw_packed_items'] !== null ? (int)$r['raw_packed_items'] : null,
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'],

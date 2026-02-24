@@ -838,13 +838,13 @@ export async function completeMixing(
 
 export async function completePacking(
   id: string,
-  packWeight: number,
+  rawPackedItems: number,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-packing`,
     {
       method: "POST",
-      body: JSON.stringify({ packWeight }),
+      body: JSON.stringify({ rawPackedItems }),
     },
   );
   return data.record;
