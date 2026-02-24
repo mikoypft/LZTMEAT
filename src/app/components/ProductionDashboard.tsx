@@ -63,6 +63,7 @@ interface ProductionEntry {
   productMixCategoryName?: string | null;
   mixWeight?: number | null;
   mixUsed?: number | null;
+  rawPackedItems?: number | null;
   ingredientsUsed: Array<{
     code: string;
     name: string;
@@ -227,6 +228,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForMixing, setSelectedProductionForMixing] =
     useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
+  const [rawPackedItemsMix, setRawPackedItemsMix] = useState("");
 
   // Complete Packing Modal State
   const [showCompletePackingModal, setShowCompletePackingModal] =
@@ -1668,9 +1670,25 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                 Mix: {production.mixWeight.toFixed(1)} KG
                               </div>
                             </>
+                          ) : production.phase === "packing" && production.mixWeight ? (
+                            <>
+                              <div className="text-xs">
+                                {production.mixWeight.toFixed(1)} KG
+                              </div>
+                              {(production as any).rawPackedItems != null && (
+                                <div className="text-xs text-purple-600 font-medium">
+                                  {(production as any).rawPackedItems} pcs raw
+                                </div>
+                              )}
+                            </>
                           ) : (
                             <>
                               {(Number(production.weightKg) || 0).toFixed(1)} KG
+                              {(production as any).rawPackedItems != null && (
+                                <div className="text-xs text-purple-600 font-medium">
+                                  {(production as any).rawPackedItems} pcs raw
+                                </div>
+                              )}
                             </>
                           )}
                         </td>
@@ -2134,11 +2152,30 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm mb-2">
+                  Raw Packed Items (pcs)
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={rawPackedItemsMix}
+                  onChange={(e) => setRawPackedItemsMix(e.target.value)}
+                  placeholder="e.g. 100"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Number of individual items packed from this mix (to be cooked)
+                </p>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCompleteMixingModal(false);
                     setSelectedProductionForMixing(null);
+                    setRawPackedItemsMix("");
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >
@@ -2191,6 +2228,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <p className="font-semibold">
                   {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)} KG
                 </p>
+                {(selectedProductionForPacking as any).rawPackedItems != null && (
+                  <>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Raw Packed Items
+                    </p>
+                    <p className="font-semibold text-purple-600">
+                      {(selectedProductionForPacking as any).rawPackedItems} pcs
+                    </p>
+                  </>
+                )}
               </div>
 
               <div>

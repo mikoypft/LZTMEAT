@@ -240,6 +240,7 @@ try {
         try { $pdo->exec("ALTER TABLE production_records MODIFY COLUMN phase ENUM('mixing', 'packing', 'cooking', 'completed') NOT NULL DEFAULT 'mixing'"); } catch(Exception $e2) {}
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS mix_weight DECIMAL(10,2) NULL AFTER quantity");
         $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS mix_used DECIMAL(10,2) NULL AFTER mix_weight");
+        $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS raw_packed_items INT NULL AFTER mix_used");
     } catch (Exception $tableErr) {
         error_log('production_records columns addition: ' . $tableErr->getMessage());
     }
@@ -1846,6 +1847,7 @@ $routes = [
                     'quantity' => (float)$r['quantity'],
                     'mixWeight' => $r['mix_weight'] ? (float)$r['mix_weight'] : null,
                     'mixUsed' => $r['mix_used'] ? (float)$r['mix_used'] : null,
+                    'rawPackedItems' => $r['raw_packed_items'] !== null ? (int)$r['raw_packed_items'] : null,
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
@@ -1974,6 +1976,7 @@ $routes = [
                     'quantity' => (float)$r['quantity'],
                     'mixWeight' => $r['mix_weight'] ? (float)$r['mix_weight'] : null,
                     'mixUsed' => $r['mix_used'] ? (float)$r['mix_used'] : null,
+                    'rawPackedItems' => $r['raw_packed_items'] !== null ? (int)$r['raw_packed_items'] : null,
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'mixing',
@@ -2298,6 +2301,7 @@ $routes = [
             }
             
             $mixWeight = $body['mixWeight'] ?? 0;
+            $rawPackedItems = isset($body['rawPackedItems']) ? (int)$body['rawPackedItems'] : null;
             $mixCategoryId = $production['product_mix_category_id'];
             $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
             
@@ -2309,10 +2313,10 @@ $routes = [
             // Transition to packing phase (mix inventory created after packing is done)
             $stmt = $pdo->prepare('
                 UPDATE production_records 
-                SET phase = ?, status = ?, mix_weight = ?, product_mix_category_name = ?, updated_at = NOW()
+                SET phase = ?, status = ?, mix_weight = ?, raw_packed_items = ?, product_mix_category_name = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['packing', 'in-progress', $mixWeight, $mixCategoryName, $id]);
+            $stmt->execute(['packing', 'in-progress', $mixWeight, $rawPackedItems, $mixCategoryName, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('
@@ -2331,6 +2335,7 @@ $routes = [
                     'productMixCategoryName' => $r['product_mix_category_name'],
                     'quantity' => (float)$r['quantity'],
                     'mixWeight' => (float)$r['mix_weight'],
+                    'rawPackedItems' => $r['raw_packed_items'] !== null ? (int)$r['raw_packed_items'] : null,
                     'batchNumber' => $r['batch_number'],
                     'operator' => $r['operator'],
                     'status' => $r['status'],

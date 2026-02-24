@@ -760,6 +760,7 @@ export interface ProductionRecord {
   quantity: number;
   mixWeight?: number | null;
   mixUsed?: number | null;
+  rawPackedItems?: number | null;
   batchNumber: string;
   operator: string;
   status?:
@@ -823,12 +824,13 @@ export async function createProductionRecord(
 export async function completeMixing(
   id: string,
   mixWeight: number,
+  rawPackedItems?: number | null,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-mixing`,
     {
       method: "POST",
-      body: JSON.stringify({ mixWeight }),
+      body: JSON.stringify({ mixWeight, rawPackedItems: rawPackedItems ?? null }),
     },
   );
   return data.record;
