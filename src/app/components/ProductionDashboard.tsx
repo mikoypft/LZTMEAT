@@ -2491,9 +2491,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
       {/* Complete Packing Modal */}
       {showCompletePackingModal && selectedProductionForPacking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg max-w-lg w-full border border-border flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-6 pb-4 shrink-0">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-card rounded-lg max-w-lg w-full p-6 border border-border my-8">
+            <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Complete Packing</h2>
               <button
                 onClick={() => {
@@ -2507,7 +2507,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-6 pb-2 space-y-4">
+            <div className="space-y-4">
               <div className="bg-muted/30 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Mix Category</p>
                 <p className="font-semibold">
@@ -2608,10 +2608,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 </div>
               </div>
 
-            </div>
-
-            <div className="px-6 pb-6 pt-3 shrink-0 border-t border-border">
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => {
                     setShowCompletePackingModal(false);
