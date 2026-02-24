@@ -1172,7 +1172,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     // Validate raw packed items availability
     if (selectedProductionForCooking.productMixCategoryId) {
       const requestedQty = parseFloat(mixUsed);
-      const availableQty = (selectedProductionForCooking as any).rawPackedItems || 0;
+      const availableQty = rawProductInventory.find(
+        inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
+      )?.stock ?? 0;
 
       if (availableQty < requestedQty) {
         toast.error(
@@ -2399,7 +2401,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   Raw Packed Items Available
                 </p>
                 <p className="font-semibold text-primary">
-                  {((selectedProductionForCooking as any).rawPackedItems ?? 0).toFixed(1)}{" "}
+                  {(rawProductInventory.find(
+                    inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
+                  )?.stock ?? 0).toFixed(1)}{" "}
                   KG
                 </p>
               </div>
@@ -2412,7 +2416,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   value={mixUsed}
                   onChange={(e) => setMixUsed(e.target.value)}
                   placeholder="0.0"
-                  max={(selectedProductionForCooking as any).rawPackedItems || 0}
+                  max={rawProductInventory.find(
+                    inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
+                  )?.stock ?? 0}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
