@@ -851,12 +851,13 @@ export async function completeMixing(
 export async function completePacking(
   id: string,
   rawPackedItems: number,
+  packingIngredients?: Array<{ ingredientId: string; quantity: number }>,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-packing`,
     {
       method: "POST",
-      body: JSON.stringify({ rawPackedItems }),
+      body: JSON.stringify({ rawPackedItems, packingIngredients: packingIngredients || [] }),
     },
   );
   return data.record;

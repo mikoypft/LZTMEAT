@@ -2481,6 +2481,23 @@ $routes = [
                 throw $rawInsertError;
             }
 
+            // Deduct packing ingredients from ingredient stock
+            $packingIngredients = $body['packingIngredients'] ?? [];
+            if (is_array($packingIngredients) && count($packingIngredients) > 0) {
+                foreach ($packingIngredients as $ing) {
+                    $ingId  = $ing['ingredientId'] ?? null;
+                    $ingQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    if ($ingId && $ingQty > 0) {
+                        try {
+                            $pdo->prepare('UPDATE ingredients SET stock = stock - ?, updated_at = NOW() WHERE id = ?')
+                                ->execute([$ingQty, $ingId]);
+                        } catch (Exception $ingErr) {
+                            error_log('Packing ingredient deduction failed for ID ' . $ingId . ': ' . $ingErr->getMessage());
+                        }
+                    }
+                }
+            }
+
             // Update production record: packing done → transition to cooking phase
             $stmt = $pdo->prepare('
                 UPDATE production_records
