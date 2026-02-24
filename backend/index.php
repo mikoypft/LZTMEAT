@@ -603,6 +603,12 @@ $routes = [
             $stmt->execute([$productId]);
             $product = $stmt->fetch();
             
+            logSystemHistory($pdo, 'Product Created', 'Product', (string)$productId, [
+                'name' => $product['name'],
+                'category' => $product['category'] ?? 'Uncategorized',
+                'price' => (float)$product['price'],
+            ]);
+            
             return [
                 'product' => [
                     'id' => (string)$product['id'],
@@ -669,6 +675,10 @@ $routes = [
                 return ['error' => 'Product not found'];
             }
             
+            logSystemHistory($pdo, 'Product Updated', 'Product', (string)$id, [
+                'name' => $product['name'],
+            ]);
+            
             return [
                 'product' => [
                     'id' => (string)$product['id'],
@@ -697,6 +707,11 @@ $routes = [
         }
         
         try {
+            // Get product name before deleting
+            $nameStmt = $pdo->prepare('SELECT name FROM products WHERE id = ?');
+            $nameStmt->execute([$id]);
+            $productRow = $nameStmt->fetch();
+            
             // Delete related inventory records first
             $stmt = $pdo->prepare('DELETE FROM inventory WHERE product_id = ?');
             $stmt->execute([$id]);
@@ -704,6 +719,10 @@ $routes = [
             // Delete the product
             $stmt = $pdo->prepare('DELETE FROM products WHERE id = ?');
             $stmt->execute([$id]);
+            
+            logSystemHistory($pdo, 'Product Deleted', 'Product', $id, [
+                'name' => $productRow['name'] ?? 'Unknown',
+            ]);
             
             return ['success' => true, 'message' => 'Product deleted successfully'];
         } catch (Exception $e) {
@@ -861,6 +880,10 @@ $routes = [
         $stmt->execute([$lastId]);
         $category = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Category Created', 'Category', (string)$lastId, [
+            'name' => $category['name'],
+        ]);
+        
         return [
             'category' => [
                 'id' => (string)$category['id'],
@@ -886,6 +909,10 @@ $routes = [
         $stmt->execute([$id]);
         $category = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Category Updated', 'Category', (string)$id, [
+            'name' => $category['name'],
+        ]);
+        
         return [
             'category' => [
                 'id' => (string)$category['id'],
@@ -900,8 +927,16 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        $nameStmt = $pdo->prepare('SELECT name FROM categories WHERE id = ?');
+        $nameStmt->execute([$id]);
+        $catRow = $nameStmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM categories WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'Category Deleted', 'Category', $id, [
+            'name' => $catRow['name'] ?? 'Unknown',
+        ]);
         
         return ['success' => true];
     },
@@ -935,6 +970,10 @@ $routes = [
         $stmt->execute([$lastId]);
         $category = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Ingredient Category Created', 'IngredientCategory', (string)$lastId, [
+            'name' => $category['name'],
+        ]);
+        
         return [
             'category' => [
                 'id' => (string)$category['id'],
@@ -960,6 +999,10 @@ $routes = [
         $stmt->execute([$id]);
         $category = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Ingredient Category Updated', 'IngredientCategory', (string)$id, [
+            'name' => $category['name'],
+        ]);
+        
         return [
             'category' => [
                 'id' => (string)$category['id'],
@@ -974,8 +1017,16 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        $nameStmt = $pdo->prepare('SELECT name FROM ingredient_categories WHERE id = ?');
+        $nameStmt->execute([$id]);
+        $catRow = $nameStmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM ingredient_categories WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'Ingredient Category Deleted', 'IngredientCategory', $id, [
+            'name' => $catRow['name'] ?? 'Unknown',
+        ]);
         
         return ['success' => true];
     },
@@ -1344,6 +1395,11 @@ $routes = [
         $stmt->execute([$lastId]);
         $store = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Store Created', 'Store', (string)$lastId, [
+            'name' => $store['name'],
+            'address' => $store['address'],
+        ]);
+        
         return [
             'store' => [
                 'id' => (string)$store['id'],
@@ -1378,6 +1434,10 @@ $routes = [
         $stmt->execute([$id]);
         $store = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Store Updated', 'Store', (string)$id, [
+            'name' => $store['name'],
+        ]);
+        
         return [
             'store' => [
                 'id' => (string)$store['id'],
@@ -1397,8 +1457,16 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        $nameStmt = $pdo->prepare('SELECT name FROM stores WHERE id = ?');
+        $nameStmt->execute([$id]);
+        $storeRow = $nameStmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM stores WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'Store Deleted', 'Store', $id, [
+            'name' => $storeRow['name'] ?? 'Unknown',
+        ]);
         
         return ['success' => true];
     },
@@ -1989,6 +2057,13 @@ $routes = [
                 }
             }
             
+            logSystemHistory($pdo, 'Production Started', 'ProductionRecord', (string)$id, [
+                'batchNumber' => $r['batch_number'] ?? '',
+                'categoryName' => $r['product_mix_category_name'] ?? $r['product_name'] ?? '',
+                'phase' => $r['phase'] ?? 'mixing',
+                'operator' => $r['operator'] ?? '',
+            ]);
+            
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -2290,6 +2365,11 @@ $routes = [
             // Finally, delete the production record
             $stmt = $pdo->prepare('DELETE FROM production_records WHERE id = ?');
             $stmt->execute([$id]);
+            
+            logSystemHistory($pdo, 'Production Deleted', 'ProductionRecord', $id, [
+                'batchNumber' => $production['batch_number'] ?? '',
+                'categoryName' => $production['product_mix_category_name'] ?? '',
+            ]);
             
             return ['success' => true, 'message' => 'Production record deleted and ingredients returned to stock'];
         } catch (Exception $e) {
@@ -3011,6 +3091,13 @@ $routes = [
         
         $transferId = $pdo->lastInsertId();
         
+        logSystemHistory($pdo, 'Transfer Created', 'Transfer', (string)$transferId, [
+            'from' => $body['from'] ?? '',
+            'to' => $body['to'] ?? '',
+            'quantity' => $body['quantity'] ?? 0,
+            'requestedBy' => $body['requestedBy'] ?? '',
+        ]);
+        
         // Fetch the created transfer with full details
         $stmt = $pdo->prepare('SELECT t.*, p.name as product_name FROM transfers t LEFT JOIN products p ON t.product_id = p.id WHERE t.id = ?');
         $stmt->execute([$transferId]);
@@ -3127,6 +3214,15 @@ $routes = [
             }
             
             $discrepancy = $originalQuantity - $quantityReceived;
+            
+            logSystemHistory($pdo, 'Transfer Received', 'Transfer', (string)$transferId, [
+                'from' => $transfer['from'],
+                'to' => $transfer['to'],
+                'quantitySent' => $originalQuantity,
+                'quantityReceived' => $quantityReceived,
+                'discrepancy' => $discrepancy,
+                'receivedBy' => $body['receivedBy'] ?? null,
+            ]);
             
             return [
                 'transfer' => [
@@ -3275,6 +3371,11 @@ $routes = [
             $stmt->execute([$id]);
             $supplier = $stmt->fetch();
 
+            logSystemHistory($pdo, 'Supplier Created', 'Supplier', (string)$id, [
+                'name' => $supplier['name'],
+                'contactPerson' => $supplier['contact_person'] ?? '',
+            ]);
+
             http_response_code(201);
             return [
                 'supplier' => [
@@ -3326,6 +3427,10 @@ $routes = [
             $stmt->execute([$id]);
             $updated = $stmt->fetch();
 
+            logSystemHistory($pdo, 'Supplier Updated', 'Supplier', (string)$id, [
+                'name' => $updated['name'],
+            ]);
+
             return [
                 'supplier' => [
                     'id' => (string)$updated['id'],
@@ -3356,6 +3461,8 @@ $routes = [
 
             $stmt = $pdo->prepare('DELETE FROM suppliers WHERE id = ?');
             $stmt->execute([$id]);
+
+            logSystemHistory($pdo, 'Supplier Deleted', 'Supplier', $id, []);
 
             return ['success' => true];
         } catch (Exception $e) {
@@ -3623,6 +3730,12 @@ $routes = [
                 return ['error' => 'Failed to fetch created user'];
             }
             
+            logSystemHistory($pdo, 'User Created', 'User', (string)$lastId, [
+                'name' => $user['full_name'],
+                'role' => $user['role'],
+                'username' => $user['username'],
+            ]);
+            
             // Get store name if store_id is set
             $storeName = null;
             if (!empty($user['store_id'])) {
@@ -3718,6 +3831,11 @@ $routes = [
                 return ['error' => 'User not found after update'];
             }
             
+            logSystemHistory($pdo, 'User Updated', 'User', (string)$id, [
+                'name' => $user['full_name'] ?? '',
+                'role' => $user['role'] ?? '',
+            ]);
+            
             return [
                 'employee' => [
                     'id' => (string)$user['id'],
@@ -3743,8 +3861,17 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        $nameStmt = $pdo->prepare('SELECT full_name, role FROM users WHERE id = ?');
+        $nameStmt->execute([$id]);
+        $userRow = $nameStmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'User Deleted', 'User', $id, [
+            'name' => $userRow['full_name'] ?? 'Unknown',
+            'role' => $userRow['role'] ?? '',
+        ]);
         
         return ['success' => true];
     },
@@ -3753,8 +3880,17 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        $nameStmt = $pdo->prepare('SELECT full_name, role FROM users WHERE id = ?');
+        $nameStmt->execute([$id]);
+        $userRow = $nameStmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'User Deleted', 'User', $id, [
+            'name' => $userRow['full_name'] ?? 'Unknown',
+            'role' => $userRow['role'] ?? '',
+        ]);
         
         return ['success' => true];
     },
@@ -3893,6 +4029,13 @@ $routes = [
         $stmt->execute([$lastId]);
         $ingredient = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Ingredient Created', 'Ingredient', (string)$lastId, [
+            'name' => $ingredient['name'],
+            'code' => $ingredient['code'],
+            'unit' => $ingredient['unit'],
+            'stock' => (float)$ingredient['stock'],
+        ]);
+        
         return [
             'ingredient' => [
                 'id' => (string)$ingredient['id'],
@@ -3981,6 +4124,13 @@ $routes = [
         $stmt->execute([$id]);
         $updated = $stmt->fetch();
         
+        logSystemHistory($pdo, 'Ingredient Updated', 'Ingredient', (string)$id, [
+            'name' => $updated['name'],
+            'code' => $updated['code'],
+            'unit' => $updated['unit'],
+            'stock' => (float)$updated['stock'],
+        ]);
+        
         return [
             'ingredient' => [
                 'id' => (string)$updated['id'],
@@ -4003,8 +4153,18 @@ $routes = [
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = substr($uri, strrpos($uri, '/') + 1);
         
+        // Fetch ingredient name before deleting
+        $stmt = $pdo->prepare('SELECT name, code FROM ingredients WHERE id = ?');
+        $stmt->execute([$id]);
+        $ingredient = $stmt->fetch();
+        
         $stmt = $pdo->prepare('DELETE FROM ingredients WHERE id = ?');
         $stmt->execute([$id]);
+        
+        logSystemHistory($pdo, 'Ingredient Deleted', 'Ingredient', $id, [
+            'name' => $ingredient['name'] ?? 'Unknown',
+            'code' => $ingredient['code'] ?? '',
+        ]);
         
         return ['success' => true];
     },
@@ -4250,6 +4410,14 @@ $routes = [
 
             $id = (string)$pdo->lastInsertId();
 
+            logSystemHistory($pdo, 'Transaction Created', 'Transaction', $id, [
+                'type' => $type,
+                'amount' => $amount,
+                'description' => $description,
+                'category' => $category,
+                'createdBy' => $createdBy,
+            ]);
+
             return [
                 'success' => true,
                 'transaction' => [
@@ -4276,6 +4444,8 @@ $routes = [
         try {
             $stmt = $pdo->prepare('DELETE FROM transactions WHERE id = ?');
             $stmt->execute([$id]);
+
+            logSystemHistory($pdo, 'Transaction Deleted', 'Transaction', $id, []);
 
             return ['success' => true, 'message' => 'Transaction deleted'];
         } catch (Exception $e) {
