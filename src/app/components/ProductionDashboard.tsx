@@ -1538,16 +1538,6 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           <p className="text-xs text-muted-foreground mt-2">
                             Cost: ₱{mix.cost.toFixed(2)}
                           </p>
-                          {matchingCategory && mix.stock > 0 && (
-                            <button
-                              onClick={() =>
-                                handleStartCookingFromMix(matchingCategory, mix)
-                              }
-                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                            >
-                              Start Cooking
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
