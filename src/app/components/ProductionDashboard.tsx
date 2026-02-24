@@ -2070,6 +2070,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                     production as any,
                                   );
                                   setRawPackedItemsInput("");
+                                  setPackingIngredients([]);
                                   setShowCompletePackingModal(true);
                                 }}
                                 className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
@@ -2490,8 +2491,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
       {/* Complete Packing Modal */}
       {showCompletePackingModal && selectedProductionForPacking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg max-w-md w-full p-6 border border-border">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-card rounded-lg max-w-lg w-full p-6 border border-border my-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Complete Packing</h2>
               <button
