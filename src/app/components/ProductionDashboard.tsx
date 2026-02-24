@@ -1532,12 +1532,30 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           <p className="text-2xl text-primary font-bold">
                             {mix.stock.toFixed(1)} KG
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             Available for packing
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
                             Cost: ₱{mix.cost.toFixed(2)}
                           </p>
+                          {mix.stock > 0 && (() => {
+                            const packingRecord = productions.find(
+                              p => p.phase === 'packing' &&
+                              String(p.productMixCategoryId) === String(mix.productMixCategoryId)
+                            );
+                            return packingRecord ? (
+                              <button
+                                onClick={() => {
+                                  setSelectedProductionForPacking(packingRecord as any);
+                                  setRawPackedItemsInput("");
+                                  setShowCompletePackingModal(true);
+                                }}
+                                className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                              >
+                                Complete Packing
+                              </button>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1579,6 +1597,29 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                         <p className="text-xs text-muted-foreground mt-2">
                           Cost: ₱{item.cost.toFixed(2)}
                         </p>
+                        {item.stock > 0 && (() => {
+                          const cookingRecord = productions.find(
+                            p => p.phase === 'cooking' &&
+                            String(p.productMixCategoryId) === String(item.productMixCategoryId)
+                          );
+                          return cookingRecord ? (
+                            <button
+                              onClick={async () => {
+                                setSelectedProductionForCooking(cookingRecord as any);
+                                if (cookingRecord.productMixCategoryId) {
+                                  try {
+                                    const items = await getProductMixItems(cookingRecord.productMixCategoryId);
+                                    setProductsCreated(items.map(i => ({ productId: i.productId, productName: i.productName, quantity: '' })));
+                                  } catch { setProductsCreated([]); }
+                                }
+                                setShowCompleteCookingModal(true);
+                              }}
+                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            >
+                              Complete Cooking
+                            </button>
+                          ) : null;
+                        })()}
                       </div>
                     </div>
                   </div>
