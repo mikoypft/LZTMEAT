@@ -903,13 +903,14 @@ export async function startPackingFromMix(
   batchNumber: string,
   operator: string,
   mixWeight: number,
+  packingIngredients?: Array<{ ingredientId: string; quantity: number }>,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     "/production/start-packing-from-mix",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, mixWeight }),
+      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, mixWeight, packingIngredients: packingIngredients || [] }),
     },
   );
   return data.record;
@@ -921,13 +922,14 @@ export async function startCookingFromRaw(
   batchNumber: string,
   operator: string,
   rawWeight: number,
+  cookingIngredients?: Array<{ ingredientId: string; quantity: number }>,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     "/production/start-cooking-from-raw",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, rawWeight }),
+      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, rawWeight, cookingIngredients: cookingIngredients || [] }),
     },
   );
   return data.record;

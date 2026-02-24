@@ -276,6 +276,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [packingBatchNumber, setPackingBatchNumber] = useState("");
   const [packingOperator, setPackingOperator] = useState("");
   const [packingMixWeight, setPackingMixWeight] = useState("");
+  const [startPackingIngredients, setStartPackingIngredients] = useState<
+    { ingredientId: string; quantity: string }[]
+  >([]);
 
   // Start Cooking from Raw Inventory Modal State
   const [showStartCookingFromRawModal, setShowStartCookingFromRawModal] =
@@ -285,6 +288,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [rawCookingBatchNumber, setRawCookingBatchNumber] = useState("");
   const [rawCookingOperator, setRawCookingOperator] = useState("");
   const [rawCookingWeight, setRawCookingWeight] = useState("");
+  const [startCookingIngredients, setStartCookingIngredients] = useState<
+    { ingredientId: string; quantity: string }[]
+  >([]);
 
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
@@ -1399,6 +1405,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     setPackingBatchNumber(generateBatchNumber());
     setPackingOperator("");
     setPackingMixWeight("");
+    setStartPackingIngredients([]);
     setShowStartPackingFromMixModal(true);
   };
 
@@ -1416,21 +1423,38 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       toast.error(`Insufficient mix stock. Available: ${selectedMixForPacking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
       return;
     }
+    // Validate ingredient stock
+    for (const ing of startPackingIngredients) {
+      const qty = parseFloat(ing.quantity || "0");
+      if (qty > 0 && ing.ingredientId) {
+        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        if (!ingredient || ingredient.stock < qty) {
+          toast.error(`Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`);
+          return;
+        }
+      }
+    }
     try {
+      const ingredientsData = startPackingIngredients
+        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
+        .map((ing) => ({ ingredientId: ing.ingredientId, quantity: parseFloat(ing.quantity) }));
+
       await startPackingFromMix(
         String(selectedMixForPacking.productMixCategoryId),
         selectedMixForPacking.productMixName,
         packingBatchNumber,
         packingOperator,
         weight,
+        ingredientsData,
       );
       toast.success(`Packing batch ${packingBatchNumber} started!`);
-      await Promise.all([loadProductionRecords(), loadMixInventory(), loadRawProductInventory()]);
+      await Promise.all([loadProductionRecords(), loadMixInventory(), loadRawProductInventory(), refreshIngredients()]);
       setShowStartPackingFromMixModal(false);
       setSelectedMixForPacking(null);
       setPackingBatchNumber("");
       setPackingOperator("");
       setPackingMixWeight("");
+      setStartPackingIngredients([]);
     } catch (error: any) {
       console.error("Error starting packing from mix:", error);
       toast.error(error?.message || "Failed to start packing batch");
@@ -1443,6 +1467,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     setRawCookingBatchNumber(generateBatchNumber());
     setRawCookingOperator("");
     setRawCookingWeight("");
+    setStartCookingIngredients([]);
     setShowStartCookingFromRawModal(true);
   };
 
@@ -1460,21 +1485,38 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       toast.error(`Insufficient raw packed stock. Available: ${selectedRawForCooking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
       return;
     }
+    // Validate ingredient stock
+    for (const ing of startCookingIngredients) {
+      const qty = parseFloat(ing.quantity || "0");
+      if (qty > 0 && ing.ingredientId) {
+        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        if (!ingredient || ingredient.stock < qty) {
+          toast.error(`Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`);
+          return;
+        }
+      }
+    }
     try {
+      const ingredientsData = startCookingIngredients
+        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
+        .map((ing) => ({ ingredientId: ing.ingredientId, quantity: parseFloat(ing.quantity) }));
+
       await startCookingFromRaw(
         String(selectedRawForCooking.productMixCategoryId),
         selectedRawForCooking.productMixName,
         rawCookingBatchNumber,
         rawCookingOperator,
         weight,
+        ingredientsData,
       );
       toast.success(`Cooking batch ${rawCookingBatchNumber} started!`);
-      await Promise.all([loadProductionRecords(), loadRawProductInventory()]);
+      await Promise.all([loadProductionRecords(), loadRawProductInventory(), refreshIngredients()]);
       setShowStartCookingFromRawModal(false);
       setSelectedRawForCooking(null);
       setRawCookingBatchNumber("");
       setRawCookingOperator("");
       setRawCookingWeight("");
+      setStartCookingIngredients([]);
     } catch (error: any) {
       console.error("Error starting cooking from raw:", error);
       toast.error(error?.message || "Failed to start cooking batch");
@@ -1498,6 +1540,40 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     const updated = [...packingIngredients];
     updated[index][field] = value;
     setPackingIngredients(updated);
+  };
+
+  // Helper functions for Start Packing from Mix ingredients
+  const addStartPackingIngredientRow = () => {
+    setStartPackingIngredients([...startPackingIngredients, { ingredientId: "", quantity: "" }]);
+  };
+  const removeStartPackingIngredientRow = (index: number) => {
+    setStartPackingIngredients(startPackingIngredients.filter((_, i) => i !== index));
+  };
+  const updateStartPackingIngredientRow = (
+    index: number,
+    field: "ingredientId" | "quantity",
+    value: string,
+  ) => {
+    const updated = [...startPackingIngredients];
+    updated[index][field] = value;
+    setStartPackingIngredients(updated);
+  };
+
+  // Helper functions for Start Cooking from Raw ingredients
+  const addStartCookingIngredientRow = () => {
+    setStartCookingIngredients([...startCookingIngredients, { ingredientId: "", quantity: "" }]);
+  };
+  const removeStartCookingIngredientRow = (index: number) => {
+    setStartCookingIngredients(startCookingIngredients.filter((_, i) => i !== index));
+  };
+  const updateStartCookingIngredientRow = (
+    index: number,
+    field: "ingredientId" | "quantity",
+    value: string,
+  ) => {
+    const updated = [...startCookingIngredients];
+    updated[index][field] = value;
+    setStartCookingIngredients(updated);
   };
 
   // Helper functions for managing additional ingredients in mixing modal
@@ -2885,6 +2961,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   setPackingBatchNumber("");
                   setPackingOperator("");
                   setPackingMixWeight("");
+                  setStartPackingIngredients([]);
                 }}
                 className="p-2 hover:bg-accent rounded"
               >
@@ -2936,9 +3013,62 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 />
               </div>
 
+              {/* Ingredients used in packing */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm">Ingredients Used</label>
+                  <button
+                    type="button"
+                    onClick={addStartPackingIngredientRow}
+                    className="flex items-center gap-1 text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  >
+                    <Plus className="w-3 h-3" /> Add Ingredient
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {startPackingIngredients.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      No ingredients added. Click "Add Ingredient" if packing materials were used.
+                    </p>
+                  ) : (
+                    startPackingIngredients.map((ing, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <select
+                          value={ing.ingredientId}
+                          onChange={(e) => updateStartPackingIngredientRow(index, "ingredientId", e.target.value)}
+                          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        >
+                          <option value="">Select Ingredient</option>
+                          {ingredients && ingredients.map((ingredient) => (
+                            <option key={ingredient.id} value={ingredient.id}>
+                              {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={ing.quantity}
+                          onChange={(e) => updateStartPackingIngredientRow(index, "quantity", e.target.value)}
+                          placeholder="Qty"
+                          className="w-28 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStartPackingIngredientRow(index)}
+                          className="p-2 hover:bg-red-100 text-red-600 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <p className="text-sm text-purple-800">
-                  <strong>Note:</strong> This creates a new packing batch using existing mix inventory. Deducts mix stock immediately. Specify raw packed items when you complete packing.
+                  <strong>Note:</strong> This creates a new packing batch using existing mix inventory. Deducts mix stock and ingredients immediately. Specify raw packed items when you complete packing.
                 </p>
               </div>
 
@@ -2980,6 +3110,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   setRawCookingBatchNumber("");
                   setRawCookingOperator("");
                   setRawCookingWeight("");
+                  setStartCookingIngredients([]);
                 }}
                 className="p-2 hover:bg-accent rounded"
               >
@@ -3031,9 +3162,62 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 />
               </div>
 
+              {/* Ingredients used in cooking */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm">Ingredients Used</label>
+                  <button
+                    type="button"
+                    onClick={addStartCookingIngredientRow}
+                    className="flex items-center gap-1 text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  >
+                    <Plus className="w-3 h-3" /> Add Ingredient
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {startCookingIngredients.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      No ingredients added. Click "Add Ingredient" if any were used.
+                    </p>
+                  ) : (
+                    startCookingIngredients.map((ing, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <select
+                          value={ing.ingredientId}
+                          onChange={(e) => updateStartCookingIngredientRow(index, "ingredientId", e.target.value)}
+                          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        >
+                          <option value="">Select Ingredient</option>
+                          {ingredients && ingredients.map((ingredient) => (
+                            <option key={ingredient.id} value={ingredient.id}>
+                              {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={ing.quantity}
+                          onChange={(e) => updateStartCookingIngredientRow(index, "quantity", e.target.value)}
+                          placeholder="Qty"
+                          className="w-28 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStartCookingIngredientRow(index)}
+                          className="p-2 hover:bg-red-100 text-red-600 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800">
-                  <strong>Note:</strong> This creates a new cooking batch using existing raw packed inventory. Deducts raw stock immediately. Specify products created when you complete cooking.
+                  <strong>Note:</strong> This creates a new cooking batch using existing raw packed inventory. Deducts raw stock and ingredients immediately. Specify products created when you complete cooking.
                 </p>
               </div>
 

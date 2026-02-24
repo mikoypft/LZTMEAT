@@ -2362,6 +2362,14 @@ $routes = [
             $stmt->execute([$id]);
             $r = $stmt->fetch();
             
+            // Log history
+            logSystemHistory($pdo, 'Mixing Completed', 'ProductionRecord', $id, [
+                'batchNumber' => $r['batch_number'],
+                'operator'    => $r['operator'],
+                'category'    => $r['product_mix_category_name'],
+                'mixWeight'   => $r['mix_weight'],
+            ]);
+
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -2516,6 +2524,14 @@ $routes = [
             $stmt->execute([$id]);
             $r = $stmt->fetch();
 
+            // Log history
+            logSystemHistory($pdo, 'Packing Completed', 'ProductionRecord', $id, [
+                'batchNumber'    => $r['batch_number'],
+                'operator'       => $r['operator'],
+                'category'       => $r['product_mix_category_name'],
+                'rawPackedItems' => $rawPackedItems,
+            ]);
+
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -2661,6 +2677,15 @@ $routes = [
             $stmt->execute([$id]);
             $outputs = $stmt->fetchAll();
             
+            // Log history
+            logSystemHistory($pdo, 'Cooking Completed', 'ProductionRecord', $id, [
+                'batchNumber' => $r['batch_number'],
+                'operator'    => $r['operator'],
+                'category'    => $r['product_mix_category_name'],
+                'mixUsed'     => $mixUsed,
+                'outputCount' => count($outputs),
+            ]);
+
             return [
                 'record' => [
                     'id' => (string)$r['id'],
@@ -2724,13 +2749,42 @@ $routes = [
             }
 
             // Create production record at packing phase
+            $packingIngredients = $body['packingIngredients'] ?? [];
+            $initialIngredientsJson = !empty($packingIngredients) ? json_encode($packingIngredients) : null;
+
             $stmt = $pdo->prepare('
                 INSERT INTO production_records
-                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, mix_weight, phase, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW())
+                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, mix_weight, phase, status, initial_ingredients, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NOW(), NOW())
             ');
-            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $mixWeight, 'packing', 'in-progress']);
+            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $mixWeight, 'packing', 'in-progress', $initialIngredientsJson]);
             $newId = $pdo->lastInsertId();
+
+            // Deduct packing ingredients from stock
+            if (is_array($packingIngredients) && count($packingIngredients) > 0) {
+                foreach ($packingIngredients as $ing) {
+                    $ingId  = $ing['ingredientId'] ?? null;
+                    $ingQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    if ($ingId && $ingQty > 0) {
+                        try {
+                            $pdo->prepare('UPDATE ingredients SET stock = stock - ?, updated_at = NOW() WHERE id = ?')
+                                ->execute([$ingQty, $ingId]);
+                        } catch (Exception $ingErr) {
+                            error_log('Start-packing ingredient deduction failed for ID ' . $ingId . ': ' . $ingErr->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Log history
+            logSystemHistory($pdo, 'Packing Started (from mix inventory)', 'ProductionRecord', $newId, [
+                'batchNumber' => $batchNumber,
+                'operator'    => $operator,
+                'category'    => $categoryName,
+                'mixWeight'   => $mixWeight,
+                'ingredientsUsed' => count($packingIngredients),
+                'note'        => 'Packing started directly from mix inventory (mixing step skipped)',
+            ]);
 
             $stmt = $pdo->prepare('SELECT pr.*, pmc.name as product_mix_category_name FROM production_records pr LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id WHERE pr.id = ?');
             $stmt->execute([$newId]);
@@ -2787,13 +2841,42 @@ $routes = [
             }
 
             // Create production record at cooking phase
+            $cookingIngredients = $body['cookingIngredients'] ?? [];
+            $initialIngredientsJson = !empty($cookingIngredients) ? json_encode($cookingIngredients) : null;
+
             $stmt = $pdo->prepare('
                 INSERT INTO production_records
-                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, raw_packed_items, phase, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW())
+                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, raw_packed_items, phase, status, initial_ingredients, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NOW(), NOW())
             ');
-            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $rawWeight, 'cooking', 'in-progress']);
+            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $rawWeight, 'cooking', 'in-progress', $initialIngredientsJson]);
             $newId = $pdo->lastInsertId();
+
+            // Deduct cooking ingredients from stock
+            if (is_array($cookingIngredients) && count($cookingIngredients) > 0) {
+                foreach ($cookingIngredients as $ing) {
+                    $ingId  = $ing['ingredientId'] ?? null;
+                    $ingQty = isset($ing['quantity']) ? floatval($ing['quantity']) : 0;
+                    if ($ingId && $ingQty > 0) {
+                        try {
+                            $pdo->prepare('UPDATE ingredients SET stock = stock - ?, updated_at = NOW() WHERE id = ?')
+                                ->execute([$ingQty, $ingId]);
+                        } catch (Exception $ingErr) {
+                            error_log('Start-cooking ingredient deduction failed for ID ' . $ingId . ': ' . $ingErr->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Log history
+            logSystemHistory($pdo, 'Cooking Started (from raw inventory)', 'ProductionRecord', $newId, [
+                'batchNumber' => $batchNumber,
+                'operator'    => $operator,
+                'category'    => $categoryName,
+                'rawWeight'   => $rawWeight,
+                'ingredientsUsed' => count($cookingIngredients),
+                'note'        => 'Cooking started directly from raw product inventory (packing step skipped)',
+            ]);
 
             $stmt = $pdo->prepare('SELECT pr.*, pmc.name as product_mix_category_name FROM production_records pr LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id WHERE pr.id = ?');
             $stmt->execute([$newId]);
