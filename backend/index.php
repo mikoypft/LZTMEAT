@@ -209,6 +209,28 @@ try {
         error_log('product_mix_inventory table creation: ' . $tableErr->getMessage());
     }
 
+    // Auto-create raw_product_inventory table for storing raw packed items ready for cooking
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS raw_product_inventory (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                product_mix_category_id BIGINT UNSIGNED NOT NULL,
+                product_mix_name VARCHAR(255) NULL,
+                weight DECIMAL(10,2) NOT NULL DEFAULT 0,
+                unit VARCHAR(50) NOT NULL DEFAULT 'kg',
+                stock DECIMAL(10,2) NOT NULL DEFAULT 0,
+                cost DECIMAL(10,2) NOT NULL DEFAULT 0,
+                production_record_id BIGINT UNSIGNED NULL,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_category (product_mix_category_id),
+                INDEX idx_production (production_record_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('raw_product_inventory table creation: ' . $tableErr->getMessage());
+    }
+
     // Auto-create production_outputs table for tracking produced products
     try {
         $pdo->exec("
@@ -2396,12 +2418,12 @@ $routes = [
                 }
             }
 
-            // Create product mix inventory record using the original mix weight (ready for cooking)
+            // Create raw product inventory record using the raw packed items weight
             try {
-                error_log("Creating mix inventory from packing: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$mixWeightForInventory, rawPackedItems=$rawPackedItems, prodId=$id");
+                error_log("Creating raw product inventory from packing: categoryId=$mixCategoryId, name=$mixCategoryName, weight=$rawPackedItems, prodId=$id");
 
                 $stmt = $pdo->prepare('
-                    INSERT INTO product_mix_inventory (
+                    INSERT INTO raw_product_inventory (
                         product_mix_category_id,
                         product_mix_name,
                         weight,
@@ -2415,25 +2437,25 @@ $routes = [
                 $result = $stmt->execute([
                     $mixCategoryId,
                     $mixCategoryName,
-                    $mixWeightForInventory,
+                    $rawPackedItems,
                     'kg',
-                    $mixWeightForInventory,
+                    $rawPackedItems,
                     $cost,
                     $id
                 ]);
 
                 if (!$result) {
                     $errorInfo = $stmt->errorInfo();
-                    error_log("Mix inventory INSERT failed: " . print_r($errorInfo, true));
-                    throw new Exception("Failed to insert mix inventory: " . $errorInfo[2]);
+                    error_log("Raw product inventory INSERT failed: " . print_r($errorInfo, true));
+                    throw new Exception("Failed to insert raw product inventory: " . $errorInfo[2]);
                 }
 
                 $insertedId = $pdo->lastInsertId();
-                error_log("Mix inventory created with ID: $insertedId");
+                error_log("Raw product inventory created with ID: $insertedId");
 
-            } catch (Exception $mixInsertError) {
-                error_log("Mix inventory creation error: " . $mixInsertError->getMessage());
-                throw $mixInsertError;
+            } catch (Exception $rawInsertError) {
+                error_log("Raw product inventory creation error: " . $rawInsertError->getMessage());
+                throw $rawInsertError;
             }
 
             // Update production record: packing done → transition to cooking phase
@@ -2520,10 +2542,10 @@ $routes = [
                 }
             }
             
-            // Deduct mix from product_mix_inventory
+            // Deduct raw packed items from raw_product_inventory
             if ($mixUsed > 0) {
                 $stmt = $pdo->prepare('
-                    UPDATE product_mix_inventory 
+                    UPDATE raw_product_inventory 
                     SET stock = stock - ?, updated_at = NOW()
                     WHERE product_mix_category_id = ?
                     ORDER BY created_at DESC
@@ -2626,6 +2648,38 @@ $routes = [
         } catch (Exception $e) {
             http_response_code(500);
             return ['error' => 'Failed to complete cooking: ' . $e->getMessage()];
+        }
+    },
+    
+    // Get raw product inventory (packed items ready for cooking)
+    'GET /api/raw-product-inventory' => function() use ($pdo) {
+        try {
+            $stmt = $pdo->query('
+                SELECT rpi.*, pmc.name as category_name
+                FROM raw_product_inventory rpi
+                INNER JOIN product_mix_categories pmc ON rpi.product_mix_category_id = pmc.id
+                ORDER BY rpi.created_at DESC
+            ');
+            $inventory = $stmt->fetchAll();
+            
+            return [
+                'inventory' => array_map(function($i) {
+                    return [
+                        'id' => (string)$i['id'],
+                        'productMixCategoryId' => (string)$i['product_mix_category_id'],
+                        'productMixName' => $i['product_mix_name'],
+                        'categoryName' => $i['category_name'],
+                        'weight' => (float)$i['weight'],
+                        'unit' => $i['unit'],
+                        'stock' => (float)$i['stock'],
+                        'cost' => (float)$i['cost'],
+                        'createdAt' => $i['created_at'],
+                    ];
+                }, $inventory),
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get raw product inventory: ' . $e->getMessage()];
         }
     },
     

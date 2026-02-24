@@ -798,6 +798,18 @@ export interface ProductMixInventory {
   createdAt: string;
 }
 
+export interface RawProductInventory {
+  id: string;
+  productMixCategoryId: string;
+  productMixName: string;
+  categoryName: string;
+  weight: number;
+  unit: string;
+  stock: number;
+  cost: number;
+  createdAt: string;
+}
+
 export async function getProductionRecords(
   startDate?: string,
   endDate?: string,
@@ -873,6 +885,13 @@ export async function completeCooking(
 export async function getProductMixInventory(): Promise<ProductMixInventory[]> {
   const data = await apiRequest<{ inventory: ProductMixInventory[] }>(
     "/product-mix-inventory",
+  );
+  return data.inventory;
+}
+
+export async function getRawProductInventory(): Promise<RawProductInventory[]> {
+  const data = await apiRequest<{ inventory: RawProductInventory[] }>(
+    "/raw-product-inventory",
   );
   return data.inventory;
 }

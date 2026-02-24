@@ -40,12 +40,14 @@ import {
   completePacking,
   completeCooking,
   getProductMixInventory,
+  getRawProductInventory,
   type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
   type Employee,
   type Category,
   type ProductMixItem,
   type ProductMixInventory,
+  type RawProductInventory,
 } from "@/utils/api";
 import { UserData } from "@/app/components/LoginPage";
 import { toast } from "sonner";
@@ -204,6 +206,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   // Mix Categories and Inventory
   const [mixCategories, setMixCategories] = useState<Category[]>([]);
   const [mixInventory, setMixInventory] = useState<ProductMixInventory[]>([]);
+  const [rawProductInventory, setRawProductInventory] = useState<RawProductInventory[]>([]);
 
   // Start Mixing Modal State
   const [showStartMixingModal, setShowStartMixingModal] = useState(false);
@@ -302,6 +305,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     loadInventory();
     loadMixCategories();
     loadMixInventory();
+    loadRawProductInventory();
   }, []);
 
   // Auto-generate batch number when modal is shown
@@ -444,6 +448,30 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     } catch (error) {
       console.error("Error loading mix inventory:", error);
       toast.error("Failed to load mix inventory");
+    }
+  };
+
+  const loadRawProductInventory = async () => {
+    try {
+      const rawInv = await getRawProductInventory();
+      if (!rawInv || !Array.isArray(rawInv)) {
+        setRawProductInventory([]);
+        return;
+      }
+      // Aggregate by category
+      const aggregated: { [key: string]: RawProductInventory } = {};
+      rawInv.forEach((item) => {
+        const key = String(item.productMixCategoryId);
+        if (aggregated[key]) {
+          aggregated[key].stock += item.stock;
+          aggregated[key].cost += item.cost;
+        } else {
+          aggregated[key] = { ...item };
+        }
+      });
+      setRawProductInventory(Object.values(aggregated));
+    } catch (error) {
+      console.error("Error loading raw product inventory:", error);
     }
   };
 
@@ -1100,6 +1128,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       // Reload data
       await loadProductionRecords();
       await loadMixInventory();
+      await loadRawProductInventory();
 
       // Reset modal
       setShowCompletePackingModal(false);
@@ -1202,6 +1231,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       // Reload data
       await loadProductionRecords();
       await loadMixInventory();
+      await loadRawProductInventory();
       await loadInventory();
       await refreshIngredients();
 
@@ -1523,6 +1553,46 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Raw Product Inventory */}
+        <div className="bg-card rounded-lg border border-border">
+          <div className="p-6 border-b border-border flex items-center gap-3">
+            <Package className="w-6 h-6 text-purple-600" />
+            <h2>Raw Product Inventory</h2>
+            <span className="text-xs text-muted-foreground ml-1">(Packed — Ready for Cooking)</span>
+          </div>
+          <div className="p-6">
+            {!rawProductInventory || rawProductInventory.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No raw packed items yet. Complete a packing phase to add raw products here.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {rawProductInventory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-card border border-purple-200 dark:border-purple-900 rounded-lg p-4"
+                  >
+                    <div className="flex flex-col h-full">
+                      <h3 className="font-medium text-sm mb-2">{item.productMixName}</h3>
+                      <div className="mt-auto">
+                        <p className="text-2xl text-purple-600 font-bold">
+                          {item.stock.toFixed(1)} KG
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Raw packed — available for cooking
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Cost: ₱{item.cost.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
