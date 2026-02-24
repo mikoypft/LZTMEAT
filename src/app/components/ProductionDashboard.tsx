@@ -1114,7 +1114,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   // Complete cooking handler
   const handleCompleteCooking = async () => {
     if (!selectedProductionForCooking || !mixUsed || parseFloat(mixUsed) <= 0) {
-      toast.error("Please enter a valid mix amount used");
+      toast.error("Please enter a valid raw packed items amount used");
       return;
     }
 
@@ -1127,7 +1127,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       return;
     }
 
-    // Validate total product quantities don't exceed mix used
+    // Validate total product quantities don't exceed raw packed items used
     const totalProductQty = productsCreated.reduce(
       (sum, p) => sum + (parseFloat(p.quantity) || 0),
       0,
@@ -1135,19 +1135,19 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     const mixUsedQty = parseFloat(mixUsed);
     if (totalProductQty > mixUsedQty) {
       toast.error(
-        `Total product quantity (${totalProductQty.toFixed(1)} KG) exceeds mix used (${mixUsedQty.toFixed(1)} KG). Please adjust the quantities.`,
+        `Total product quantity (${totalProductQty.toFixed(1)} KG) exceeds raw packed items used (${mixUsedQty.toFixed(1)} KG). Please adjust the quantities.`,
       );
       return;
     }
 
-    // Validate mix stock availability
+    // Validate raw packed items availability
     if (selectedProductionForCooking.productMixCategoryId) {
-      const requestedMixQty = parseFloat(mixUsed);
-      const availableMixQty = selectedProductionForCooking.mixWeight || 0;
+      const requestedQty = parseFloat(mixUsed);
+      const availableQty = (selectedProductionForCooking as any).rawPackedItems || 0;
 
-      if (availableMixQty < requestedMixQty) {
+      if (availableQty < requestedQty) {
         toast.error(
-          `Insufficient mix allocated for this batch. Available: ${availableMixQty.toFixed(1)} KG, Required: ${requestedMixQty.toFixed(1)} KG`,
+          `Insufficient raw packed items for this batch. Available: ${availableQty.toFixed(1)} KG, Required: ${requestedQty.toFixed(1)} KG`,
         );
         return;
       }
@@ -2295,23 +2295,23 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   {selectedProductionForCooking.batchNumber}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Mix Weight Available
+                  Raw Packed Items Available
                 </p>
                 <p className="font-semibold text-primary">
-                  {selectedProductionForCooking.mixWeight?.toFixed(1) || "0.0"}{" "}
+                  {((selectedProductionForCooking as any).rawPackedItems ?? 0).toFixed(1)}{" "}
                   KG
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Mix Used (KG) *</label>
+                <label className="block text-sm mb-2">Raw Packed Items Used (KG) *</label>
                 <input
                   type="number"
                   step="0.1"
                   value={mixUsed}
                   onChange={(e) => setMixUsed(e.target.value)}
                   placeholder="0.0"
-                  max={selectedProductionForCooking.mixWeight || 0}
+                  max={(selectedProductionForCooking as any).rawPackedItems || 0}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -2331,7 +2331,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                         over ? "text-red-600" : "text-muted-foreground"
                       }`}>
                         Total: {total.toFixed(1)} / {limit > 0 ? limit.toFixed(1) : "—"} KG
-                        {over && " ⚠ Exceeds mix used"}
+                        {over && " ⚠ Exceeds raw packed items used"}
                       </span>
                     );
                   })()}
