@@ -41,6 +41,8 @@ import {
   completeCooking,
   getProductMixInventory,
   getRawProductInventory,
+  startPackingFromMix,
+  startCookingFromRaw,
   type Product as APIProduct,
   type ProductionRecord as APIProductionRecord,
   type Employee,
@@ -262,6 +264,24 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [cookingBatchNumber, setCookingBatchNumber] = useState("");
   const [cookingOperator, setCookingOperator] = useState("");
   const [cookingMixWeight, setCookingMixWeight] = useState("");
+
+  // Start Packing from Mix Inventory Modal State
+  const [showStartPackingFromMixModal, setShowStartPackingFromMixModal] =
+    useState(false);
+  const [selectedMixForPacking, setSelectedMixForPacking] =
+    useState<ProductMixInventory | null>(null);
+  const [packingBatchNumber, setPackingBatchNumber] = useState("");
+  const [packingOperator, setPackingOperator] = useState("");
+  const [packingMixWeight, setPackingMixWeight] = useState("");
+
+  // Start Cooking from Raw Inventory Modal State
+  const [showStartCookingFromRawModal, setShowStartCookingFromRawModal] =
+    useState(false);
+  const [selectedRawForCooking, setSelectedRawForCooking] =
+    useState<RawProductInventory | null>(null);
+  const [rawCookingBatchNumber, setRawCookingBatchNumber] = useState("");
+  const [rawCookingOperator, setRawCookingOperator] = useState("");
+  const [rawCookingWeight, setRawCookingWeight] = useState("");
 
   // Legacy states (kept for compatibility)
   const [showProductionModal, setShowProductionModal] = useState(false);
@@ -1345,6 +1365,94 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     }
   };
 
+  // Handle starting packing from mix inventory (creates new record at packing phase)
+  const handleStartPackingFromMix = (mix: ProductMixInventory) => {
+    setSelectedMixForPacking(mix);
+    setPackingBatchNumber(generateBatchNumber());
+    setPackingOperator("");
+    setPackingMixWeight("");
+    setShowStartPackingFromMixModal(true);
+  };
+
+  const handleCreatePackingFromMix = async () => {
+    if (!selectedMixForPacking || !packingBatchNumber || !packingOperator || !packingMixWeight) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    const weight = parseFloat(packingMixWeight);
+    if (isNaN(weight) || weight <= 0) {
+      toast.error("Please enter a valid mix weight");
+      return;
+    }
+    if (weight > selectedMixForPacking.stock) {
+      toast.error(`Insufficient mix stock. Available: ${selectedMixForPacking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
+      return;
+    }
+    try {
+      await startPackingFromMix(
+        String(selectedMixForPacking.productMixCategoryId),
+        selectedMixForPacking.productMixName,
+        packingBatchNumber,
+        packingOperator,
+        weight,
+      );
+      toast.success(`Packing batch ${packingBatchNumber} started!`);
+      await Promise.all([loadProductionRecords(), loadMixInventory(), loadRawProductInventory()]);
+      setShowStartPackingFromMixModal(false);
+      setSelectedMixForPacking(null);
+      setPackingBatchNumber("");
+      setPackingOperator("");
+      setPackingMixWeight("");
+    } catch (error: any) {
+      console.error("Error starting packing from mix:", error);
+      toast.error(error?.message || "Failed to start packing batch");
+    }
+  };
+
+  // Handle starting cooking from raw product inventory (creates new record at cooking phase)
+  const handleStartCookingFromRaw = (item: RawProductInventory) => {
+    setSelectedRawForCooking(item);
+    setRawCookingBatchNumber(generateBatchNumber());
+    setRawCookingOperator("");
+    setRawCookingWeight("");
+    setShowStartCookingFromRawModal(true);
+  };
+
+  const handleCreateCookingFromRaw = async () => {
+    if (!selectedRawForCooking || !rawCookingBatchNumber || !rawCookingOperator || !rawCookingWeight) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    const weight = parseFloat(rawCookingWeight);
+    if (isNaN(weight) || weight <= 0) {
+      toast.error("Please enter a valid raw weight");
+      return;
+    }
+    if (weight > selectedRawForCooking.stock) {
+      toast.error(`Insufficient raw packed stock. Available: ${selectedRawForCooking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
+      return;
+    }
+    try {
+      await startCookingFromRaw(
+        String(selectedRawForCooking.productMixCategoryId),
+        selectedRawForCooking.productMixName,
+        rawCookingBatchNumber,
+        rawCookingOperator,
+        weight,
+      );
+      toast.success(`Cooking batch ${rawCookingBatchNumber} started!`);
+      await Promise.all([loadProductionRecords(), loadRawProductInventory()]);
+      setShowStartCookingFromRawModal(false);
+      setSelectedRawForCooking(null);
+      setRawCookingBatchNumber("");
+      setRawCookingOperator("");
+      setRawCookingWeight("");
+    } catch (error: any) {
+      console.error("Error starting cooking from raw:", error);
+      toast.error(error?.message || "Failed to start cooking batch");
+    }
+  };
+
   // Helper functions for managing additional ingredients in mixing modal
   const addMixIngredientRow = () => {
     setMixAdditionalIngredients([
@@ -1541,24 +1649,14 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           <p className="text-xs text-muted-foreground mt-2">
                             Cost: ₱{mix.cost.toFixed(2)}
                           </p>
-                          {mix.stock > 0 && (() => {
-                            const packingRecord = productions.find(
-                              p => p.phase === 'packing' &&
-                              String(p.productMixCategoryId) === String(mix.productMixCategoryId)
-                            );
-                            return packingRecord ? (
-                              <button
-                                onClick={() => {
-                                  setSelectedProductionForPacking(packingRecord as any);
-                                  setRawPackedItemsInput("");
-                                  setShowCompletePackingModal(true);
-                                }}
-                                className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
-                              >
-                                Complete Packing
-                              </button>
-                            ) : null;
-                          })()}
+                          {mix.stock > 0 && (
+                            <button
+                              onClick={() => handleStartPackingFromMix(mix)}
+                              className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                            >
+                              Start Packing
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1600,29 +1698,14 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                         <p className="text-xs text-muted-foreground mt-2">
                           Cost: ₱{item.cost.toFixed(2)}
                         </p>
-                        {item.stock > 0 && (() => {
-                          const cookingRecord = productions.find(
-                            p => p.phase === 'cooking' &&
-                            String(p.productMixCategoryId) === String(item.productMixCategoryId)
-                          );
-                          return cookingRecord ? (
-                            <button
-                              onClick={async () => {
-                                setSelectedProductionForCooking(cookingRecord as any);
-                                if (cookingRecord.productMixCategoryId) {
-                                  try {
-                                    const items = await getProductMixItems(cookingRecord.productMixCategoryId);
-                                    setProductsCreated(items.map(i => ({ productId: i.productId, productName: i.productName, quantity: '' })));
-                                  } catch { setProductsCreated([]); }
-                                }
-                                setShowCompleteCookingModal(true);
-                              }}
-                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                            >
-                              Complete Cooking
-                            </button>
-                          ) : null;
-                        })()}
+                        {item.stock > 0 && (
+                          <button
+                            onClick={() => handleStartCookingFromRaw(item)}
+                            className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                          >
+                            Start Cooking
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2677,6 +2760,196 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 </button>
                 <button
                   onClick={handleCreateCookingFromMix}
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Start Cooking Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Packing from Mix Modal */}
+      {showStartPackingFromMixModal && selectedMixForPacking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Start Packing</h2>
+              <button
+                onClick={() => {
+                  setShowStartPackingFromMixModal(false);
+                  setSelectedMixForPacking(null);
+                  setPackingBatchNumber("");
+                  setPackingOperator("");
+                  setPackingMixWeight("");
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Mix Category</p>
+                <p className="font-semibold">{selectedMixForPacking.productMixName}</p>
+                <p className="text-sm text-muted-foreground mt-2">Mix Available</p>
+                <p className="font-semibold text-primary">{selectedMixForPacking.stock.toFixed(1)} KG</p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Batch Number *</label>
+                <input
+                  type="text"
+                  value={packingBatchNumber}
+                  readOnly
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg cursor-not-allowed opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Operator *</label>
+                <select
+                  value={packingOperator}
+                  onChange={(e) => setPackingOperator(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select Operator</option>
+                  {employees && employees.map((emp) => (
+                    <option key={emp.id} value={emp.fullName}>{emp.fullName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Mix Weight to Use (KG) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={packingMixWeight}
+                  onChange={(e) => setPackingMixWeight(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <p className="text-sm text-purple-800">
+                  <strong>Note:</strong> This creates a new packing batch using existing mix inventory. Deducts mix stock immediately. Specify raw packed items when you complete packing.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowStartPackingFromMixModal(false);
+                    setSelectedMixForPacking(null);
+                    setPackingBatchNumber("");
+                    setPackingOperator("");
+                    setPackingMixWeight("");
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePackingFromMix}
+                  className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Start Packing Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start Cooking from Raw Inventory Modal */}
+      {showStartCookingFromRawModal && selectedRawForCooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-2xl w-full p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Start Cooking</h2>
+              <button
+                onClick={() => {
+                  setShowStartCookingFromRawModal(false);
+                  setSelectedRawForCooking(null);
+                  setRawCookingBatchNumber("");
+                  setRawCookingOperator("");
+                  setRawCookingWeight("");
+                }}
+                className="p-2 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Raw Product</p>
+                <p className="font-semibold">{selectedRawForCooking.productMixName}</p>
+                <p className="text-sm text-muted-foreground mt-2">Raw Stock Available</p>
+                <p className="font-semibold text-purple-600">{selectedRawForCooking.stock.toFixed(1)} KG</p>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Batch Number *</label>
+                <input
+                  type="text"
+                  value={rawCookingBatchNumber}
+                  readOnly
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg cursor-not-allowed opacity-60"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Operator *</label>
+                <select
+                  value={rawCookingOperator}
+                  onChange={(e) => setRawCookingOperator(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select Operator</option>
+                  {employees && employees.map((emp) => (
+                    <option key={emp.id} value={emp.fullName}>{emp.fullName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Raw Weight to Use (KG) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={rawCookingWeight}
+                  onChange={(e) => setRawCookingWeight(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800">
+                  <strong>Note:</strong> This creates a new cooking batch using existing raw packed inventory. Deducts raw stock immediately. Specify products created when you complete cooking.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowStartCookingFromRawModal(false);
+                    setSelectedRawForCooking(null);
+                    setRawCookingBatchNumber("");
+                    setRawCookingOperator("");
+                    setRawCookingWeight("");
+                  }}
+                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateCookingFromRaw}
                   className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Start Cooking Batch

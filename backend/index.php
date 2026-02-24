@@ -2674,6 +2674,132 @@ $routes = [
         }
     },
     
+    // Start packing from mix inventory (skips mixing step)
+    'POST /api/production/start-packing-from-mix' => function() use ($pdo, $body) {
+        try {
+            $categoryId   = $body['categoryId'] ?? null;
+            $categoryName = $body['categoryName'] ?? 'Unknown Mix';
+            $batchNumber  = $body['batchNumber'] ?? null;
+            $operator     = $body['operator'] ?? '';
+            $mixWeight    = isset($body['mixWeight']) ? (float)$body['mixWeight'] : 0;
+
+            if (!$categoryId || !$batchNumber || $mixWeight <= 0) {
+                return ['error' => 'categoryId, batchNumber, and mixWeight are required'];
+            }
+
+            // Check available mix stock
+            $stmt = $pdo->prepare('SELECT SUM(stock) as total FROM product_mix_inventory WHERE product_mix_category_id = ?');
+            $stmt->execute([$categoryId]);
+            $available = (float)($stmt->fetchColumn() ?? 0);
+            if ($available < $mixWeight) {
+                return ['error' => "Insufficient mix stock. Available: {$available} KG, Requested: {$mixWeight} KG"];
+            }
+
+            // Deduct from mix inventory (oldest first)
+            $remaining = $mixWeight;
+            $rows = $pdo->prepare('SELECT id, stock FROM product_mix_inventory WHERE product_mix_category_id = ? AND stock > 0 ORDER BY created_at ASC');
+            $rows->execute([$categoryId]);
+            foreach ($rows->fetchAll() as $row) {
+                if ($remaining <= 0) break;
+                $deduct = min($remaining, (float)$row['stock']);
+                $pdo->prepare('UPDATE product_mix_inventory SET stock = stock - ?, updated_at = NOW() WHERE id = ?')->execute([$deduct, $row['id']]);
+                $remaining -= $deduct;
+            }
+
+            // Create production record at packing phase
+            $stmt = $pdo->prepare('
+                INSERT INTO production_records
+                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, mix_weight, phase, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW())
+            ');
+            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $mixWeight, 'packing', 'in-progress']);
+            $newId = $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare('SELECT pr.*, pmc.name as product_mix_category_name FROM production_records pr LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id WHERE pr.id = ?');
+            $stmt->execute([$newId]);
+            $r = $stmt->fetch();
+
+            return ['record' => [
+                'id' => (string)$r['id'],
+                'productMixCategoryId' => (string)$r['product_mix_category_id'],
+                'productMixCategoryName' => $r['product_mix_category_name'],
+                'batchNumber' => $r['batch_number'],
+                'operator' => $r['operator'],
+                'quantity' => (float)$r['quantity'],
+                'mixWeight' => (float)$r['mix_weight'],
+                'phase' => $r['phase'],
+                'status' => $r['status'],
+                'timestamp' => $r['created_at'],
+            ]];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to start packing: ' . $e->getMessage()];
+        }
+    },
+
+    // Start cooking from raw product inventory (skips packing step)
+    'POST /api/production/start-cooking-from-raw' => function() use ($pdo, $body) {
+        try {
+            $categoryId   = $body['categoryId'] ?? null;
+            $categoryName = $body['categoryName'] ?? 'Unknown';
+            $batchNumber  = $body['batchNumber'] ?? null;
+            $operator     = $body['operator'] ?? '';
+            $rawWeight    = isset($body['rawWeight']) ? (float)$body['rawWeight'] : 0;
+
+            if (!$categoryId || !$batchNumber || $rawWeight <= 0) {
+                return ['error' => 'categoryId, batchNumber, and rawWeight are required'];
+            }
+
+            // Check available raw stock
+            $stmt = $pdo->prepare('SELECT SUM(stock) as total FROM raw_product_inventory WHERE product_mix_category_id = ?');
+            $stmt->execute([$categoryId]);
+            $available = (float)($stmt->fetchColumn() ?? 0);
+            if ($available < $rawWeight) {
+                return ['error' => "Insufficient raw packed stock. Available: {$available} KG, Requested: {$rawWeight} KG"];
+            }
+
+            // Deduct from raw inventory (oldest first)
+            $remaining = $rawWeight;
+            $rows = $pdo->prepare('SELECT id, stock FROM raw_product_inventory WHERE product_mix_category_id = ? AND stock > 0 ORDER BY created_at ASC');
+            $rows->execute([$categoryId]);
+            foreach ($rows->fetchAll() as $row) {
+                if ($remaining <= 0) break;
+                $deduct = min($remaining, (float)$row['stock']);
+                $pdo->prepare('UPDATE raw_product_inventory SET stock = stock - ?, updated_at = NOW() WHERE id = ?')->execute([$deduct, $row['id']]);
+                $remaining -= $deduct;
+            }
+
+            // Create production record at cooking phase
+            $stmt = $pdo->prepare('
+                INSERT INTO production_records
+                    (product_mix_category_id, product_mix_category_name, batch_number, operator, quantity, raw_packed_items, phase, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW())
+            ');
+            $stmt->execute([$categoryId, $categoryName, $batchNumber, $operator, $rawWeight, 'cooking', 'in-progress']);
+            $newId = $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare('SELECT pr.*, pmc.name as product_mix_category_name FROM production_records pr LEFT JOIN product_mix_categories pmc ON pr.product_mix_category_id = pmc.id WHERE pr.id = ?');
+            $stmt->execute([$newId]);
+            $r = $stmt->fetch();
+
+            return ['record' => [
+                'id' => (string)$r['id'],
+                'productMixCategoryId' => (string)$r['product_mix_category_id'],
+                'productMixCategoryName' => $r['product_mix_category_name'],
+                'batchNumber' => $r['batch_number'],
+                'operator' => $r['operator'],
+                'quantity' => (float)$r['quantity'],
+                'rawPackedItems' => (float)$r['raw_packed_items'],
+                'phase' => $r['phase'],
+                'status' => $r['status'],
+                'timestamp' => $r['created_at'],
+            ]];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to start cooking: ' . $e->getMessage()];
+        }
+    },
+
     // Get raw product inventory (packed items ready for cooking)
     'GET /api/raw-product-inventory' => function() use ($pdo) {
         try {

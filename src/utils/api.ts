@@ -896,6 +896,42 @@ export async function getRawProductInventory(): Promise<RawProductInventory[]> {
   return data.inventory;
 }
 
+export async function startPackingFromMix(
+  categoryId: string,
+  categoryName: string,
+  batchNumber: string,
+  operator: string,
+  mixWeight: number,
+): Promise<ProductionRecord> {
+  const data = await apiRequest<{ record: ProductionRecord }>(
+    "/production/start-packing-from-mix",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, mixWeight }),
+    },
+  );
+  return data.record;
+}
+
+export async function startCookingFromRaw(
+  categoryId: string,
+  categoryName: string,
+  batchNumber: string,
+  operator: string,
+  rawWeight: number,
+): Promise<ProductionRecord> {
+  const data = await apiRequest<{ record: ProductionRecord }>(
+    "/production/start-cooking-from-raw",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, rawWeight }),
+    },
+  );
+  return data.record;
+}
+
 export async function updateProductionRecordStatus(
   id: string,
   status: string,
