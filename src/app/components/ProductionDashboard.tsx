@@ -1533,7 +1533,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                             {mix.stock.toFixed(1)} KG
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Available for cooking
+                            Available for packing
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
                             Cost: ₱{mix.cost.toFixed(2)}
