@@ -228,7 +228,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForMixing, setSelectedProductionForMixing] =
     useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
-  const [rawPackedItemsMix, setRawPackedItemsMix] = useState("");
+
 
   // Complete Packing Modal State
   const [showCompletePackingModal, setShowCompletePackingModal] =
@@ -2151,30 +2151,11 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm mb-2">
-                  Raw Packed Items (pcs)
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={rawPackedItemsMix}
-                  onChange={(e) => setRawPackedItemsMix(e.target.value)}
-                  placeholder="e.g. 100"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Number of individual items packed from this mix (to be cooked)
-                </p>
-              </div>
-
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCompleteMixingModal(false);
                     setSelectedProductionForMixing(null);
-                    setRawPackedItemsMix("");
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >
