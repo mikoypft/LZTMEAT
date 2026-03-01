@@ -3656,6 +3656,9 @@ $routes = [
     },
     
     'GET /api/users/all' => function() use ($pdo) {
+        // Ensure employee_profile column exists
+        try { $pdo->exec("ALTER TABLE users ADD COLUMN employee_profile JSON NULL"); } catch(Exception $e) { /* already exists */ }
+
         $stmt = $pdo->query('SELECT u.*, s.name as store_name FROM users u LEFT JOIN stores s ON u.store_id = s.id ORDER BY u.full_name');
         $users = $stmt->fetchAll();
         
@@ -3673,6 +3676,7 @@ $routes = [
                     'storeName' => $u['store_name'],
                     'canLogin' => (bool)($u['can_login'] ?? true),
                     'createdAt' => $u['created_at'] ?? date('Y-m-d H:i:s'),
+                    'employeeProfile' => !empty($u['employee_profile']) ? json_decode($u['employee_profile'], true) : null,
                 ];
             }, $users),
         ];
