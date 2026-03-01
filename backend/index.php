@@ -3700,7 +3700,10 @@ $routes = [
             else if ($role === 'POS') $role = 'POS';
             else $role = 'EMPLOYEE';
             
-            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            // Ensure employee_profile column exists
+            try { $pdo->exec("ALTER TABLE users ADD COLUMN employee_profile JSON NULL"); } catch(Exception $e) { /* already exists */ }
+
+            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, employee_profile, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
             $bindParams = [
                 $username,
                 $passwordHash,
@@ -3709,7 +3712,8 @@ $routes = [
                 $body['address'] ?? null,
                 $role,
                 (isset($body['storeId']) && !empty($body['storeId'])) ? $body['storeId'] : null,
-                1
+                1,
+                !empty($body['employeeProfile']) ? json_encode($body['employeeProfile']) : null,
             ];
             
             $result = $stmt->execute($bindParams);
@@ -3757,7 +3761,8 @@ $routes = [
                     'storeName' => $storeName,
                     'canLogin' => (bool)$user['can_login'],
                     'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
-                    'password' => $password
+                    'password' => $password,
+                    'employeeProfile' => !empty($user['employee_profile']) ? json_decode($user['employee_profile'], true) : null,
                 ]
             ];
         } catch (Exception $e) {
