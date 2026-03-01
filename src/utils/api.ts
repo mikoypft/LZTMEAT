@@ -842,7 +842,10 @@ export async function completeMixing(
     `/production/${id}/complete-mixing`,
     {
       method: "POST",
-      body: JSON.stringify({ mixWeight, rawPackedItems: rawPackedItems ?? null }),
+      body: JSON.stringify({
+        mixWeight,
+        rawPackedItems: rawPackedItems ?? null,
+      }),
     },
   );
   return data.record;
@@ -857,7 +860,10 @@ export async function completePacking(
     `/production/${id}/complete-packing`,
     {
       method: "POST",
-      body: JSON.stringify({ rawPackedItems, packingIngredients: packingIngredients || [] }),
+      body: JSON.stringify({
+        rawPackedItems,
+        packingIngredients: packingIngredients || [],
+      }),
     },
   );
   return data.record;
@@ -910,7 +916,14 @@ export async function startPackingFromMix(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, mixWeight, packingIngredients: packingIngredients || [] }),
+      body: JSON.stringify({
+        categoryId,
+        categoryName,
+        batchNumber,
+        operator,
+        mixWeight,
+        packingIngredients: packingIngredients || [],
+      }),
     },
   );
   return data.record;
@@ -929,7 +942,14 @@ export async function startCookingFromRaw(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId, categoryName, batchNumber, operator, rawWeight, cookingIngredients: cookingIngredients || [] }),
+      body: JSON.stringify({
+        categoryId,
+        categoryName,
+        batchNumber,
+        operator,
+        rawWeight,
+        cookingIngredients: cookingIngredients || [],
+      }),
     },
   );
   return data.record;
@@ -1119,6 +1139,27 @@ export async function deleteStore(id: string): Promise<void> {
 
 // ==================== EMPLOYEES API ====================
 
+export interface EmployeeProfile {
+  dateOfBirth?: string;
+  gender?: string;
+  civilStatus?: string;
+  nationality?: string;
+  bloodType?: string;
+  height?: string;
+  weight?: string;
+  sssNumber?: string;
+  philhealthNumber?: string;
+  tinNumber?: string;
+  pagibigNumber?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  dateHired?: string;
+  position?: string;
+  department?: string;
+  education?: { school: string; degree: string; yearGraduated: string }[];
+}
+
 export interface Employee {
   id: string;
   username: string;
@@ -1131,6 +1172,8 @@ export interface Employee {
   storeName?: string;
   canLogin?: boolean;
   createdAt?: string;
+  employeeProfile?: EmployeeProfile;
+  permissions?: string[];
 }
 
 export async function getEmployees(): Promise<Employee[]> {

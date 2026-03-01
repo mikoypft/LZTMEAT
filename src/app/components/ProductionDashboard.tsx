@@ -208,7 +208,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   // Mix Categories and Inventory
   const [mixCategories, setMixCategories] = useState<Category[]>([]);
   const [mixInventory, setMixInventory] = useState<ProductMixInventory[]>([]);
-  const [rawProductInventory, setRawProductInventory] = useState<RawProductInventory[]>([]);
+  const [rawProductInventory, setRawProductInventory] = useState<
+    RawProductInventory[]
+  >([]);
 
   // Start Mixing Modal State
   const [showStartMixingModal, setShowStartMixingModal] = useState(false);
@@ -233,7 +235,6 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForMixing, setSelectedProductionForMixing] =
     useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
-
 
   // Complete Packing Modal State
   const [showCompletePackingModal, setShowCompletePackingModal] =
@@ -1164,8 +1165,14 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
     try {
       const ingredientsData = packingIngredients
-        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
-        .map((ing) => ({ ingredientId: ing.ingredientId, quantity: parseFloat(ing.quantity) }));
+        .filter(
+          (ing) =>
+            ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        )
+        .map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        }));
 
       await completePacking(
         selectedProductionForPacking.id,
@@ -1227,9 +1234,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     // Validate raw packed items availability
     if (selectedProductionForCooking.productMixCategoryId) {
       const requestedQty = parseFloat(mixUsed);
-      const availableQty = rawProductInventory.find(
-        inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
-      )?.stock ?? 0;
+      const availableQty =
+        rawProductInventory.find(
+          (inv) =>
+            String(inv.productMixCategoryId) ===
+            String(selectedProductionForCooking.productMixCategoryId),
+        )?.stock ?? 0;
 
       if (availableQty < requestedQty) {
         toast.error(
@@ -1410,7 +1420,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   };
 
   const handleCreatePackingFromMix = async () => {
-    if (!selectedMixForPacking || !packingBatchNumber || !packingOperator || !packingMixWeight) {
+    if (
+      !selectedMixForPacking ||
+      !packingBatchNumber ||
+      !packingOperator ||
+      !packingMixWeight
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -1420,24 +1435,36 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       return;
     }
     if (weight > selectedMixForPacking.stock) {
-      toast.error(`Insufficient mix stock. Available: ${selectedMixForPacking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
+      toast.error(
+        `Insufficient mix stock. Available: ${selectedMixForPacking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`,
+      );
       return;
     }
     // Validate ingredient stock
     for (const ing of startPackingIngredients) {
       const qty = parseFloat(ing.quantity || "0");
       if (qty > 0 && ing.ingredientId) {
-        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        const ingredient = ingredients?.find(
+          (i) => String(i.id) === String(ing.ingredientId),
+        );
         if (!ingredient || ingredient.stock < qty) {
-          toast.error(`Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`);
+          toast.error(
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`,
+          );
           return;
         }
       }
     }
     try {
       const ingredientsData = startPackingIngredients
-        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
-        .map((ing) => ({ ingredientId: ing.ingredientId, quantity: parseFloat(ing.quantity) }));
+        .filter(
+          (ing) =>
+            ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        )
+        .map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        }));
 
       await startPackingFromMix(
         String(selectedMixForPacking.productMixCategoryId),
@@ -1448,7 +1475,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         ingredientsData,
       );
       toast.success(`Packing batch ${packingBatchNumber} started!`);
-      await Promise.all([loadProductionRecords(), loadMixInventory(), loadRawProductInventory(), refreshIngredients()]);
+      await Promise.all([
+        loadProductionRecords(),
+        loadMixInventory(),
+        loadRawProductInventory(),
+        refreshIngredients(),
+      ]);
       setShowStartPackingFromMixModal(false);
       setSelectedMixForPacking(null);
       setPackingBatchNumber("");
@@ -1472,7 +1504,12 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   };
 
   const handleCreateCookingFromRaw = async () => {
-    if (!selectedRawForCooking || !rawCookingBatchNumber || !rawCookingOperator || !rawCookingWeight) {
+    if (
+      !selectedRawForCooking ||
+      !rawCookingBatchNumber ||
+      !rawCookingOperator ||
+      !rawCookingWeight
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -1482,24 +1519,36 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       return;
     }
     if (weight > selectedRawForCooking.stock) {
-      toast.error(`Insufficient raw packed stock. Available: ${selectedRawForCooking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`);
+      toast.error(
+        `Insufficient raw packed stock. Available: ${selectedRawForCooking.stock.toFixed(1)} KG, Requested: ${weight.toFixed(1)} KG`,
+      );
       return;
     }
     // Validate ingredient stock
     for (const ing of startCookingIngredients) {
       const qty = parseFloat(ing.quantity || "0");
       if (qty > 0 && ing.ingredientId) {
-        const ingredient = ingredients?.find((i) => String(i.id) === String(ing.ingredientId));
+        const ingredient = ingredients?.find(
+          (i) => String(i.id) === String(ing.ingredientId),
+        );
         if (!ingredient || ingredient.stock < qty) {
-          toast.error(`Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`);
+          toast.error(
+            `Insufficient stock for ${ingredient?.name || "ingredient"}. Available: ${ingredient?.stock ?? 0}, Required: ${qty}`,
+          );
           return;
         }
       }
     }
     try {
       const ingredientsData = startCookingIngredients
-        .filter((ing) => ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0)
-        .map((ing) => ({ ingredientId: ing.ingredientId, quantity: parseFloat(ing.quantity) }));
+        .filter(
+          (ing) =>
+            ing.ingredientId && ing.quantity && parseFloat(ing.quantity) > 0,
+        )
+        .map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: parseFloat(ing.quantity),
+        }));
 
       await startCookingFromRaw(
         String(selectedRawForCooking.productMixCategoryId),
@@ -1510,7 +1559,11 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         ingredientsData,
       );
       toast.success(`Cooking batch ${rawCookingBatchNumber} started!`);
-      await Promise.all([loadProductionRecords(), loadRawProductInventory(), refreshIngredients()]);
+      await Promise.all([
+        loadProductionRecords(),
+        loadRawProductInventory(),
+        refreshIngredients(),
+      ]);
       setShowStartCookingFromRawModal(false);
       setSelectedRawForCooking(null);
       setRawCookingBatchNumber("");
@@ -1525,7 +1578,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
   // Helper functions for managing packing ingredients
   const addPackingIngredientRow = () => {
-    setPackingIngredients([...packingIngredients, { ingredientId: "", quantity: "" }]);
+    setPackingIngredients([
+      ...packingIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
   };
 
   const removePackingIngredientRow = (index: number) => {
@@ -1544,10 +1600,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
   // Helper functions for Start Packing from Mix ingredients
   const addStartPackingIngredientRow = () => {
-    setStartPackingIngredients([...startPackingIngredients, { ingredientId: "", quantity: "" }]);
+    setStartPackingIngredients([
+      ...startPackingIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
   };
   const removeStartPackingIngredientRow = (index: number) => {
-    setStartPackingIngredients(startPackingIngredients.filter((_, i) => i !== index));
+    setStartPackingIngredients(
+      startPackingIngredients.filter((_, i) => i !== index),
+    );
   };
   const updateStartPackingIngredientRow = (
     index: number,
@@ -1561,10 +1622,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
   // Helper functions for Start Cooking from Raw ingredients
   const addStartCookingIngredientRow = () => {
-    setStartCookingIngredients([...startCookingIngredients, { ingredientId: "", quantity: "" }]);
+    setStartCookingIngredients([
+      ...startCookingIngredients,
+      { ingredientId: "", quantity: "" },
+    ]);
   };
   const removeStartCookingIngredientRow = (index: number) => {
-    setStartCookingIngredients(startCookingIngredients.filter((_, i) => i !== index));
+    setStartCookingIngredients(
+      startCookingIngredients.filter((_, i) => i !== index),
+    );
   };
   const updateStartCookingIngredientRow = (
     index: number,
@@ -1766,7 +1832,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           <p className="text-2xl text-primary font-bold">
                             {mix.stock.toFixed(1)} KG
                           </p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Available for packing
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -1795,12 +1861,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
           <div className="p-6 border-b border-border flex items-center gap-3">
             <Package className="w-6 h-6 text-purple-600" />
             <h2>Raw Product Inventory</h2>
-            <span className="text-xs text-muted-foreground ml-1">(Packed — Ready for Cooking)</span>
+            <span className="text-xs text-muted-foreground ml-1">
+              (Packed — Ready for Cooking)
+            </span>
           </div>
           <div className="p-6">
             {!rawProductInventory || rawProductInventory.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No raw packed items yet. Complete a packing phase to add raw products here.
+                No raw packed items yet. Complete a packing phase to add raw
+                products here.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1810,7 +1879,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     className="bg-card border border-purple-200 dark:border-purple-900 rounded-lg p-4"
                   >
                     <div className="flex flex-col h-full">
-                      <h3 className="font-medium text-sm mb-2">{item.productMixName}</h3>
+                      <h3 className="font-medium text-sm mb-2">
+                        {item.productMixName}
+                      </h3>
                       <div className="mt-auto">
                         <p className="text-2xl text-purple-600 font-bold">
                           {item.stock.toFixed(1)} KG
@@ -1982,18 +2053,25 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               </div>
                               {(production as any).rawPackedItems != null && (
                                 <div className="text-xs text-purple-600 font-medium">
-                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
+                                  {(
+                                    (production as any).rawPackedItems as number
+                                  ).toFixed(1)}{" "}
+                                  KG packed
                                 </div>
                               )}
                             </>
-                          ) : production.phase === "packing" && production.mixWeight ? (
+                          ) : production.phase === "packing" &&
+                            production.mixWeight ? (
                             <>
                               <div className="text-xs">
                                 {production.mixWeight.toFixed(1)} KG
                               </div>
                               {(production as any).rawPackedItems != null && (
                                 <div className="text-xs text-purple-600 font-medium">
-                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
+                                  {(
+                                    (production as any).rawPackedItems as number
+                                  ).toFixed(1)}{" "}
+                                  KG packed
                                 </div>
                               )}
                             </>
@@ -2002,7 +2080,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               {(Number(production.weightKg) || 0).toFixed(1)} KG
                               {(production as any).rawPackedItems != null && (
                                 <div className="text-xs text-purple-600 font-medium">
-                                  {((production as any).rawPackedItems as number).toFixed(1)} KG packed
+                                  {(
+                                    (production as any).rawPackedItems as number
+                                  ).toFixed(1)}{" "}
+                                  KG packed
                                 </div>
                               )}
                             </>
@@ -2525,13 +2606,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <p className="font-semibold">
                   {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)} KG
                 </p>
-                {(selectedProductionForPacking as any).rawPackedItems != null && (
+                {(selectedProductionForPacking as any).rawPackedItems !=
+                  null && (
                   <>
                     <p className="text-sm text-muted-foreground mt-2">
                       Raw Packed Items
                     </p>
                     <p className="font-semibold text-purple-600">
-                      {((selectedProductionForPacking as any).rawPackedItems as number).toFixed(1)} KG
+                      {(
+                        (selectedProductionForPacking as any)
+                          .rawPackedItems as number
+                      ).toFixed(1)}{" "}
+                      KG
                     </p>
                   </>
                 )}
@@ -2551,14 +2637,17 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Weight of raw packed items in KG — these will be cooked in the next phase.
+                  Weight of raw packed items in KG — these will be cooked in the
+                  next phase.
                 </p>
               </div>
 
               {/* Packing Ingredients */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm">Ingredients Used in Packing</label>
+                  <label className="block text-sm">
+                    Ingredients Used in Packing
+                  </label>
                   <button
                     type="button"
                     onClick={addPackingIngredientRow}
@@ -2570,28 +2659,43 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <div className="space-y-2">
                   {packingIngredients.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-2">
-                      No ingredients added — click "Add Ingredient" if packing materials were used.
+                      No ingredients added — click "Add Ingredient" if packing
+                      materials were used.
                     </p>
                   ) : (
                     packingIngredients.map((ing, index) => (
                       <div key={index} className="flex gap-2 items-start">
                         <select
                           value={ing.ingredientId}
-                          onChange={(e) => updatePackingIngredientRow(index, "ingredientId", e.target.value)}
+                          onChange={(e) =>
+                            updatePackingIngredientRow(
+                              index,
+                              "ingredientId",
+                              e.target.value,
+                            )
+                          }
                           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         >
                           <option value="">Select Ingredient</option>
-                          {ingredients && ingredients.map((ingredient) => (
-                            <option key={ingredient.id} value={ingredient.id}>
-                              {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
-                            </option>
-                          ))}
+                          {ingredients &&
+                            ingredients.map((ingredient) => (
+                              <option key={ingredient.id} value={ingredient.id}>
+                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                {ingredient.stock}
+                              </option>
+                            ))}
                         </select>
                         <input
                           type="number"
                           step="0.1"
                           value={ing.quantity}
-                          onChange={(e) => updatePackingIngredientRow(index, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            updatePackingIngredientRow(
+                              index,
+                              "quantity",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Qty"
                           className="w-28 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         />
@@ -2664,24 +2768,38 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   Raw Packed Items Available
                 </p>
                 <p className="font-semibold text-primary">
-                  {(rawProductInventory.find(
-                    inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
-                  )?.stock ?? 0).toFixed(1)}{" "}
+                  {(
+                    rawProductInventory.find(
+                      (inv) =>
+                        String(inv.productMixCategoryId) ===
+                        String(
+                          selectedProductionForCooking.productMixCategoryId,
+                        ),
+                    )?.stock ?? 0
+                  ).toFixed(1)}{" "}
                   KG
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Raw Packed Items Used (KG) *</label>
+                <label className="block text-sm mb-2">
+                  Raw Packed Items Used (KG) *
+                </label>
                 <input
                   type="number"
                   step="0.1"
                   value={mixUsed}
                   onChange={(e) => setMixUsed(e.target.value)}
                   placeholder="0.0"
-                  max={rawProductInventory.find(
-                    inv => String(inv.productMixCategoryId) === String(selectedProductionForCooking.productMixCategoryId)
-                  )?.stock ?? 0}
+                  max={
+                    rawProductInventory.find(
+                      (inv) =>
+                        String(inv.productMixCategoryId) ===
+                        String(
+                          selectedProductionForCooking.productMixCategoryId,
+                        ),
+                    )?.stock ?? 0
+                  }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -2697,10 +2815,13 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     const limit = parseFloat(mixUsed) || 0;
                     const over = limit > 0 && total > limit;
                     return (
-                      <span className={`text-xs font-medium ${
-                        over ? "text-red-600" : "text-muted-foreground"
-                      }`}>
-                        Total: {total.toFixed(1)} / {limit > 0 ? limit.toFixed(1) : "—"} KG
+                      <span
+                        className={`text-xs font-medium ${
+                          over ? "text-red-600" : "text-muted-foreground"
+                        }`}
+                      >
+                        Total: {total.toFixed(1)} /{" "}
+                        {limit > 0 ? limit.toFixed(1) : "—"} KG
                         {over && " ⚠ Exceeds raw packed items used"}
                       </span>
                     );
@@ -2973,9 +3094,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             <div className="space-y-4">
               <div className="bg-muted/30 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Mix Category</p>
-                <p className="font-semibold">{selectedMixForPacking.productMixName}</p>
-                <p className="text-sm text-muted-foreground mt-2">Mix Available</p>
-                <p className="font-semibold text-primary">{selectedMixForPacking.stock.toFixed(1)} KG</p>
+                <p className="font-semibold">
+                  {selectedMixForPacking.productMixName}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Mix Available
+                </p>
+                <p className="font-semibold text-primary">
+                  {selectedMixForPacking.stock.toFixed(1)} KG
+                </p>
               </div>
 
               <div>
@@ -2996,14 +3123,19 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select Operator</option>
-                  {employees && employees.map((emp) => (
-                    <option key={emp.id} value={emp.fullName}>{emp.fullName}</option>
-                  ))}
+                  {employees &&
+                    employees.map((emp) => (
+                      <option key={emp.id} value={emp.fullName}>
+                        {emp.fullName}
+                      </option>
+                    ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Mix Weight to Use (KG) *</label>
+                <label className="block text-sm mb-2">
+                  Mix Weight to Use (KG) *
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -3029,28 +3161,43 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <div className="space-y-2">
                   {startPackingIngredients.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-2">
-                      No ingredients added. Click "Add Ingredient" if packing materials were used.
+                      No ingredients added. Click "Add Ingredient" if packing
+                      materials were used.
                     </p>
                   ) : (
                     startPackingIngredients.map((ing, index) => (
                       <div key={index} className="flex gap-2 items-start">
                         <select
                           value={ing.ingredientId}
-                          onChange={(e) => updateStartPackingIngredientRow(index, "ingredientId", e.target.value)}
+                          onChange={(e) =>
+                            updateStartPackingIngredientRow(
+                              index,
+                              "ingredientId",
+                              e.target.value,
+                            )
+                          }
                           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         >
                           <option value="">Select Ingredient</option>
-                          {ingredients && ingredients.map((ingredient) => (
-                            <option key={ingredient.id} value={ingredient.id}>
-                              {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
-                            </option>
-                          ))}
+                          {ingredients &&
+                            ingredients.map((ingredient) => (
+                              <option key={ingredient.id} value={ingredient.id}>
+                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                {ingredient.stock}
+                              </option>
+                            ))}
                         </select>
                         <input
                           type="number"
                           step="0.1"
                           value={ing.quantity}
-                          onChange={(e) => updateStartPackingIngredientRow(index, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            updateStartPackingIngredientRow(
+                              index,
+                              "quantity",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Qty"
                           className="w-28 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         />
@@ -3069,7 +3216,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <p className="text-sm text-purple-800">
-                  <strong>Note:</strong> This creates a new packing batch using existing mix inventory. Deducts mix stock and ingredients immediately. Specify raw packed items when you complete packing.
+                  <strong>Note:</strong> This creates a new packing batch using
+                  existing mix inventory. Deducts mix stock and ingredients
+                  immediately. Specify raw packed items when you complete
+                  packing.
                 </p>
               </div>
 
@@ -3122,9 +3272,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             <div className="space-y-4">
               <div className="bg-muted/30 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Raw Product</p>
-                <p className="font-semibold">{selectedRawForCooking.productMixName}</p>
-                <p className="text-sm text-muted-foreground mt-2">Raw Stock Available</p>
-                <p className="font-semibold text-purple-600">{selectedRawForCooking.stock.toFixed(1)} KG</p>
+                <p className="font-semibold">
+                  {selectedRawForCooking.productMixName}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Raw Stock Available
+                </p>
+                <p className="font-semibold text-purple-600">
+                  {selectedRawForCooking.stock.toFixed(1)} KG
+                </p>
               </div>
 
               <div>
@@ -3145,14 +3301,19 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select Operator</option>
-                  {employees && employees.map((emp) => (
-                    <option key={emp.id} value={emp.fullName}>{emp.fullName}</option>
-                  ))}
+                  {employees &&
+                    employees.map((emp) => (
+                      <option key={emp.id} value={emp.fullName}>
+                        {emp.fullName}
+                      </option>
+                    ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm mb-2">Raw Weight to Use (KG) *</label>
+                <label className="block text-sm mb-2">
+                  Raw Weight to Use (KG) *
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -3178,28 +3339,43 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <div className="space-y-2">
                   {startCookingIngredients.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-2">
-                      No ingredients added. Click "Add Ingredient" if any were used.
+                      No ingredients added. Click "Add Ingredient" if any were
+                      used.
                     </p>
                   ) : (
                     startCookingIngredients.map((ing, index) => (
                       <div key={index} className="flex gap-2 items-start">
                         <select
                           value={ing.ingredientId}
-                          onChange={(e) => updateStartCookingIngredientRow(index, "ingredientId", e.target.value)}
+                          onChange={(e) =>
+                            updateStartCookingIngredientRow(
+                              index,
+                              "ingredientId",
+                              e.target.value,
+                            )
+                          }
                           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         >
                           <option value="">Select Ingredient</option>
-                          {ingredients && ingredients.map((ingredient) => (
-                            <option key={ingredient.id} value={ingredient.id}>
-                              {ingredient.name} ({ingredient.unit}) - Stock: {ingredient.stock}
-                            </option>
-                          ))}
+                          {ingredients &&
+                            ingredients.map((ingredient) => (
+                              <option key={ingredient.id} value={ingredient.id}>
+                                {ingredient.name} ({ingredient.unit}) - Stock:{" "}
+                                {ingredient.stock}
+                              </option>
+                            ))}
                         </select>
                         <input
                           type="number"
                           step="0.1"
                           value={ing.quantity}
-                          onChange={(e) => updateStartCookingIngredientRow(index, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            updateStartCookingIngredientRow(
+                              index,
+                              "quantity",
+                              e.target.value,
+                            )
+                          }
                           placeholder="Qty"
                           className="w-28 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                         />
@@ -3218,7 +3394,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800">
-                  <strong>Note:</strong> This creates a new cooking batch using existing raw packed inventory. Deducts raw stock and ingredients immediately. Specify products created when you complete cooking.
+                  <strong>Note:</strong> This creates a new cooking batch using
+                  existing raw packed inventory. Deducts raw stock and
+                  ingredients immediately. Specify products created when you
+                  complete cooking.
                 </p>
               </div>
 

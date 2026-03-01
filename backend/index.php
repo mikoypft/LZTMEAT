@@ -3810,6 +3810,10 @@ $routes = [
                 $updates[] = 'password = ?';
                 $params[] = password_hash($body['password'], PASSWORD_BCRYPT);
             }
+            if (isset($body['employeeProfile'])) {
+                $updates[] = 'employee_profile = ?';
+                $params[] = json_encode($body['employeeProfile']);
+            }
             
             if (empty($updates)) {
                 return ['error' => 'No fields to update'];
@@ -3849,7 +3853,8 @@ $routes = [
                     'storeName' => $user['store_name'] ?? null,
                     'canLogin' => isset($user['can_login']) ? (bool)$user['can_login'] : false,
                     'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
-                    'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : []
+                    'employeeProfile' => !empty($user['employee_profile']) ? json_decode($user['employee_profile'], true) : null,
+                    'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : [],
                 ]
             ];
         } catch (Exception $e) {
