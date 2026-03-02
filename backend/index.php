@@ -768,7 +768,7 @@ $routes = [
                 FROM product_default_ingredients pdi
                 JOIN ingredients i ON pdi.ingredient_id = i.id
                 WHERE pdi.product_id = ?
-                ORDER BY i.name
+                ORDER BY pdi.id
             ');
             $stmt->execute([$productId]);
             $defaults = $stmt->fetchAll();
@@ -833,7 +833,7 @@ $routes = [
                 FROM product_default_ingredients pdi
                 JOIN ingredients i ON pdi.ingredient_id = i.id
                 WHERE pdi.product_id = ?
-                ORDER BY i.name
+                ORDER BY pdi.id
             ');
             $stmt->execute([$productId]);
             $defaults = $stmt->fetchAll();
@@ -1274,7 +1274,7 @@ $routes = [
                 FROM product_mix_category_default_ingredients pmcdi
                 JOIN ingredients i ON pmcdi.ingredient_id = i.id
                 WHERE pmcdi.product_mix_category_id = ?
-                ORDER BY i.name
+                ORDER BY pmcdi.id
             ');
             $stmt->execute([$categoryId]);
             $defaults = $stmt->fetchAll();
@@ -1339,7 +1339,7 @@ $routes = [
                 FROM product_mix_category_default_ingredients pmcdi
                 JOIN ingredients i ON pmcdi.ingredient_id = i.id
                 WHERE pmcdi.product_mix_category_id = ?
-                ORDER BY i.name
+                ORDER BY pmcdi.id
             ');
             $stmt->execute([$categoryId]);
             $defaults = $stmt->fetchAll();
