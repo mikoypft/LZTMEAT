@@ -173,8 +173,8 @@ export function TransferPage() {
 
       // Set default locations if stores exist
       if (storesData.length > 0) {
-        const mainStore = storesData.find((s) => s.name === "Main Store");
-        const firstOtherStore = storesData.find((s) => s.name !== "Main Store");
+        const mainStore = storesData.find((s) => s.name === "Amparo Store");
+        const firstOtherStore = storesData.find((s) => s.name !== "Amparo Store");
         setNewTransfer((prev) => ({
           ...prev,
           from: mainStore?.name || storesData[0].name,

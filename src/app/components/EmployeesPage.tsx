@@ -294,18 +294,23 @@ export function EmployeesPage() {
         await loadEmployees();
         resetForm();
       } else {
-        console.log("Creating new employee with data:", JSON.stringify(cleanData));
+        console.log(
+          "Creating new employee with data:",
+          JSON.stringify(cleanData),
+        );
         const newEmployee = await createEmployee(cleanData);
         console.log("New employee created:", JSON.stringify(newEmployee));
-        
+
         if (!newEmployee) {
           console.error("newEmployee is falsy - API returned no employee data");
-          toast.error("Employee may have been created but server returned unexpected response. Please refresh.");
+          toast.error(
+            "Employee may have been created but server returned unexpected response. Please refresh.",
+          );
           await loadEmployees();
           resetForm();
           return;
         }
-        
+
         toast.success("Employee added successfully");
 
         // Check if credentials were returned
@@ -736,16 +741,38 @@ export function EmployeesPage() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
                   <User2 className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-semibold text-gray-700">Personal Details</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Personal Details
+                  </span>
                 </div>
                 <div className="p-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Date of Birth</label>
-                    <input type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Date of Birth
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          dateOfBirth: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Gender</label>
-                    <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Gender
+                    </label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gender: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
                       <option value="">Select</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -753,8 +780,19 @@ export function EmployeesPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Civil Status</label>
-                    <select value={formData.civilStatus} onChange={(e) => setFormData({...formData, civilStatus: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Civil Status
+                    </label>
+                    <select
+                      value={formData.civilStatus}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          civilStatus: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
                       <option value="">Select</option>
                       <option value="Single">Single</option>
                       <option value="Married">Married</option>
@@ -763,24 +801,71 @@ export function EmployeesPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Nationality</label>
-                    <input type="text" value={formData.nationality} onChange={(e) => setFormData({...formData, nationality: e.target.value})} placeholder="e.g. Filipino" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Nationality
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nationality}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          nationality: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Filipino"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Blood Type</label>
-                    <select value={formData.bloodType} onChange={(e) => setFormData({...formData, bloodType: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Blood Type
+                    </label>
+                    <select
+                      value={formData.bloodType}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bloodType: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
                       <option value="">Select</option>
-                      {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(bt => <option key={bt} value={bt}>{bt}</option>)}
+                      {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
+                        (bt) => (
+                          <option key={bt} value={bt}>
+                            {bt}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Height (cm)</label>
-                      <input type="number" value={formData.height} onChange={(e) => setFormData({...formData, height: e.target.value})} placeholder="cm" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Height (cm)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.height}
+                        onChange={(e) =>
+                          setFormData({ ...formData, height: e.target.value })
+                        }
+                        placeholder="cm"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Weight (kg)</label>
-                      <input type="number" value={formData.weight} onChange={(e) => setFormData({...formData, weight: e.target.value})} placeholder="kg" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Weight (kg)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.weight}
+                        onChange={(e) =>
+                          setFormData({ ...formData, weight: e.target.value })
+                        }
+                        placeholder="kg"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
                     </div>
                   </div>
                 </div>
@@ -790,24 +875,72 @@ export function EmployeesPage() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
                   <CreditCard className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-semibold text-gray-700">Government IDs</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Government IDs
+                  </span>
                 </div>
                 <div className="p-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">SSS Number</label>
-                    <input type="text" value={formData.sssNumber} onChange={(e) => setFormData({...formData, sssNumber: e.target.value})} placeholder="XX-XXXXXXX-X" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      SSS Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.sssNumber}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sssNumber: e.target.value })
+                      }
+                      placeholder="XX-XXXXXXX-X"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">PhilHealth Number</label>
-                    <input type="text" value={formData.philhealthNumber} onChange={(e) => setFormData({...formData, philhealthNumber: e.target.value})} placeholder="XX-XXXXXXXXX-X" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      PhilHealth Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.philhealthNumber}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          philhealthNumber: e.target.value,
+                        })
+                      }
+                      placeholder="XX-XXXXXXXXX-X"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">TIN Number</label>
-                    <input type="text" value={formData.tinNumber} onChange={(e) => setFormData({...formData, tinNumber: e.target.value})} placeholder="XXX-XXX-XXX" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      TIN Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tinNumber}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tinNumber: e.target.value })
+                      }
+                      placeholder="XXX-XXX-XXX"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Pag-IBIG Number</label>
-                    <input type="text" value={formData.pagibigNumber} onChange={(e) => setFormData({...formData, pagibigNumber: e.target.value})} placeholder="XXXX-XXXX-XXXX" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Pag-IBIG Number
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pagibigNumber}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pagibigNumber: e.target.value,
+                        })
+                      }
+                      placeholder="XXXX-XXXX-XXXX"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                 </div>
               </div>
@@ -816,21 +949,62 @@ export function EmployeesPage() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
                   <Heart className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-semibold text-gray-700">Emergency Contact</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Emergency Contact
+                  </span>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Contact Name</label>
-                    <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({...formData, emergencyContactName: e.target.value})} placeholder="Full name" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.emergencyContactName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          emergencyContactName: e.target.value,
+                        })
+                      }
+                      placeholder="Full name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Relationship</label>
-                      <input type="text" value={formData.emergencyContactRelationship} onChange={(e) => setFormData({...formData, emergencyContactRelationship: e.target.value})} placeholder="e.g. Spouse, Parent" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Relationship
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.emergencyContactRelationship}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            emergencyContactRelationship: e.target.value,
+                          })
+                        }
+                        placeholder="e.g. Spouse, Parent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Phone Number</label>
-                      <input type="text" value={formData.emergencyContactPhone} onChange={(e) => setFormData({...formData, emergencyContactPhone: e.target.value})} placeholder="09XXXXXXXXX" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.emergencyContactPhone}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            emergencyContactPhone: e.target.value,
+                          })
+                        }
+                        placeholder="09XXXXXXXXX"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
                     </div>
                   </div>
                 </div>
@@ -840,20 +1014,51 @@ export function EmployeesPage() {
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-200">
                   <Briefcase className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-semibold text-gray-700">Employment Details</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Employment Details
+                  </span>
                 </div>
                 <div className="p-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Date Hired</label>
-                    <input type="date" value={formData.dateHired} onChange={(e) => setFormData({...formData, dateHired: e.target.value})} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Date Hired
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.dateHired}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dateHired: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Position / Job Title</label>
-                    <input type="text" value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="e.g. Meat Packer" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Position / Job Title
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.position}
+                      onChange={(e) =>
+                        setFormData({ ...formData, position: e.target.value })
+                      }
+                      placeholder="e.g. Meat Packer"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
-                    <input type="text" value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} placeholder="e.g. Production, Sales" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Department
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.department}
+                      onChange={(e) =>
+                        setFormData({ ...formData, department: e.target.value })
+                      }
+                      placeholder="e.g. Production, Sales"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
                   </div>
                 </div>
               </div>
@@ -863,31 +1068,98 @@ export function EmployeesPage() {
                 <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-red-600" />
-                    <span className="text-sm font-semibold text-gray-700">Education</span>
+                    <span className="text-sm font-semibold text-gray-700">
+                      Education
+                    </span>
                   </div>
-                  <button type="button" onClick={() => setFormData({...formData, education: [...formData.education, {school:"",degree:"",yearGraduated:""}]})} className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        education: [
+                          ...formData.education,
+                          { school: "", degree: "", yearGraduated: "" },
+                        ],
+                      })
+                    }
+                    className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center gap-1"
+                  >
                     <Plus className="w-3 h-3" /> Add
                   </button>
                 </div>
                 <div className="p-4 space-y-3">
                   {formData.education.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center py-2">No education entries — click Add to add one.</p>
+                    <p className="text-xs text-gray-400 text-center py-2">
+                      No education entries — click Add to add one.
+                    </p>
                   )}
                   {formData.education.map((edu, idx) => (
-                    <div key={idx} className="grid grid-cols-[1fr_1fr_90px_32px] gap-2 items-end">
+                    <div
+                      key={idx}
+                      className="grid grid-cols-[1fr_1fr_90px_32px] gap-2 items-end"
+                    >
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">School / University</label>
-                        <input type="text" value={edu.school} onChange={(e) => { const ed = [...formData.education]; ed[idx]={...ed[idx],school:e.target.value}; setFormData({...formData,education:ed}); }} placeholder="School name" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          School / University
+                        </label>
+                        <input
+                          type="text"
+                          value={edu.school}
+                          onChange={(e) => {
+                            const ed = [...formData.education];
+                            ed[idx] = { ...ed[idx], school: e.target.value };
+                            setFormData({ ...formData, education: ed });
+                          }}
+                          placeholder="School name"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Degree / Course</label>
-                        <input type="text" value={edu.degree} onChange={(e) => { const ed = [...formData.education]; ed[idx]={...ed[idx],degree:e.target.value}; setFormData({...formData,education:ed}); }} placeholder="e.g. BS Nursing" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Degree / Course
+                        </label>
+                        <input
+                          type="text"
+                          value={edu.degree}
+                          onChange={(e) => {
+                            const ed = [...formData.education];
+                            ed[idx] = { ...ed[idx], degree: e.target.value };
+                            setFormData({ ...formData, education: ed });
+                          }}
+                          placeholder="e.g. BS Nursing"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Year</label>
-                        <input type="text" value={edu.yearGraduated} onChange={(e) => { const ed = [...formData.education]; ed[idx]={...ed[idx],yearGraduated:e.target.value}; setFormData({...formData,education:ed}); }} placeholder="2020" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Year
+                        </label>
+                        <input
+                          type="text"
+                          value={edu.yearGraduated}
+                          onChange={(e) => {
+                            const ed = [...formData.education];
+                            ed[idx] = {
+                              ...ed[idx],
+                              yearGraduated: e.target.value,
+                            };
+                            setFormData({ ...formData, education: ed });
+                          }}
+                          placeholder="2020"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        />
                       </div>
-                      <button type="button" onClick={() => { const ed = formData.education.filter((_,i)=>i!==idx); setFormData({...formData,education:ed}); }} className="p-2 text-red-400 hover:bg-red-50 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ed = formData.education.filter(
+                            (_, i) => i !== idx,
+                          );
+                          setFormData({ ...formData, education: ed });
+                        }}
+                        className="p-2 text-red-400 hover:bg-red-50 rounded-lg"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -1197,15 +1469,30 @@ export function EmployeesPage() {
               <div className="bg-red-600 rounded-t-xl px-6 py-5 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                    <span className="text-white text-2xl font-bold">{viewingEmployee.name.charAt(0).toUpperCase()}</span>
+                    <span className="text-white text-2xl font-bold">
+                      {viewingEmployee.name.charAt(0).toUpperCase()}
+                    </span>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">{viewingEmployee.name}</h2>
-                    <p className="text-red-100 text-sm">{((viewingEmployee as any).employeeProfile?.position) || viewingEmployee.role || "Employee"}</p>
-                    {viewingEmployee.username && <p className="text-red-200 text-xs">@{viewingEmployee.username}</p>}
+                    <h2 className="text-xl font-bold text-white">
+                      {viewingEmployee.name}
+                    </h2>
+                    <p className="text-red-100 text-sm">
+                      {(viewingEmployee as any).employeeProfile?.position ||
+                        viewingEmployee.role ||
+                        "Employee"}
+                    </p>
+                    {viewingEmployee.username && (
+                      <p className="text-red-200 text-xs">
+                        @{viewingEmployee.username}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <button onClick={() => setViewingEmployee(null)} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                <button
+                  onClick={() => setViewingEmployee(null)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
@@ -1216,26 +1503,45 @@ export function EmployeesPage() {
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-500">Mobile:</span>
-                    <span className="text-gray-800 font-medium">{viewingEmployee.mobile || "—"}</span>
+                    <span className="text-gray-800 font-medium">
+                      {viewingEmployee.mobile || "—"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Store className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-500">Store:</span>
-                    <span className="text-gray-800 font-medium">{viewingEmployee.storeName || "Not Assigned"}</span>
+                    <span className="text-gray-800 font-medium">
+                      {viewingEmployee.storeName || "Not Assigned"}
+                    </span>
                   </div>
                   <div className="flex items-start gap-2 text-sm col-span-2">
                     <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
                     <span className="text-gray-500">Address:</span>
-                    <span className="text-gray-800 font-medium">{viewingEmployee.address || "—"}</span>
+                    <span className="text-gray-800 font-medium">
+                      {viewingEmployee.address || "—"}
+                    </span>
                   </div>
                 </div>
 
                 {(() => {
-                  const p: EmployeeProfile = (viewingEmployee as any).employeeProfile || {};
-                  const hasPersonal = p.dateOfBirth || p.gender || p.civilStatus || p.nationality || p.bloodType || p.height || p.weight;
-                  const hasGovt = p.sssNumber || p.philhealthNumber || p.tinNumber || p.pagibigNumber;
+                  const p: EmployeeProfile =
+                    (viewingEmployee as any).employeeProfile || {};
+                  const hasPersonal =
+                    p.dateOfBirth ||
+                    p.gender ||
+                    p.civilStatus ||
+                    p.nationality ||
+                    p.bloodType ||
+                    p.height ||
+                    p.weight;
+                  const hasGovt =
+                    p.sssNumber ||
+                    p.philhealthNumber ||
+                    p.tinNumber ||
+                    p.pagibigNumber;
                   const hasEmergency = p.emergencyContactName;
-                  const hasEmployment = p.dateHired || p.position || p.department;
+                  const hasEmployment =
+                    p.dateHired || p.position || p.department;
                   const hasEducation = p.education && p.education.length > 0;
 
                   return (
@@ -1244,15 +1550,68 @@ export function EmployeesPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <User2 className="w-4 h-4 text-red-600" />
-                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Personal Details</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              Personal Details
+                            </h3>
                           </div>
                           <div className="grid grid-cols-2 gap-2 bg-gray-50 rounded-lg p-4">
-                            {p.dateOfBirth && <div className="text-sm"><span className="text-gray-500">Date of Birth: </span><span className="font-medium">{p.dateOfBirth}</span></div>}
-                            {p.gender && <div className="text-sm"><span className="text-gray-500">Gender: </span><span className="font-medium">{p.gender}</span></div>}
-                            {p.civilStatus && <div className="text-sm"><span className="text-gray-500">Civil Status: </span><span className="font-medium">{p.civilStatus}</span></div>}
-                            {p.nationality && <div className="text-sm"><span className="text-gray-500">Nationality: </span><span className="font-medium">{p.nationality}</span></div>}
-                            {p.bloodType && <div className="text-sm"><span className="text-gray-500">Blood Type: </span><span className="font-medium">{p.bloodType}</span></div>}
-                            {(p.height || p.weight) && <div className="text-sm"><span className="text-gray-500">Height/Weight: </span><span className="font-medium">{p.height ? p.height+" cm" : "—"} / {p.weight ? p.weight+" kg" : "—"}</span></div>}
+                            {p.dateOfBirth && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Date of Birth:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.dateOfBirth}
+                                </span>
+                              </div>
+                            )}
+                            {p.gender && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Gender: </span>
+                                <span className="font-medium">{p.gender}</span>
+                              </div>
+                            )}
+                            {p.civilStatus && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Civil Status:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.civilStatus}
+                                </span>
+                              </div>
+                            )}
+                            {p.nationality && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Nationality:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.nationality}
+                                </span>
+                              </div>
+                            )}
+                            {p.bloodType && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Blood Type:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.bloodType}
+                                </span>
+                              </div>
+                            )}
+                            {(p.height || p.weight) && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Height/Weight:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.height ? p.height + " cm" : "—"} /{" "}
+                                  {p.weight ? p.weight + " kg" : "—"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1261,12 +1620,41 @@ export function EmployeesPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <Briefcase className="w-4 h-4 text-red-600" />
-                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Employment</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              Employment
+                            </h3>
                           </div>
                           <div className="grid grid-cols-2 gap-2 bg-gray-50 rounded-lg p-4">
-                            {p.position && <div className="text-sm"><span className="text-gray-500">Position: </span><span className="font-medium">{p.position}</span></div>}
-                            {p.department && <div className="text-sm"><span className="text-gray-500">Department: </span><span className="font-medium">{p.department}</span></div>}
-                            {p.dateHired && <div className="text-sm"><span className="text-gray-500">Date Hired: </span><span className="font-medium">{p.dateHired}</span></div>}
+                            {p.position && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Position:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.position}
+                                </span>
+                              </div>
+                            )}
+                            {p.department && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Department:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.department}
+                                </span>
+                              </div>
+                            )}
+                            {p.dateHired && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Date Hired:{" "}
+                                </span>
+                                <span className="font-medium">
+                                  {p.dateHired}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1275,13 +1663,47 @@ export function EmployeesPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <CreditCard className="w-4 h-4 text-red-600" />
-                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Government IDs</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              Government IDs
+                            </h3>
                           </div>
                           <div className="grid grid-cols-2 gap-2 bg-gray-50 rounded-lg p-4">
-                            {p.sssNumber && <div className="text-sm"><span className="text-gray-500">SSS: </span><span className="font-medium font-mono">{p.sssNumber}</span></div>}
-                            {p.philhealthNumber && <div className="text-sm"><span className="text-gray-500">PhilHealth: </span><span className="font-medium font-mono">{p.philhealthNumber}</span></div>}
-                            {p.tinNumber && <div className="text-sm"><span className="text-gray-500">TIN: </span><span className="font-medium font-mono">{p.tinNumber}</span></div>}
-                            {p.pagibigNumber && <div className="text-sm"><span className="text-gray-500">Pag-IBIG: </span><span className="font-medium font-mono">{p.pagibigNumber}</span></div>}
+                            {p.sssNumber && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">SSS: </span>
+                                <span className="font-medium font-mono">
+                                  {p.sssNumber}
+                                </span>
+                              </div>
+                            )}
+                            {p.philhealthNumber && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  PhilHealth:{" "}
+                                </span>
+                                <span className="font-medium font-mono">
+                                  {p.philhealthNumber}
+                                </span>
+                              </div>
+                            )}
+                            {p.tinNumber && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">TIN: </span>
+                                <span className="font-medium font-mono">
+                                  {p.tinNumber}
+                                </span>
+                              </div>
+                            )}
+                            {p.pagibigNumber && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">
+                                  Pag-IBIG:{" "}
+                                </span>
+                                <span className="font-medium font-mono">
+                                  {p.pagibigNumber}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1290,12 +1712,25 @@ export function EmployeesPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <Heart className="w-4 h-4 text-red-600" />
-                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Emergency Contact</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              Emergency Contact
+                            </h3>
                           </div>
                           <div className="bg-gray-50 rounded-lg p-4 text-sm">
-                            <span className="font-medium">{p.emergencyContactName}</span>
-                            {p.emergencyContactRelationship && <span className="text-gray-500"> ({p.emergencyContactRelationship})</span>}
-                            {p.emergencyContactPhone && <span className="ml-2 text-gray-600">— {p.emergencyContactPhone}</span>}
+                            <span className="font-medium">
+                              {p.emergencyContactName}
+                            </span>
+                            {p.emergencyContactRelationship && (
+                              <span className="text-gray-500">
+                                {" "}
+                                ({p.emergencyContactRelationship})
+                              </span>
+                            )}
+                            {p.emergencyContactPhone && (
+                              <span className="ml-2 text-gray-600">
+                                — {p.emergencyContactPhone}
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1304,35 +1739,64 @@ export function EmployeesPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <GraduationCap className="w-4 h-4 text-red-600" />
-                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Education</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              Education
+                            </h3>
                           </div>
                           <div className="space-y-2">
                             {p.education!.map((edu, i) => (
-                              <div key={i} className="bg-gray-50 rounded-lg p-3 text-sm">
-                                <div className="font-medium text-gray-800">{edu.school}</div>
-                                <div className="text-gray-600">{edu.degree}{edu.yearGraduated ? " · " + edu.yearGraduated : ""}</div>
+                              <div
+                                key={i}
+                                className="bg-gray-50 rounded-lg p-3 text-sm"
+                              >
+                                <div className="font-medium text-gray-800">
+                                  {edu.school}
+                                </div>
+                                <div className="text-gray-600">
+                                  {edu.degree}
+                                  {edu.yearGraduated
+                                    ? " · " + edu.yearGraduated
+                                    : ""}
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {!hasPersonal && !hasGovt && !hasEmergency && !hasEmployment && !hasEducation && (
-                        <div className="text-center py-6 text-gray-400">
-                          <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm">No additional profile information on file.</p>
-                          <p className="text-xs mt-1">Click the edit button to add resume details.</p>
-                        </div>
-                      )}
+                      {!hasPersonal &&
+                        !hasGovt &&
+                        !hasEmergency &&
+                        !hasEmployment &&
+                        !hasEducation && (
+                          <div className="text-center py-6 text-gray-400">
+                            <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                            <p className="text-sm">
+                              No additional profile information on file.
+                            </p>
+                            <p className="text-xs mt-1">
+                              Click the edit button to add resume details.
+                            </p>
+                          </div>
+                        )}
                     </>
                   );
                 })()}
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => { setViewingEmployee(null); handleEdit(viewingEmployee!); }} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm">
+                  <button
+                    onClick={() => {
+                      setViewingEmployee(null);
+                      handleEdit(viewingEmployee!);
+                    }}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+                  >
                     Edit Profile
                   </button>
-                  <button onClick={() => setViewingEmployee(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+                  <button
+                    onClick={() => setViewingEmployee(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
+                  >
                     Close
                   </button>
                 </div>

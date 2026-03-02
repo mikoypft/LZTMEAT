@@ -86,9 +86,9 @@ export function StoresManagementPage() {
   };
 
   const handleDeleteStore = async (storeId: string, storeName: string) => {
-    // Prevent deleting Main Store
-    if (storeName === 'Main Store') {
-      toast.error('Cannot delete Main Store');
+    // Prevent deleting Amparo Store
+    if (storeName === 'Amparo Store') {
+      toast.error('Cannot delete Amparo Store');
       return;
     }
 
@@ -177,7 +177,7 @@ export function StoresManagementPage() {
               <Store className="w-5 h-5 text-primary" />
             </div>
             <p className="text-3xl font-semibold">{stores.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Including Main Store</p>
+            <p className="text-xs text-muted-foreground mt-1">Including Amparo Store</p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border">
@@ -259,9 +259,9 @@ export function StoresManagementPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <div className={`p-2 rounded-lg ${
-                            store.name === 'Main Store' ? 'bg-red-100' : 'bg-blue-100'
+                            store.name === 'Amparo Store' ? 'bg-red-100' : 'bg-blue-100'
                           }`}>
-                            {store.name === 'Main Store' ? (
+                            {store.name === 'Amparo Store' ? (
                               <Building2 className="w-5 h-5 text-red-600" />
                             ) : (
                               <Store className="w-5 h-5 text-blue-600" />
@@ -269,7 +269,7 @@ export function StoresManagementPage() {
                           </div>
                           <div>
                             <p className="font-semibold">{store.name}</p>
-                            {store.name === 'Main Store' && (
+                            {store.name === 'Amparo Store' && (
                               <span className="text-xs text-red-600 font-medium">Primary Location</span>
                             )}
                           </div>
@@ -314,7 +314,7 @@ export function StoresManagementPage() {
                           >
                             <Edit2 className="w-4 h-4 text-blue-600" />
                           </button>
-                          {store.name !== 'Main Store' && (
+                          {store.name !== 'Amparo Store' && (
                             <button
                               onClick={() => handleDeleteStore(store.id, store.name)}
                               className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
@@ -369,10 +369,10 @@ export function StoresManagementPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Branch 1, Downtown Store"
                   className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={editingStore?.name === 'Main Store'}
+                  disabled={editingStore?.name === 'Amparo Store'}
                 />
-                {editingStore?.name === 'Main Store' && (
-                  <p className="text-xs text-muted-foreground mt-1">Main Store name cannot be changed</p>
+                {editingStore?.name === 'Amparo Store' && (
+                  <p className="text-xs text-muted-foreground mt-1">Amparo Store name cannot be changed</p>
                 )}
               </div>
 

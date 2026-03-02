@@ -267,6 +267,13 @@ try {
     } catch (Exception $tableErr) {
         error_log('production_records columns addition: ' . $tableErr->getMessage());
     }
+
+    // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
+    try {
+        $pdo->exec("UPDATE stores SET name = 'Amparo Store' WHERE name = 'Main Store'");
+    } catch (Exception $tableErr) {
+        error_log('store rename: ' . $tableErr->getMessage());
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -1731,7 +1738,7 @@ $routes = [
                 error_log('  Deduction amount type: ' . gettype($deductionAmount));
                 error_log('  Deduction amount value: ' . var_export($deductionAmount, true));
                 
-                $location = $body['location'] ?? $body['storeId'] ?? 'Main Store';
+                $location = $body['location'] ?? $body['storeId'] ?? 'Amparo Store';
                 
                 // Log the SQL parameters before execution
                 error_log('  SQL UPDATE parameters: productId=' . $item['productId'] . ', location=' . $location . ', deduction=' . $deductionAmount);
