@@ -848,6 +848,11 @@ $routes = [
             $stmt->execute([$productId]);
             $defaults = $stmt->fetchAll();
             
+            logSystemHistory($pdo, 'Product Default Ingredients Updated', 'Product', (string)$productId, [
+                'ingredientCount' => count($defaults),
+                'ingredients' => array_map(function($d) { return $d['ingredient_name']; }, $defaults),
+            ]);
+            
             return [
                 'success' => true,
                 'defaultIngredients' => array_map(function($d) {
@@ -1083,6 +1088,11 @@ $routes = [
             $stmt->execute([$lastId]);
             $category = $stmt->fetch();
             
+            logSystemHistory($pdo, 'Product Mix Category Created', 'ProductMixCategory', (string)$lastId, [
+                'name' => $category['name'],
+                'description' => $category['description'],
+            ]);
+            
             return [
                 'category' => [
                     'id' => (string)$category['id'],
@@ -1113,6 +1123,11 @@ $routes = [
             $stmt->execute([$id]);
             $category = $stmt->fetch();
             
+            logSystemHistory($pdo, 'Product Mix Category Updated', 'ProductMixCategory', (string)$id, [
+                'name' => $category['name'],
+                'description' => $category['description'],
+            ]);
+            
             return [
                 'category' => [
                     'id' => (string)$category['id'],
@@ -1132,8 +1147,16 @@ $routes = [
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $id = substr($uri, strrpos($uri, '/') + 1);
             
+            $stmt = $pdo->prepare('SELECT name FROM product_mix_categories WHERE id = ?');
+            $stmt->execute([$id]);
+            $category = $stmt->fetch();
+            
             $stmt = $pdo->prepare('DELETE FROM product_mix_categories WHERE id = ?');
             $stmt->execute([$id]);
+            
+            logSystemHistory($pdo, 'Product Mix Category Deleted', 'ProductMixCategory', $id, [
+                'name' => $category['name'] ?? 'Unknown',
+            ]);
             
             return ['success' => true];
         } catch (PDOException $e) {
@@ -1216,6 +1239,11 @@ $routes = [
             $stmt->execute([$lastId]);
             $item = $stmt->fetch();
             
+            logSystemHistory($pdo, 'Product Added to Mix Category', 'ProductMixCategory', (string)$categoryId, [
+                'productId' => (string)$item['product_id'],
+                'productName' => $item['product_name'],
+            ]);
+            
             return [
                 'item' => [
                     'id' => (string)$item['mix_item_id'],
@@ -1244,8 +1272,19 @@ $routes = [
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $id = substr($uri, strrpos($uri, '/') + 1);
             
+            $stmt = $pdo->prepare('SELECT pmi.id, pmi.product_mix_category_id, pmi.product_id, p.name as product_name FROM product_mix_items pmi JOIN products p ON pmi.product_id = p.id WHERE pmi.id = ?');
+            $stmt->execute([$id]);
+            $item = $stmt->fetch();
+            
             $stmt = $pdo->prepare('DELETE FROM product_mix_items WHERE id = ?');
             $stmt->execute([$id]);
+            
+            if ($item) {
+                logSystemHistory($pdo, 'Product Removed from Mix Category', 'ProductMixCategory', (string)$item['product_mix_category_id'], [
+                    'productId' => (string)$item['product_id'],
+                    'productName' => $item['product_name'],
+                ]);
+            }
             
             return ['success' => true];
         } catch (PDOException $e) {
@@ -1353,6 +1392,11 @@ $routes = [
             ');
             $stmt->execute([$categoryId]);
             $defaults = $stmt->fetchAll();
+            
+            logSystemHistory($pdo, 'Mix Category Default Ingredients Updated', 'ProductMixCategory', (string)$categoryId, [
+                'ingredientCount' => count($defaults),
+                'ingredients' => array_map(function($d) { return $d['ingredient_name']; }, $defaults),
+            ]);
             
             return [
                 'success' => true,
