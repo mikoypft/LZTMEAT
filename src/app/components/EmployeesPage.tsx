@@ -54,7 +54,7 @@ const AVAILABLE_PERMISSIONS = [
   },
   {
     id: "inventory",
-    label: "Inventory",
+    label: "Product Inventory",
     description: "View and manage inventory",
   },
   {

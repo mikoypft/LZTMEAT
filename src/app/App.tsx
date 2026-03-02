@@ -290,7 +290,7 @@ export default function App() {
         {
           id: "inventory" as Page,
           icon: Package,
-          label: "Inventory",
+          label: "Product Inventory",
           permission: "inventory",
         },
         {
@@ -388,7 +388,7 @@ export default function App() {
         {
           id: "inventory" as Page,
           icon: Package,
-          label: "Inventory",
+          label: "Product Inventory",
           roles: ["STORE"],
         },
         {
@@ -486,7 +486,7 @@ export default function App() {
       {
         id: "inventory" as Page,
         icon: Package,
-        label: "Inventory",
+        label: "Product Inventory",
         roles: ["ADMIN", "STORE"],
       },
       {
