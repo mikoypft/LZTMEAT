@@ -691,7 +691,7 @@ export function EmployeesPage() {
               </div>
 
               {/* Permissions (only for Employee role) */}
-              {formData.role === "Employee" && (
+              {formData.role === "EMPLOYEE" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Permissions
