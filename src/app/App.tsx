@@ -302,7 +302,7 @@ export default function App() {
         {
           id: "ingredients" as Page,
           icon: ChefHat,
-          label: "Ingredients",
+          label: "Raw Materials Inventory",
           permission: "ingredients",
         },
         {
@@ -400,7 +400,7 @@ export default function App() {
         {
           id: "ingredients" as Page,
           icon: ChefHat,
-          label: "Ingredients",
+          label: "Raw Materials Inventory",
           roles: ["STORE"],
         },
         {
@@ -442,7 +442,7 @@ export default function App() {
         {
           id: "ingredients" as Page,
           icon: ChefHat,
-          label: "Ingredients",
+          label: "Raw Materials Inventory",
           roles: ["PRODUCTION"],
         },
         {
@@ -498,7 +498,7 @@ export default function App() {
       {
         id: "ingredients" as Page,
         icon: ChefHat,
-        label: "Ingredients",
+        label: "Raw Materials Inventory",
         roles: ["ADMIN", "STORE", "PRODUCTION"],
       },
       {

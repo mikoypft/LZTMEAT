@@ -64,7 +64,7 @@ const AVAILABLE_PERMISSIONS = [
   },
   {
     id: "ingredients",
-    label: "Ingredients",
+    label: "Raw Materials Inventory",
     description: "View and manage ingredients",
   },
   {
