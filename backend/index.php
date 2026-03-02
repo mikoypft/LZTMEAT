@@ -12,7 +12,7 @@ ini_set('display_errors', '1');
 // Set CORS headers for all requests
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID, X-User-Name');
 header('Access-Control-Allow-Credentials: true');
 header('Content-Type: application/json; charset=utf-8');
 
@@ -315,6 +315,16 @@ $body = json_decode(file_get_contents('php://input'), true) ?? [];
 // Log a system history entry (best-effort)
 function logSystemHistory($pdo, $action, $entity = null, $entityId = null, $details = null, $userId = null) {
     try {
+        // Auto-detect performing user from request header when not explicitly supplied
+        if ($userId === null) {
+            $userId = isset($_SERVER['HTTP_X_USER_ID']) && $_SERVER['HTTP_X_USER_ID'] !== ''
+                ? (int)$_SERVER['HTTP_X_USER_ID']
+                : null;
+        }
+        // Embed performer name in details for resilience (shows even for deleted users)
+        if (is_array($details) && isset($_SERVER['HTTP_X_USER_NAME']) && $_SERVER['HTTP_X_USER_NAME'] !== '') {
+            $details['_performedBy'] = $_SERVER['HTTP_X_USER_NAME'];
+        }
         $stmt = $pdo->prepare('INSERT INTO system_history (action, entity, entity_id, details, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
         $stmt->execute([
             $action,
@@ -4368,13 +4378,19 @@ $routes = [
             
             return [
                 'history' => array_map(function($record) {
+                    $details = $record['details'] ? json_decode($record['details'], true) : null;
+                    // Resolve performer name: join > embedded > fallback
+                    $performedBy = $record['user_name']
+                        ?? ($details['_performedBy'] ?? 'System');
+                    // Remove internal key from displayed details
+                    if (is_array($details)) unset($details['_performedBy']);
                     return [
                         'id' => (int)$record['id'],
                         'action' => $record['action'],
                         'description' => $record['action'],
-                        'user' => $record['user_name'] ?? 'System',
+                        'user' => $performedBy,
                         'timestamp' => $record['created_at'],
-                        'details' => $record['details'] ? json_decode($record['details'], true) : null,
+                        'details' => $details,
                     ];
                 }, $records),
                 'total' => (int)$count,

@@ -69,7 +69,7 @@ if (str_starts_with($path, '/api')) {
     // Set CORS headers
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID, X-User-Name');
     header('Access-Control-Allow-Credentials: true');
     header('Content-Type: application/json');
 

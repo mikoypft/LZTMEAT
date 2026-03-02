@@ -17,6 +17,19 @@ async function apiRequest<T>(
     "Content-Type": "application/json",
   };
 
+  // Attach the current user's ID so the backend can record who performed actions
+  try {
+    const session = localStorage.getItem("lzt_user_session");
+    if (session) {
+      const user = JSON.parse(session);
+      if (user?.id) baseHeaders["X-User-ID"] = String(user.id);
+      if (user?.fullName || user?.username)
+        baseHeaders["X-User-Name"] = user.fullName || user.username;
+    }
+  } catch {
+    // ignore
+  }
+
   const headers: Record<string, string> = {
     ...baseHeaders,
   };
