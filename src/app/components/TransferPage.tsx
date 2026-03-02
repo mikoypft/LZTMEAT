@@ -607,11 +607,20 @@ export function TransferPage() {
                     <option value="Production Facility">
                       Production Facility
                     </option>
-                    {stores.map((location) => (
-                      <option key={location.name} value={location.name}>
-                        {location.name}
-                      </option>
-                    ))}
+                    {stores.map((location) => {
+                      const stockHere = newTransfer.productId
+                        ? Number(inventory.find(
+                            (inv) =>
+                              String(inv.productId) === String(newTransfer.productId) &&
+                              inv.location === location.name,
+                          )?.quantity) || 0
+                        : null;
+                      return (
+                        <option key={location.name} value={location.name}>
+                          {location.name}{stockHere !== null ? ` - Stock: ${stockHere}` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
@@ -624,11 +633,20 @@ export function TransferPage() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select Destination</option>
-                    {stores.map((location) => (
-                      <option key={location.name} value={location.name}>
-                        {location.name}
-                      </option>
-                    ))}
+                    {stores.map((location) => {
+                      const stockHere = newTransfer.productId
+                        ? Number(inventory.find(
+                            (inv) =>
+                              String(inv.productId) === String(newTransfer.productId) &&
+                              inv.location === location.name,
+                          )?.quantity) || 0
+                        : null;
+                      return (
+                        <option key={location.name} value={location.name}>
+                          {location.name}{stockHere !== null ? ` - Stock: ${stockHere}` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
