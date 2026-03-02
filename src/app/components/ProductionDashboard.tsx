@@ -2236,9 +2236,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
       {/* Start Mixing Modal */}
       {showStartMixingModal && selectedMixCategory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-card rounded-lg max-w-3xl w-full p-6 border border-border my-8">
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg max-w-3xl w-full border border-border flex flex-col max-h-[90vh]">
+            {/* Fixed Header */}
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <Factory className="w-6 h-6 text-primary" />
                 <h2 className="text-xl font-bold">
@@ -2261,7 +2262,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {/* Batch Number and Operator */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -2472,8 +2474,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+            </div>
+
+            {/* Fixed Footer */}
+            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => {
@@ -2497,7 +2501,6 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   <Save className="w-4 h-4" />
                   Start Mixing
                 </button>
-              </div>
             </div>
           </div>
         </div>
