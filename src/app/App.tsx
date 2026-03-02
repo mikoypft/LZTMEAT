@@ -247,7 +247,7 @@ export default function App() {
   // Define menu items based on user role and permissions
   const getMenuItems = () => {
     // For employees with Employee role, check permissions
-    if (currentUser?.employeeRole === "Employee") {
+    if (currentUser?.employeeRole === "Employee" || currentUser?.role === "EMPLOYEE") {
       const permissions = currentUser.permissions || [];
       const permissionMap: Record<string, Page> = {
         pos: "pos",
@@ -282,6 +282,12 @@ export default function App() {
           permission: "pos",
         },
         {
+          id: "production" as Page,
+          icon: Factory,
+          label: "Production",
+          permission: "production",
+        },
+        {
           id: "inventory" as Page,
           icon: Package,
           label: "Inventory",
@@ -300,6 +306,12 @@ export default function App() {
           permission: "ingredients",
         },
         {
+          id: "transfer" as Page,
+          icon: ArrowRightLeft,
+          label: "Transfer",
+          permission: "transfer",
+        },
+        {
           id: "sales" as Page,
           icon: Receipt,
           label: "Sales",
@@ -312,10 +324,40 @@ export default function App() {
           permission: "reports",
         },
         {
+          id: "stores" as Page,
+          icon: Store,
+          label: "Stores",
+          permission: "stores",
+        },
+        {
+          id: "employees" as Page,
+          icon: Users,
+          label: "Users",
+          permission: "employees",
+        },
+        {
+          id: "suppliers" as Page,
+          icon: DollarSign,
+          label: "Suppliers",
+          permission: "suppliers",
+        },
+        {
+          id: "discounts" as Page,
+          icon: Percent,
+          label: "Discounts",
+          permission: "discounts",
+        },
+        {
           id: "history" as Page,
           icon: History,
           label: "History",
           permission: "history",
+        },
+        {
+          id: "transactions" as Page,
+          icon: Receipt,
+          label: "Transactions",
+          permission: "transactions",
         },
       ];
 
