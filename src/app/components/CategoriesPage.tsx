@@ -741,12 +741,11 @@ function AddCategoryModal({
         (ing) => ing.ingredientId,
       );
 
-      if (validIngredients.length > 0) {
-        await saveProductMixCategoryDefaultIngredients(
-          categoryId,
-          validIngredients,
-        );
-      }
+      // Always call the API — even with an empty array — so deletions are persisted
+      await saveProductMixCategoryDefaultIngredients(
+        categoryId,
+        validIngredients,
+      );
     } catch (error) {
       console.error("Error saving default ingredients:", error);
       throw error;
