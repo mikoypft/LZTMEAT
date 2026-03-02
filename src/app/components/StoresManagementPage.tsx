@@ -1,23 +1,46 @@
-import { useState, useEffect } from 'react';
-import { Store, MapPin, Plus, Edit2, Trash2, Save, X, Building2, Phone, Mail, User, CheckCircle, Search, Filter } from 'lucide-react';
-import { toast } from 'sonner';
-import { getStores, createStore, updateStore, deleteStore, type StoreLocation } from '@/utils/api';
+import { useState, useEffect } from "react";
+import {
+  Store,
+  MapPin,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  X,
+  Building2,
+  Phone,
+  Mail,
+  User,
+  CheckCircle,
+  Search,
+  Filter,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  getStores,
+  createStore,
+  updateStore,
+  deleteStore,
+  type StoreLocation,
+} from "@/utils/api";
 
 export function StoresManagementPage() {
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStore, setEditingStore] = useState<StoreLocation | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "active" | "inactive"
+  >("all");
 
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    contactPerson: '',
-    phone: '',
-    email: '',
-    status: 'active' as 'active' | 'inactive',
+    name: "",
+    address: "",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    status: "active" as "active" | "inactive",
   });
 
   useEffect(() => {
@@ -30,8 +53,8 @@ export function StoresManagementPage() {
       const data = await getStores();
       setStores(data);
     } catch (error) {
-      console.error('Error loading stores:', error);
-      toast.error('Failed to load stores');
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores");
     } finally {
       setLoading(false);
     }
@@ -39,24 +62,24 @@ export function StoresManagementPage() {
 
   const handleAddStore = async () => {
     if (!formData.name.trim()) {
-      toast.error('Store name is required');
+      toast.error("Store name is required");
       return;
     }
 
     if (!formData.address.trim()) {
-      toast.error('Store address is required');
+      toast.error("Store address is required");
       return;
     }
 
     try {
       await createStore(formData);
-      toast.success('Store added successfully');
+      toast.success("Store added successfully");
       setShowAddModal(false);
       resetForm();
       loadStores();
     } catch (error) {
-      console.error('Error adding store:', error);
-      toast.error('Failed to add store');
+      console.error("Error adding store:", error);
+      toast.error("Failed to add store");
     }
   };
 
@@ -64,31 +87,31 @@ export function StoresManagementPage() {
     if (!editingStore) return;
 
     if (!formData.name.trim()) {
-      toast.error('Store name is required');
+      toast.error("Store name is required");
       return;
     }
 
     if (!formData.address.trim()) {
-      toast.error('Store address is required');
+      toast.error("Store address is required");
       return;
     }
 
     try {
       await updateStore(editingStore.id, formData);
-      toast.success('Store updated successfully');
+      toast.success("Store updated successfully");
       setEditingStore(null);
       resetForm();
       loadStores();
     } catch (error) {
-      console.error('Error updating store:', error);
-      toast.error('Failed to update store');
+      console.error("Error updating store:", error);
+      toast.error("Failed to update store");
     }
   };
 
   const handleDeleteStore = async (storeId: string, storeName: string) => {
     // Prevent deleting Amparo Store
-    if (storeName === 'Amparo Store') {
-      toast.error('Cannot delete Amparo Store');
+    if (storeName === "Amparo Store") {
+      toast.error("Cannot delete Amparo Store");
       return;
     }
 
@@ -98,11 +121,11 @@ export function StoresManagementPage() {
 
     try {
       await deleteStore(storeId);
-      toast.success('Store deleted successfully');
+      toast.success("Store deleted successfully");
       loadStores();
     } catch (error) {
-      console.error('Error deleting store:', error);
-      toast.error('Failed to delete store');
+      console.error("Error deleting store:", error);
+      toast.error("Failed to delete store");
     }
   };
 
@@ -111,21 +134,21 @@ export function StoresManagementPage() {
     setFormData({
       name: store.name,
       address: store.address,
-      contactPerson: store.contactPerson || '',
-      phone: store.phone || '',
-      email: store.email || '',
+      contactPerson: store.contactPerson || "",
+      phone: store.phone || "",
+      email: store.email || "",
       status: store.status,
     });
   };
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      address: '',
-      contactPerson: '',
-      phone: '',
-      email: '',
-      status: 'active',
+      name: "",
+      address: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      status: "active",
     });
   };
 
@@ -135,15 +158,19 @@ export function StoresManagementPage() {
     resetForm();
   };
 
-  const filteredStores = stores.filter(store => {
-    const matchesSearch = store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         store.address.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || store.status === filterStatus;
+  const filteredStores = stores.filter((store) => {
+    const matchesSearch =
+      store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      store.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter =
+      filterStatus === "all" || store.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const activeStoresCount = stores.filter(s => s.status === 'active').length;
-  const inactiveStoresCount = stores.filter(s => s.status === 'inactive').length;
+  const activeStoresCount = stores.filter((s) => s.status === "active").length;
+  const inactiveStoresCount = stores.filter(
+    (s) => s.status === "inactive",
+  ).length;
 
   return (
     <div className="h-full overflow-auto bg-muted/30">
@@ -173,29 +200,45 @@ export function StoresManagementPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Total Stores</span>
+              <span className="text-sm text-muted-foreground">
+                Total Stores
+              </span>
               <Store className="w-5 h-5 text-primary" />
             </div>
             <p className="text-3xl font-semibold">{stores.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Including Amparo Store</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Including Amparo Store
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Active Stores</span>
+              <span className="text-sm text-muted-foreground">
+                Active Stores
+              </span>
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-3xl font-semibold text-green-600">{activeStoresCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Currently operational</p>
+            <p className="text-3xl font-semibold text-green-600">
+              {activeStoresCount}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Currently operational
+            </p>
           </div>
 
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Inactive Stores</span>
+              <span className="text-sm text-muted-foreground">
+                Inactive Stores
+              </span>
               <X className="w-5 h-5 text-orange-600" />
             </div>
-            <p className="text-3xl font-semibold text-orange-600">{inactiveStoresCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Temporarily closed</p>
+            <p className="text-3xl font-semibold text-orange-600">
+              {inactiveStoresCount}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Temporarily closed
+            </p>
           </div>
         </div>
 
@@ -237,7 +280,9 @@ export function StoresManagementPage() {
             <div className="p-12 text-center">
               <Store className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery || filterStatus !== 'all' ? 'No stores match your filters' : 'No stores added yet'}
+                {searchQuery || filterStatus !== "all"
+                  ? "No stores match your filters"
+                  : "No stores added yet"}
               </p>
             </div>
           ) : (
@@ -247,7 +292,9 @@ export function StoresManagementPage() {
                   <tr>
                     <th className="text-left p-4 font-semibold">Store Name</th>
                     <th className="text-left p-4 font-semibold">Address</th>
-                    <th className="text-left p-4 font-semibold">Contact Person</th>
+                    <th className="text-left p-4 font-semibold">
+                      Contact Person
+                    </th>
                     <th className="text-left p-4 font-semibold">Phone</th>
                     <th className="text-left p-4 font-semibold">Status</th>
                     <th className="text-center p-4 font-semibold">Actions</th>
@@ -255,13 +302,20 @@ export function StoresManagementPage() {
                 </thead>
                 <tbody>
                   {filteredStores.map((store) => (
-                    <tr key={store.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={store.id}
+                      className="border-b border-border hover:bg-muted/30 transition-colors"
+                    >
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className={`p-2 rounded-lg ${
-                            store.name === 'Amparo Store' ? 'bg-red-100' : 'bg-blue-100'
-                          }`}>
-                            {store.name === 'Amparo Store' ? (
+                          <div
+                            className={`p-2 rounded-lg ${
+                              store.name === "Amparo Store"
+                                ? "bg-red-100"
+                                : "bg-blue-100"
+                            }`}
+                          >
+                            {store.name === "Amparo Store" ? (
                               <Building2 className="w-5 h-5 text-red-600" />
                             ) : (
                               <Store className="w-5 h-5 text-blue-600" />
@@ -269,8 +323,10 @@ export function StoresManagementPage() {
                           </div>
                           <div>
                             <p className="font-semibold">{store.name}</p>
-                            {store.name === 'Amparo Store' && (
-                              <span className="text-xs text-red-600 font-medium">Primary Location</span>
+                            {store.name === "Amparo Store" && (
+                              <span className="text-xs text-red-600 font-medium">
+                                Primary Location
+                              </span>
                             )}
                           </div>
                         </div>
@@ -283,26 +339,27 @@ export function StoresManagementPage() {
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
-                          {store.contactPerson || '-'}
+                          {store.contactPerson || "-"}
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="text-sm">
-                          {store.phone || '-'}
-                        </div>
+                        <div className="text-sm">{store.phone || "-"}</div>
                       </td>
                       <td className="p-4">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                          store.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-orange-100 text-orange-700'
-                        }`}>
-                          {store.status === 'active' ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                            store.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          {store.status === "active" ? (
                             <CheckCircle className="w-3 h-3" />
                           ) : (
                             <X className="w-3 h-3" />
                           )}
-                          {store.status.charAt(0).toUpperCase() + store.status.slice(1)}
+                          {store.status.charAt(0).toUpperCase() +
+                            store.status.slice(1)}
                         </span>
                       </td>
                       <td className="p-4">
@@ -314,9 +371,11 @@ export function StoresManagementPage() {
                           >
                             <Edit2 className="w-4 h-4 text-blue-600" />
                           </button>
-                          {store.name !== 'Amparo Store' && (
+                          {store.name !== "Amparo Store" && (
                             <button
-                              onClick={() => handleDeleteStore(store.id, store.name)}
+                              onClick={() =>
+                                handleDeleteStore(store.id, store.name)
+                              }
                               className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
                               title="Delete Store"
                             >
@@ -352,7 +411,10 @@ export function StoresManagementPage() {
                   </>
                 )}
               </h2>
-              <button onClick={handleCancel} className="p-2 hover:bg-muted rounded-lg">
+              <button
+                onClick={handleCancel}
+                className="p-2 hover:bg-muted rounded-lg"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -366,13 +428,17 @@ export function StoresManagementPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="e.g., Branch 1, Downtown Store"
                   className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={editingStore?.name === 'Amparo Store'}
+                  disabled={editingStore?.name === "Amparo Store"}
                 />
-                {editingStore?.name === 'Amparo Store' && (
-                  <p className="text-xs text-muted-foreground mt-1">Amparo Store name cannot be changed</p>
+                {editingStore?.name === "Amparo Store" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Amparo Store name cannot be changed
+                  </p>
                 )}
               </div>
 
@@ -383,7 +449,9 @@ export function StoresManagementPage() {
                 </label>
                 <textarea
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   placeholder="Enter complete store address"
                   rows={3}
                   className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
@@ -400,7 +468,12 @@ export function StoresManagementPage() {
                   <input
                     type="text"
                     value={formData.contactPerson}
-                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contactPerson: e.target.value,
+                      })
+                    }
                     placeholder="Manager or contact person name"
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -417,7 +490,9 @@ export function StoresManagementPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     placeholder="+63 XXX XXX XXXX"
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -426,15 +501,15 @@ export function StoresManagementPage() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Email
-                </label>
+                <label className="block text-sm font-medium mb-2">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="store@example.com"
                     className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -443,12 +518,15 @@ export function StoresManagementPage() {
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Status
-                </label>
+                <label className="block text-sm font-medium mb-2">Status</label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as "active" | "inactive",
+                    })
+                  }
                   className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="active">Active</option>
@@ -469,7 +547,7 @@ export function StoresManagementPage() {
                 className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <Save className="w-4 h-4" />
-                {editingStore ? 'Update Store' : 'Add Store'}
+                {editingStore ? "Update Store" : "Add Store"}
               </button>
             </div>
           </div>

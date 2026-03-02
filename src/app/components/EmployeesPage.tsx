@@ -166,6 +166,11 @@ export function EmployeesPage() {
     "username" | "password" | null
   >(null);
   const [viewingEmployee, setViewingEmployee] = useState<AllUser | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    show: boolean;
+    userId: string;
+    userName: string;
+  }>({ show: false, userId: "", userName: "" });
 
   useEffect(() => {
     loadEmployees();
@@ -372,16 +377,17 @@ export function EmployeesPage() {
     setShowAddForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) {
-      return;
-    }
+  const handleDelete = async (id: string, userName: string) => {
+    setDeleteConfirmation({ show: true, userId: id, userName });
+  };
 
+  const confirmDelete = async () => {
     try {
-      console.log("Deleting user with ID:", id);
-      await deleteUser(id);
+      console.log("Deleting user with ID:", deleteConfirmation.userId);
+      await deleteUser(deleteConfirmation.userId);
       toast.success("User deleted successfully");
       await loadEmployees();
+      setDeleteConfirmation({ show: false, userId: "", userName: "" });
     } catch (error) {
       console.error("Error deleting user:", error);
       toast.error("Failed to delete user");
@@ -1344,7 +1350,7 @@ export function EmployeesPage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(employee.id)}
+                            onClick={() => handleDelete(employee.id, employee.name)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -1904,6 +1910,50 @@ export function EmployeesPage() {
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                 >
                   I've Saved the Credentials
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmation.show && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-96">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Delete User
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-red-800">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold">"{deleteConfirmation.userName}"</span>?
+                  This will permanently remove the user from the system.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmation({ show: false, userId: "", userName: "" })}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Delete
                 </button>
               </div>
             </div>

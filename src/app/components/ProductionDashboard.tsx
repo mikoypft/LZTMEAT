@@ -2473,34 +2473,33 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     )}
                 </div>
               </div>
-
             </div>
 
             {/* Fixed Footer */}
             <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowStartMixingModal(false);
-                    setSelectedMixCategory(null);
-                    setMixAdditionalIngredients([]);
-                    setMixProducts([]);
-                    setMixDefaultIngredients([]);
-                    setMixProductQuantities({});
-                    setMixIngredientQuantities({});
-                  }}
-                  className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStartMixing}
-                  className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Start Mixing
-                </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStartMixingModal(false);
+                  setSelectedMixCategory(null);
+                  setMixAdditionalIngredients([]);
+                  setMixProducts([]);
+                  setMixDefaultIngredients([]);
+                  setMixProductQuantities({});
+                  setMixIngredientQuantities({});
+                }}
+                className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStartMixing}
+                className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                Start Mixing
+              </button>
             </div>
           </div>
         </div>

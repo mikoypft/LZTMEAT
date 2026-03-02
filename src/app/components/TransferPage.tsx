@@ -174,7 +174,9 @@ export function TransferPage() {
       // Set default locations if stores exist
       if (storesData.length > 0) {
         const mainStore = storesData.find((s) => s.name === "Amparo Store");
-        const firstOtherStore = storesData.find((s) => s.name !== "Amparo Store");
+        const firstOtherStore = storesData.find(
+          (s) => s.name !== "Amparo Store",
+        );
         setNewTransfer((prev) => ({
           ...prev,
           from: mainStore?.name || storesData[0].name,
@@ -362,7 +364,8 @@ export function TransferPage() {
     }
   };
 
-  const handleReceiveTransfer = async () => {    if (!selectedTransfer) return;
+  const handleReceiveTransfer = async () => {
+    if (!selectedTransfer) return;
 
     if (!receiveData.quantityReceived || !receiveData.receivedBy) {
       toast.error("Please fill in all required fields");
@@ -609,15 +612,19 @@ export function TransferPage() {
                     </option>
                     {stores.map((location) => {
                       const stockHere = newTransfer.productId
-                        ? Number(inventory.find(
-                            (inv) =>
-                              String(inv.productId) === String(newTransfer.productId) &&
-                              inv.location === location.name,
-                          )?.quantity) || 0
+                        ? Number(
+                            inventory.find(
+                              (inv) =>
+                                String(inv.productId) ===
+                                  String(newTransfer.productId) &&
+                                inv.location === location.name,
+                            )?.quantity,
+                          ) || 0
                         : null;
                       return (
                         <option key={location.name} value={location.name}>
-                          {location.name}{stockHere !== null ? ` - Stock: ${stockHere}` : ""}
+                          {location.name}
+                          {stockHere !== null ? ` - Stock: ${stockHere}` : ""}
                         </option>
                       );
                     })}
@@ -635,15 +642,19 @@ export function TransferPage() {
                     <option value="">Select Destination</option>
                     {stores.map((location) => {
                       const stockHere = newTransfer.productId
-                        ? Number(inventory.find(
-                            (inv) =>
-                              String(inv.productId) === String(newTransfer.productId) &&
-                              inv.location === location.name,
-                          )?.quantity) || 0
+                        ? Number(
+                            inventory.find(
+                              (inv) =>
+                                String(inv.productId) ===
+                                  String(newTransfer.productId) &&
+                                inv.location === location.name,
+                            )?.quantity,
+                          ) || 0
                         : null;
                       return (
                         <option key={location.name} value={location.name}>
-                          {location.name}{stockHere !== null ? ` - Stock: ${stockHere}` : ""}
+                          {location.name}
+                          {stockHere !== null ? ` - Stock: ${stockHere}` : ""}
                         </option>
                       );
                     })}

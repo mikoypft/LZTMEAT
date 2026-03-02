@@ -247,7 +247,10 @@ export default function App() {
   // Define menu items based on user role and permissions
   const getMenuItems = () => {
     // For employees with Employee role, check permissions
-    if (currentUser?.employeeRole === "Employee" || currentUser?.role === "EMPLOYEE") {
+    if (
+      currentUser?.employeeRole === "Employee" ||
+      currentUser?.role === "EMPLOYEE"
+    ) {
       const permissions = currentUser.permissions || [];
       const permissionMap: Record<string, Page> = {
         pos: "pos",
@@ -799,7 +802,9 @@ export default function App() {
               />
             )}
             {currentPage === "pos" && <POSPage currentUser={currentUser} />}
-            {currentPage === "production" && <ProductionDashboard currentUser={currentUser} />}
+            {currentPage === "production" && (
+              <ProductionDashboard currentUser={currentUser} />
+            )}
             {currentPage === "inventory" && (
               <InventoryPage key={inventoryKey} currentUser={currentUser} />
             )}
