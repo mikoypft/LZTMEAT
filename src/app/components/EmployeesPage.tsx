@@ -1918,7 +1918,7 @@ export function EmployeesPage() {
 
         {/* Delete Confirmation Modal */}
         {deleteConfirmation.show && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-96">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
