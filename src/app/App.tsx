@@ -720,14 +720,15 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => handlePageChange(item.id)}
+                  title={item.label}
                   className={`w-full flex items-center gap-3 px-6 py-3 transition-colors ${
                     isActive
                       ? "bg-primary-foreground text-primary border-r-4 border-primary"
                       : "hover:bg-primary-foreground/10"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <Icon className="w-5 h-5 shrink-0" />
+                  <span className="text-sm truncate">{item.label}</span>
                 </button>
               );
             })}
