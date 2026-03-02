@@ -3683,6 +3683,7 @@ $routes = [
                     'storeName' => $u['store_name'],
                     'canLogin' => (bool)($u['can_login'] ?? true),
                     'createdAt' => $u['created_at'] ?? date('Y-m-d H:i:s'),
+                    'permissions' => !empty($u['permissions']) ? json_decode($u['permissions'], true) : [],
                     'employeeProfile' => !empty($u['employee_profile']) ? json_decode($u['employee_profile'], true) : null,
                 ];
             }, $users),
@@ -3714,7 +3715,7 @@ $routes = [
             // Ensure employee_profile column exists
             try { $pdo->exec("ALTER TABLE users ADD COLUMN employee_profile JSON NULL"); } catch(Exception $e) { /* already exists */ }
 
-            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, employee_profile, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, permissions, employee_profile, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
             $bindParams = [
                 $username,
                 $passwordHash,
@@ -3724,6 +3725,7 @@ $routes = [
                 $role,
                 (isset($body['storeId']) && !empty($body['storeId'])) ? $body['storeId'] : null,
                 1,
+                isset($body['permissions']) ? json_encode($body['permissions']) : null,
                 !empty($body['employeeProfile']) ? json_encode($body['employeeProfile']) : null,
             ];
             
@@ -3773,6 +3775,7 @@ $routes = [
                     'canLogin' => (bool)$user['can_login'],
                     'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
                     'password' => $password,
+                    'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : [],
                     'employeeProfile' => !empty($user['employee_profile']) ? json_decode($user['employee_profile'], true) : null,
                 ]
             ];
