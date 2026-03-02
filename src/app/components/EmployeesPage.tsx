@@ -99,7 +99,7 @@ export function EmployeesPage() {
     name: string;
     mobile: string;
     address: string;
-    role?: "Store" | "Production" | "POS" | "Employee";
+    role?: "STORE" | "PRODUCTION" | "POS" | "EMPLOYEE";
     storeId?: string;
     permissions?: string[];
     dateOfBirth: string;
@@ -654,19 +654,19 @@ export function EmployeesPage() {
                     setFormData({
                       ...formData,
                       role: e.target.value as
-                        | "Store"
-                        | "Production"
+                        | "STORE"
+                        | "PRODUCTION"
                         | "POS"
-                        | "Employee",
+                        | "EMPLOYEE",
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
                   <option value="">Select a role</option>
-                  <option value="Store">Store</option>
-                  <option value="Production">Production</option>
+                  <option value="STORE">Store</option>
+                  <option value="PRODUCTION">Production</option>
                   <option value="POS">POS</option>
-                  <option value="Employee">Employee</option>
+                  <option value="EMPLOYEE">Employee</option>
                 </select>
               </div>
 
