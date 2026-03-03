@@ -359,7 +359,7 @@ export default function App() {
         {
           id: "transactions" as Page,
           icon: Receipt,
-          label: "Transactions",
+          label: "Cash-in / Cash-out",
           permission: "transactions",
         },
       ];
@@ -550,7 +550,7 @@ export default function App() {
       {
         id: "transactions" as Page,
         icon: DollarSign,
-        label: "Transactions",
+        label: "Cash-in / Cash-out",
         roles: ["ADMIN", "STORE", "PRODUCTION"],
       },
     ];

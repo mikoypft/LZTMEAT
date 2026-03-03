@@ -123,7 +123,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Cash-in / Cash-out</h1>
           <p className="text-gray-600 mt-1">
             Manage cash in and cash out transactions
           </p>

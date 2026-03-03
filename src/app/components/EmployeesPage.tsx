@@ -85,8 +85,8 @@ const AVAILABLE_PERMISSIONS = [
   { id: "history", label: "History", description: "View history logs" },
   {
     id: "transactions",
-    label: "Transactions",
-    description: "View transactions",
+    label: "Cash-in / Cash-out",
+    description: "View cash-in / cash-out",
   },
 ];
 
@@ -1350,7 +1350,9 @@ export function EmployeesPage() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(employee.id, employee.name)}
+                            onClick={() =>
+                              handleDelete(employee.id, employee.name)
+                            }
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -1937,14 +1939,22 @@ export function EmployeesPage() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-red-800">
                   Are you sure you want to delete{" "}
-                  <span className="font-semibold">"{deleteConfirmation.userName}"</span>?
-                  This will permanently remove the user from the system.
+                  <span className="font-semibold">
+                    "{deleteConfirmation.userName}"
+                  </span>
+                  ? This will permanently remove the user from the system.
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setDeleteConfirmation({ show: false, userId: "", userName: "" })}
+                  onClick={() =>
+                    setDeleteConfirmation({
+                      show: false,
+                      userId: "",
+                      userName: "",
+                    })
+                  }
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                 >
                   Cancel
