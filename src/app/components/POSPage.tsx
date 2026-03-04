@@ -204,6 +204,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     product: null,
     weight: "1",
   });
+  const [mobileView, setMobileView] = useState<"products" | "cart">("products");
 
   // Determine if user can switch stores (only ADMIN can)
   const canSwitchStores = currentUser?.role === "ADMIN";
@@ -841,10 +842,46 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     }
   };
 
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden flex border-b border-border bg-card flex-shrink-0">
+        <button
+          onClick={() => setMobileView("products")}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            mobileView === "products"
+              ? "border-b-2 border-primary text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Products
+        </button>
+        <button
+          onClick={() => setMobileView("cart")}
+          className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+            mobileView === "cart"
+              ? "border-b-2 border-primary text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Cart
+          {cartItemCount > 0 && (
+            <span className="ml-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
+              {cartItemCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-row overflow-hidden">
+
       {/* Left Side - Products */}
-      <div className="flex-1 flex flex-col p-4 lg:p-6 bg-muted/30 overflow-hidden">
+      <div className={`flex-1 flex flex-col p-4 lg:p-6 bg-muted/30 overflow-hidden ${
+        mobileView === "products" ? "flex" : "hidden"
+      } lg:flex`}>
         {/* Store Selector */}
         <div className="mb-4 bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-3">
@@ -1065,7 +1102,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       </div>
 
       {/* Right Side - Cart */}
-      <div className="w-full lg:w-96 bg-card border-l border-border flex flex-col h-full lg:max-h-screen">
+      <div className={`w-full lg:w-96 bg-card border-l border-border flex flex-col lg:max-h-none ${
+        mobileView === "cart" ? "flex" : "hidden"
+      } lg:flex`}>
         <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3 flex-shrink-0">
           <ShoppingCart className="w-6 h-6" />
           <h2 className="flex-1">Current Order</h2>
@@ -1350,6 +1389,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           </div>
         )}
       </div>
+
+      </div> {/* End Main Content */}
 
       {/* Product Manager Modal */}
       {showProductManager && (
