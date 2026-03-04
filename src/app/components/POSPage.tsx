@@ -206,8 +206,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   });
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
 
-  // Determine if user can switch stores (only ADMIN can)
-  const canSwitchStores = currentUser?.role === "ADMIN";
+  // All users can switch stores in POS
+  const canSwitchStores = true;
   const userAssignedStoreId = currentUser?.storeId;
   const userAssignedStoreName = currentUser?.storeName;
 
@@ -300,21 +300,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
       let storeToSelect: StoreLocation | null = null;
 
       if (userAssignedStoreId) {
-        // Find user's assigned store
+        // Default to user's assigned store, but they can switch
         storeToSelect =
           storeData.find((s: StoreLocation) => s.id === userAssignedStoreId) ||
+          storeData[0] ||
           null;
-        if (storeToSelect) {
-          toast.info(`Locked to your assigned store: ${storeToSelect.name}`, {
-            duration: 3000,
-          });
-        } else {
-          toast.error(
-            `Your assigned store (${userAssignedStoreName}) was not found.`,
-          );
-        }
       } else {
-        // Default to first store for admin or users without assigned store
+        // Default to first store
         storeToSelect = storeData[0] || null;
       }
 
