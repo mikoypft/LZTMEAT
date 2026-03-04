@@ -748,13 +748,13 @@ export function TransferPage() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-right text-primary">
-                        {transfer.quantity} {transfer.unit}
+                        {parseFloat(Number(transfer.quantity).toFixed(3))} {transfer.unit}
                       </td>
                       <td className="py-3 px-4 text-right">
                         {transfer.quantityReceived !== undefined &&
                         transfer.quantityReceived !== null ? (
                           <span className="text-green-600 font-medium">
-                            {transfer.quantityReceived} {transfer.unit}
+                            {parseFloat(Number(transfer.quantityReceived).toFixed(3))} {transfer.unit}
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
@@ -768,7 +768,7 @@ export function TransferPage() {
                         transfer.discrepancy !== 0 ? (
                           <span className="text-orange-600 font-medium">
                             {transfer.discrepancy > 0 ? "-" : "+"}
-                            {Math.abs(transfer.discrepancy)} {transfer.unit}
+                            {parseFloat(Math.abs(transfer.discrepancy).toFixed(3))} {transfer.unit}
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
@@ -777,9 +777,13 @@ export function TransferPage() {
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">
-                          {transfer.from}
-                        </span>
+                        {transfer.from ? (
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+                            {transfer.from}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <ArrowRightLeft className="w-4 h-4 text-muted-foreground mx-auto" />
