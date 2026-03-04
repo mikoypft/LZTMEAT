@@ -268,6 +268,11 @@ try {
         error_log('production_records columns addition: ' . $tableErr->getMessage());
     }
 
+    // Ensure quantity columns are DECIMAL to support fractional values
+    try { $pdo->exec("ALTER TABLE inventory MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE production_records MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+
     // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
     try {
         $pdo->exec("UPDATE stores SET name = 'Amparo Store' WHERE name = 'Main Store'");
@@ -464,7 +469,7 @@ $routes = [
                         'production_id' => $prod['id'],
                         'batch_number' => $prod['batch_number'],
                         'category_name' => $mixCategoryName,
-                        'weight' => $mixWeight
+                        'weight' => (float)$mixWeight
                     ];
                 } catch (Exception $e) {
                     $errors[] = [
@@ -1981,7 +1986,7 @@ $routes = [
                                     $enrichedIngredients[] = [
                                         'ingredientId' => $ingredientId,
                                         'ingredientName' => $ingredientData['name'],
-                                        'quantity' => $ing['quantity'] ?? 0,
+                                        'quantity' => (float)($ing['quantity'] ?? 0),
                                         'unit' => $ingredientData['unit'] ?? 'kg',
                                     ];
                                 }
@@ -2109,7 +2114,7 @@ $routes = [
                                 $enrichedIngredients[] = [
                                     'ingredientId' => $ingredientId,
                                     'ingredientName' => $ingredientData['name'],
-                                    'quantity' => $ing['quantity'] ?? 0,
+                                    'quantity' => (float)($ing['quantity'] ?? 0),
                                     'unit' => $ingredientData['unit'] ?? 'kg',
                                 ];
                             }
@@ -2269,7 +2274,7 @@ $routes = [
                                 $enrichedIngredients[] = [
                                     'ingredientId' => $ingredientId,
                                     'ingredientName' => $ingredientData['name'],
-                                    'quantity' => $ing['quantity'] ?? 0,
+                                    'quantity' => (float)($ing['quantity'] ?? 0),
                                     'unit' => $ingredientData['unit'] ?? 'kg',
                                 ];
                             }
@@ -2337,7 +2342,7 @@ $routes = [
                             $enrichedIngredients[] = [
                                 'ingredientId' => $ingredientId,
                                 'ingredientName' => $ingredientData['name'],
-                                'quantity' => $ing['quantity'] ?? 0,
+                                'quantity' => (float)($ing['quantity'] ?? 0),
                                 'unit' => $ingredientData['unit'] ?? 'kg',
                             ];
                         }
@@ -3637,9 +3642,9 @@ $routes = [
                 'message' => 'Stock adjustment recorded successfully',
                 'adjustment' => $adjustment,
                 'ingredient' => [
-                    'id' => (int)$ingredient['id'],
+                    'id' => (string)$ingredient['id'],
                     'name' => $ingredient['name'],
-                    'stock' => $newStock,
+                    'stock' => (float)$newStock,
                 ],
             ];
         } catch (Exception $e) {
