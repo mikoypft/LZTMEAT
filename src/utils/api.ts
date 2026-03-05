@@ -1441,6 +1441,7 @@ export async function exportDailyReportPDF(
   date: string,
   storeId?: string,
   userName?: string,
+  cashierId?: string,
 ): Promise<void> {
   let url = `${API_BASE}/reports/daily-pdf?date=${date}`;
   if (storeId) {
@@ -1448,6 +1449,9 @@ export async function exportDailyReportPDF(
   }
   if (userName) {
     url += `&userName=${encodeURIComponent(userName)}`;
+  }
+  if (cashierId) {
+    url += `&cashierId=${encodeURIComponent(cashierId)}`;
   }
 
   const response = await fetch(url);
@@ -1472,10 +1476,14 @@ export async function exportDailyReportPDF(
 export async function exportDailyReportCSV(
   date: string,
   storeId?: string,
+  cashierId?: string,
 ): Promise<void> {
   let endpoint = `/reports/daily-csv?date=${date}`;
   if (storeId) {
     endpoint += `&storeId=${storeId}`;
+  }
+  if (cashierId) {
+    endpoint += `&cashierId=${encodeURIComponent(cashierId)}`;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`);

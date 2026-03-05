@@ -4661,6 +4661,7 @@ $routes = [
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = $_GET['storeId'] ?? null;
+            $cashierId = $_GET['cashierId'] ?? null;
             $userName = $_GET['userName'] ?? 'Unknown';
 
             $dateFormatted = date('m/d/Y', strtotime($date));
@@ -4688,6 +4689,10 @@ $routes = [
             if ($storeId) {
                 $salesQuery .= ' AND s.store_id = ?';
                 $params[] = $storeId;
+            }
+            if ($cashierId) {
+                $salesQuery .= ' AND s.user_id = ?';
+                $params[] = $cashierId;
             }
             $salesStmt = $pdo->prepare($salesQuery);
             $salesStmt->execute($params);
@@ -4957,6 +4962,7 @@ $routes = [
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = $_GET['storeId'] ?? null;
+            $cashierId = $_GET['cashierId'] ?? null;
 
             $salesQuery = 'SELECT s.*, u.full_name as cashier_name, st.name as store_name 
                            FROM sales s 
@@ -4967,6 +4973,10 @@ $routes = [
             if ($storeId) {
                 $salesQuery .= ' AND s.store_id = ?';
                 $params[] = $storeId;
+            }
+            if ($cashierId) {
+                $salesQuery .= ' AND s.user_id = ?';
+                $params[] = $cashierId;
             }
             $salesQuery .= ' ORDER BY s.created_at ASC';
             $salesStmt = $pdo->prepare($salesQuery);

@@ -4,6 +4,8 @@ import {
   exportDailyReportPDF,
   exportDailyReportCSV,
   getStores,
+  getAllUsers,
+  type AllUser,
 } from "../../utils/api";
 import { toast } from "sonner";
 import type { StoreLocation } from "../../utils/api";
@@ -21,22 +23,28 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     return `${year}-${month}-${day}`;
   });
   const [selectedStore, setSelectedStore] = useState<string>("");
+  const [selectedCashier, setSelectedCashier] = useState<string>("");
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingCsv, setLoadingCsv] = useState(false);
   const [stores, setStores] = useState<StoreLocation[]>([]);
+  const [cashiers, setCashiers] = useState<AllUser[]>([]);
 
-  // Load stores on component mount
+  // Load stores and users on component mount
   useEffect(() => {
-    const loadStores = async () => {
+    const loadData = async () => {
       try {
-        const storesData = await getStores();
+        const [storesData, usersData] = await Promise.all([
+          getStores(),
+          getAllUsers(),
+        ]);
         setStores(storesData);
+        setCashiers(usersData);
       } catch (error) {
-        console.error("Error loading stores:", error);
-        toast.error("Failed to load stores");
+        console.error("Error loading data:", error);
+        toast.error("Failed to load filter options");
       }
     };
-    loadStores();
+    loadData();
   }, []);
 
   // Export to PDF
@@ -48,6 +56,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
           selectedDate,
           selectedStore || undefined,
           currentUser?.fullName || currentUser?.username || "Unknown",
+          selectedCashier || undefined,
         ),
         {
           loading: "Generating PDF...",
@@ -67,7 +76,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     try {
       setLoadingCsv(true);
       toast.promise(
-        exportDailyReportCSV(selectedDate, selectedStore || undefined),
+        exportDailyReportCSV(selectedDate, selectedStore || undefined, selectedCashier || undefined),
         {
           loading: "Generating CSV report...",
           success: "CSV report downloaded successfully!",
@@ -134,6 +143,28 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
               </select>
               <p className="text-xs text-muted-foreground mt-1">
                 Leave blank to include all stores
+              </p>
+            </div>
+
+            {/* Cashier Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Cashier (Optional)
+              </label>
+              <select
+                value={selectedCashier}
+                onChange={(e) => setSelectedCashier(e.target.value)}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">All Cashiers</option>
+                {cashiers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName || user.name || user.username}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave blank to include all cashiers
               </p>
             </div>
           </div>
