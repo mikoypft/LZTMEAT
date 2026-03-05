@@ -623,12 +623,16 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                   </div>
 
                   {/* Payment Summary */}
-                  {preview.paymentBreakdown.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                          Payment Breakdown
-                        </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Payment Breakdown
+                      </h3>
+                      {preview.paymentBreakdown.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">
+                          No payment records for this date.
+                        </p>
+                      ) : (
                         <table className="w-full text-sm">
                           <thead>
                             <tr>
@@ -662,39 +666,39 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                             ))}
                           </tbody>
                         </table>
-                      </div>
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                          Summary
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Total Sales</span>
-                            <span className="font-medium">
-                              ₱{preview.totalSales.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Cash Out</span>
-                            <span className="font-medium">
-                              ₱{preview.cashOutTotal.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between border-t border-gray-200 pt-2">
-                            <span className="font-semibold text-gray-700">
-                              Gross Sales
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              ₱
-                              {(
-                                preview.totalSales + preview.cashOutTotal
-                              ).toFixed(2)}
-                            </span>
-                          </div>
+                      )}
+                    </div>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Summary
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total Sales</span>
+                          <span className="font-medium">
+                            ₱{preview.totalSales.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Cash Out</span>
+                          <span className="font-medium">
+                            ₱{preview.cashOutTotal.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-2">
+                          <span className="font-semibold text-gray-700">
+                            Gross Sales
+                          </span>
+                          <span className="font-bold text-gray-900">
+                            ₱
+                            {(
+                              preview.totalSales + preview.cashOutTotal
+                            ).toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Remarks */}
                   <div>
