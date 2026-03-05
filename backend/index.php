@@ -277,6 +277,9 @@ try {
     try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS discrepancy_reason TEXT DEFAULT NULL"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS received_by VARCHAR(255) DEFAULT NULL"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS received_at DATETIME DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS mixing_discrepancy DECIMAL(10,3) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS packing_discrepancy DECIMAL(10,3) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS cooking_discrepancy DECIMAL(10,3) DEFAULT NULL"); } catch(Exception $e) {}
 
     // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
     try {
@@ -2014,6 +2017,9 @@ $routes = [
                     'operator' => $r['operator'],
                     'status' => $r['status'] ?? 'in-progress',
                     'phase' => $r['phase'] ?? 'mixing',
+                    'mixingDiscrepancy' => $r['mixing_discrepancy'] !== null ? (float)$r['mixing_discrepancy'] : null,
+                    'packingDiscrepancy' => $r['packing_discrepancy'] !== null ? (float)$r['packing_discrepancy'] : null,
+                    'cookingDiscrepancy' => $r['cooking_discrepancy'] !== null ? (float)$r['cooking_discrepancy'] : null,
                     'initialIngredients' => $enrichedIngredients,
                     'timestamp' => $r['created_at'],
                 ];
@@ -2474,7 +2480,7 @@ $routes = [
                 return ['error' => 'Production record not found'];
             }
             
-            $mixWeight = $body['mixWeight'] ?? 0;
+            $mixWeight = (float)($body['mixWeight'] ?? 0);
             $rawPackedItems = isset($body['rawPackedItems']) ? (float)$body['rawPackedItems'] : null;
             $mixCategoryId = $production['product_mix_category_id'];
             $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
@@ -2483,6 +2489,18 @@ $routes = [
             if (empty($mixCategoryName)) {
                 $mixCategoryName = 'Unknown Mix';
             }
+
+            // Compute mixing discrepancy (total ingredient weight − actual mix weight output)
+            $totalIngredientWeight = 0;
+            if (!empty($production['initial_ingredients'])) {
+                $initialIngs = json_decode($production['initial_ingredients'], true);
+                if (is_array($initialIngs)) {
+                    foreach ($initialIngs as $ing) {
+                        $totalIngredientWeight += (float)($ing['quantity'] ?? 0);
+                    }
+                }
+            }
+            $mixingDiscrepancy = round($totalIngredientWeight - $mixWeight, 3);
 
             // Insert into product_mix_inventory with the mix weight
             $cost = 0;
@@ -2498,10 +2516,10 @@ $routes = [
             // Transition to packing phase (mix inventory created after packing is done)
             $stmt = $pdo->prepare('
                 UPDATE production_records 
-                SET phase = ?, status = ?, mix_weight = ?, raw_packed_items = ?, product_mix_category_name = ?, updated_at = NOW()
+                SET phase = ?, status = ?, mix_weight = ?, raw_packed_items = ?, product_mix_category_name = ?, mixing_discrepancy = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['packing', 'in-progress', $mixWeight, $rawPackedItems, $mixCategoryName, $id]);
+            $stmt->execute(['packing', 'in-progress', $mixWeight, $rawPackedItems, $mixCategoryName, $mixingDiscrepancy, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('
@@ -2515,10 +2533,12 @@ $routes = [
             
             // Log history
             logSystemHistory($pdo, 'Mixing Completed', 'ProductionRecord', $id, [
-                'batchNumber' => $r['batch_number'],
-                'operator'    => $r['operator'],
-                'category'    => $r['product_mix_category_name'],
-                'mixWeight'   => $r['mix_weight'],
+                'batchNumber'        => $r['batch_number'],
+                'operator'           => $r['operator'],
+                'category'           => $r['product_mix_category_name'],
+                'totalIngredientsKg' => $totalIngredientWeight,
+                'mixWeightKg'        => (float)$r['mix_weight'],
+                'mixingDiscrepancy'  => $mixingDiscrepancy,
             ]);
 
             return [
@@ -2570,6 +2590,9 @@ $routes = [
             $rawPackedItems = isset($body['rawPackedItems']) ? (float)$body['rawPackedItems'] : null;
             // Mix inventory weight comes from the original mix_weight recorded during mixing
             $mixWeightForInventory = (float)($production['mix_weight'] ?? 0);
+
+            // Compute packing discrepancy (mix weight consumed − raw packed items output)
+            $packingDiscrepancy = round($mixWeightForInventory - (float)($rawPackedItems ?? 0), 3);
             $mixCategoryId = $production['product_mix_category_id'];
             $mixCategoryName = $production['product_mix_category_name'] ?? $production['category_name'] ?? 'Unknown Mix';
 
@@ -2660,10 +2683,10 @@ $routes = [
             // Update production record: packing done → transition to cooking phase
             $stmt = $pdo->prepare('
                 UPDATE production_records
-                SET phase = ?, status = ?, raw_packed_items = ?, updated_at = NOW()
+                SET phase = ?, status = ?, raw_packed_items = ?, packing_discrepancy = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['cooking', 'in-progress', $rawPackedItems, $id]);
+            $stmt->execute(['cooking', 'in-progress', $rawPackedItems, $packingDiscrepancy, $id]);
 
             // Return updated record
             $stmt = $pdo->prepare('
@@ -2677,10 +2700,12 @@ $routes = [
 
             // Log history
             logSystemHistory($pdo, 'Packing Completed', 'ProductionRecord', $id, [
-                'batchNumber'    => $r['batch_number'],
-                'operator'       => $r['operator'],
-                'category'       => $r['product_mix_category_name'],
-                'rawPackedItems' => $rawPackedItems,
+                'batchNumber'        => $r['batch_number'],
+                'operator'           => $r['operator'],
+                'category'           => $r['product_mix_category_name'],
+                'mixWeightInputKg'   => $mixWeightForInventory,
+                'rawPackedItemsKg'   => $rawPackedItems,
+                'packingDiscrepancy' => $packingDiscrepancy,
             ]);
 
             return [
@@ -2724,7 +2749,7 @@ $routes = [
                 return ['error' => 'Production record not found'];
             }
             
-            $mixUsed = $body['mixUsed'] ?? 0;
+            $mixUsed = (float)($body['mixUsed'] ?? 0);
             $products = $body['products'] ?? [];
             $cookingIngredients = $body['cookingIngredients'] ?? [];
             
@@ -2805,13 +2830,17 @@ $routes = [
                 }
             }
             
+            // Compute cooking discrepancy (raw packed items used − total finished product output)
+            $totalProductOutput = array_sum(array_column($products, 'quantity'));
+            $cookingDiscrepancy = round($mixUsed - $totalProductOutput, 3);
+
             // Update production record to completed
             $stmt = $pdo->prepare('
                 UPDATE production_records 
-                SET phase = ?, status = ?, mix_used = ?, updated_at = NOW()
+                SET phase = ?, status = ?, mix_used = ?, cooking_discrepancy = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['completed', 'completed', $mixUsed, $id]);
+            $stmt->execute(['completed', 'completed', $mixUsed, $cookingDiscrepancy, $id]);
             
             // Return updated record with outputs
             $stmt = $pdo->prepare('
@@ -2830,11 +2859,13 @@ $routes = [
             
             // Log history
             logSystemHistory($pdo, 'Cooking Completed', 'ProductionRecord', $id, [
-                'batchNumber' => $r['batch_number'],
-                'operator'    => $r['operator'],
-                'category'    => $r['product_mix_category_name'],
-                'mixUsed'     => $mixUsed,
-                'outputCount' => count($outputs),
+                'batchNumber'        => $r['batch_number'],
+                'operator'           => $r['operator'],
+                'category'           => $r['product_mix_category_name'],
+                'rawPackedUsedKg'    => $mixUsed,
+                'totalOutputKg'      => $totalProductOutput,
+                'cookingDiscrepancy' => $cookingDiscrepancy,
+                'outputCount'        => count($outputs),
             ]);
 
             return [
