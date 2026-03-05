@@ -5098,8 +5098,8 @@ $routes = [
                 $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
                 $productTableRows .= '<td class="number">P ' . number_format($resecoAmount, 2) . '</td>';
+                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
                 $productTableRows .= '</tr>';
             }
 
@@ -5146,7 +5146,7 @@ $routes = [
             $html .= '</div></div>';
             $html .= '<div class="section-title">PRODUCTS</div>';
             $html .= '<table class="products-table"><thead>';
-            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th><th style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">RESECO</th></tr>';
+            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">RESECO</th><th></th></tr>';
             $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL WEIGHT</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th><th>AMOUNT</th></tr>';
             $html .= '</thead><tbody>';
             $html .= $productTableRows;
@@ -5165,8 +5165,8 @@ $routes = [
             $html .= '<td class="number"><strong>P ' . number_format($totalTotalSales, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleKg, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleDisc, 2) . '</strong></td>';
-            $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalReseco, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
             // Cash out: use saved rows if available, else live transactions
