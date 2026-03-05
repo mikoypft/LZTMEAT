@@ -260,6 +260,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [selectedProductionForMixing, setSelectedProductionForMixing] =
     useState<APIProductionRecord | null>(null);
   const [mixWeight, setMixWeight] = useState("");
+  const [mixingDiscrepancyReason, setMixingDiscrepancyReason] = useState("");
 
   // Complete Packing Modal State
   const [showCompletePackingModal, setShowCompletePackingModal] =
@@ -271,6 +272,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [packingIngredients, setPackingIngredients] = useState<
     { ingredientId: string; quantity: string }[]
   >([]);
+  const [packingDiscrepancyReason, setPackingDiscrepancyReason] = useState("");
 
   // Complete Cooking Modal State
   const [showCompleteCookingModal, setShowCompleteCookingModal] =
@@ -284,6 +286,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const [cookingIngredients, setCookingIngredients] = useState<
     { ingredientId: string; quantity: string }[]
   >([]);
+  const [cookingDiscrepancyReason, setCookingDiscrepancyReason] = useState("");
 
   // Start Cooking from Mix Modal State
   const [showStartCookingFromMixModal, setShowStartCookingFromMixModal] =
@@ -1148,6 +1151,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       await completeMixing(
         selectedProductionForMixing.id,
         parseFloat(mixWeight),
+        undefined,
+        mixingDiscrepancyReason.trim() || undefined,
       );
 
       toast.success(`Mixing completed! Batch is now in packing phase.`);
@@ -1160,6 +1165,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       setShowCompleteMixingModal(false);
       setSelectedProductionForMixing(null);
       setMixWeight("");
+      setMixingDiscrepancyReason("");
     } catch (error) {
       console.error("Error completing mixing:", error);
       toast.error("Failed to complete mixing");
@@ -1210,6 +1216,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         selectedProductionForPacking.id,
         parseFloat(rawPackedItemsInput),
         ingredientsData,
+        packingDiscrepancyReason.trim() || undefined,
       );
 
       toast.success(
@@ -1228,6 +1235,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       setSelectedProductionForPacking(null);
       setRawPackedItemsInput("");
       setPackingIngredients([]);
+      setPackingDiscrepancyReason("");
     } catch (error) {
       console.error("Error completing packing:", error);
       toast.error("Failed to complete packing");
@@ -1322,6 +1330,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         parseFloat(mixUsed),
         validProducts,
         validIngredients,
+        cookingDiscrepancyReason.trim() || undefined,
       );
 
       toast.success("Cooking completed! Products added to inventory.");
@@ -1340,6 +1349,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       setMixUsed("");
       setProductsCreated([]);
       setCookingIngredients([]);
+      setCookingDiscrepancyReason("");
     } catch (error) {
       console.error("Error completing cooking:", error);
       toast.error("Failed to complete cooking");
@@ -2616,6 +2626,29 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 />
               </div>
 
+              {/* Discrepancy reason — shown when actual differs from planned */}
+              {(() => {
+                const ingredients = selectedProductionForMixing.initialIngredients ?? [];
+                const totalIngKg = ingredients.reduce((s, ing: any) => s + (parseFloat(ing.quantity) || 0), 0);
+                const actual = parseFloat(mixWeight) || 0;
+                const diff = parseFloat((totalIngKg - actual).toFixed(3));
+                if (totalIngKg === 0 || diff === 0) return null;
+                return (
+                  <div>
+                    <label className="block text-sm mb-1 text-amber-600 font-medium">
+                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={mixingDiscrepancyReason}
+                      onChange={(e) => setMixingDiscrepancyReason(e.target.value)}
+                      placeholder="e.g. moisture loss, spillage…"
+                      className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
+                    />
+                  </div>
+                );
+              })()}
+
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => {
@@ -2710,6 +2743,28 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 </p>
               </div>
 
+              {/* Packing discrepancy reason */}
+              {(() => {
+                const mixIn = selectedProductionForPacking.mixWeight ?? 0;
+                const actual = parseFloat(rawPackedItemsInput) || 0;
+                const diff = parseFloat((mixIn - actual).toFixed(3));
+                if (mixIn === 0 || diff === 0) return null;
+                return (
+                  <div>
+                    <label className="block text-sm mb-1 text-amber-600 font-medium">
+                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={packingDiscrepancyReason}
+                      onChange={(e) => setPackingDiscrepancyReason(e.target.value)}
+                      placeholder="e.g. moisture loss, trimming waste…"
+                      className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
+                    />
+                  </div>
+                );
+              })()}
+
               {/* Packing Ingredients */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -2786,6 +2841,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                     setShowCompletePackingModal(false);
                     setSelectedProductionForPacking(null);
                     setPackingIngredients([]);
+                    setPackingDiscrepancyReason("");
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >
@@ -2999,11 +3055,37 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 </div>
               </div>
 
+              {/* Cooking discrepancy reason */}
+              {(() => {
+                const rawUsed = parseFloat(mixUsed) || 0;
+                const totalOut = productsCreated.reduce(
+                  (s, p) => s + (parseFloat(p.quantity) || 0),
+                  0,
+                );
+                const diff = parseFloat((rawUsed - totalOut).toFixed(3));
+                if (rawUsed === 0 || diff === 0) return null;
+                return (
+                  <div>
+                    <label className="block text-sm mb-1 text-amber-600 font-medium">
+                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={cookingDiscrepancyReason}
+                      onChange={(e) => setCookingDiscrepancyReason(e.target.value)}
+                      placeholder="e.g. cooking loss, wastage…"
+                      className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
+                    />
+                  </div>
+                );
+              })()}
+
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCompleteCookingModal(false);
                     setSelectedProductionForCooking(null);
+                    setCookingDiscrepancyReason("");
                   }}
                   className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
                 >

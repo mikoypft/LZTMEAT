@@ -850,6 +850,7 @@ export async function completeMixing(
   id: string,
   mixWeight: number,
   rawPackedItems?: number | null,
+  discrepancyReason?: string,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-mixing`,
@@ -858,6 +859,7 @@ export async function completeMixing(
       body: JSON.stringify({
         mixWeight,
         rawPackedItems: rawPackedItems ?? null,
+        discrepancyReason: discrepancyReason || null,
       }),
     },
   );
@@ -868,6 +870,7 @@ export async function completePacking(
   id: string,
   rawPackedItems: number,
   packingIngredients?: Array<{ ingredientId: string; quantity: number }>,
+  discrepancyReason?: string,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-packing`,
@@ -876,6 +879,7 @@ export async function completePacking(
       body: JSON.stringify({
         rawPackedItems,
         packingIngredients: packingIngredients || [],
+        discrepancyReason: discrepancyReason || null,
       }),
     },
   );
@@ -887,6 +891,7 @@ export async function completeCooking(
   mixUsed: number,
   products: Array<{ productId: string; quantity: number }>,
   cookingIngredients?: Array<{ ingredientId: string; quantity: number }>,
+  discrepancyReason?: string,
 ): Promise<ProductionRecord> {
   const data = await apiRequest<{ record: ProductionRecord }>(
     `/production/${id}/complete-cooking`,
@@ -896,6 +901,7 @@ export async function completeCooking(
         mixUsed,
         products,
         cookingIngredients: cookingIngredients || [],
+        discrepancyReason: discrepancyReason || null,
       }),
     },
   );
