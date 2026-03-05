@@ -47,9 +47,8 @@ interface IngredientsInventoryPageProps {
 export function IngredientsInventoryPage({
   currentUser,
 }: IngredientsInventoryPageProps) {
+  const isAdmin = currentUser?.role === "ADMIN";
   const context = useContext(IngredientsContext);
-
-  // Safety check for context
   if (!context) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -345,6 +344,7 @@ export function IngredientsInventoryPage({
               />
             </div>
             <div className="flex gap-2">
+              {isAdmin && (
               <button
                 onClick={() => setShowAddIngredientModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -352,6 +352,7 @@ export function IngredientsInventoryPage({
                 <Plus className="w-4 h-4" />
                 <span>Add</span>
               </button>
+              )}
               <button
                 onClick={exportToCSV}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -510,6 +511,7 @@ export function IngredientsInventoryPage({
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
+                          {isAdmin && (
                           <button
                             onClick={() => {
                               setSelectedIngredient(item);
@@ -520,6 +522,8 @@ export function IngredientsInventoryPage({
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() => {
                               setSelectedIngredient(item);
@@ -530,6 +534,8 @@ export function IngredientsInventoryPage({
                           >
                             <Plus className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() => {
                               setSelectedIngredient(item);
@@ -540,6 +546,7 @@ export function IngredientsInventoryPage({
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -3,7 +3,8 @@ import { Save, AlertCircle, Percent, Package } from "lucide-react";
 import { toast } from "sonner";
 import { getDiscountSettings, updateDiscountSettings } from "../../utils/api";
 
-export function DiscountsPage() {
+export function DiscountsPage({ userRole }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const [settings, setSettings] = useState({
     wholesaleMinUnits: 5,
     discountType: "percentage" as "percentage" | "fixed_amount",
@@ -337,6 +338,7 @@ export function DiscountsPage() {
         </div>
 
         <div className="mt-8 flex gap-3">
+          {isAdmin && (
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
@@ -345,6 +347,8 @@ export function DiscountsPage() {
             <Save className="w-5 h-5" />
             {saving ? "Saving..." : "Save Changes"}
           </button>
+          )}
+          {isAdmin && (
           <button
             onClick={handleReset}
             disabled={!hasChanges}
@@ -352,6 +356,7 @@ export function DiscountsPage() {
           >
             Reset
           </button>
+          )}
         </div>
 
         {hasChanges && (

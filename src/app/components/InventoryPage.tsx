@@ -265,6 +265,7 @@ export function InventoryPage({
 }: {
   currentUser: UserData | null;
 }) {
+  const isAdmin = currentUser?.role === "ADMIN";
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -759,6 +760,7 @@ export function InventoryPage({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
+          {isAdmin && (
           <button
             onClick={() => setShowEncodeProductModal(true)}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
@@ -766,6 +768,7 @@ export function InventoryPage({
             <Plus className="w-4 h-4" />
             Encode Product
           </button>
+          )}
           <button
             onClick={() => setShowReorderReport(!showReorderReport)}
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm"
@@ -1010,6 +1013,7 @@ export function InventoryPage({
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
+                          {isAdmin && (
                           <button
                             onClick={() => {
                               setSelectedItem(item);
@@ -1020,6 +1024,8 @@ export function InventoryPage({
                           >
                             <Edit className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() =>
                               handleDeleteProduct(item.id, item.name)
@@ -1029,6 +1035,7 @@ export function InventoryPage({
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

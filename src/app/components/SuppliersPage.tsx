@@ -9,7 +9,8 @@ import {
   type Supplier
 } from '@/utils/api';
 
-export function SuppliersPage() {
+export function SuppliersPage({ userRole }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -127,6 +128,7 @@ export function SuppliersPage() {
               <p className="text-sm text-muted-foreground">Manage your ingredient suppliers</p>
             </div>
           </div>
+          {isAdmin && (
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -134,6 +136,7 @@ export function SuppliersPage() {
             <Plus className="w-5 h-5" />
             Add Supplier
           </button>
+          )}
         </div>
 
         {/* Add/Edit Form */}
@@ -252,6 +255,7 @@ export function SuppliersPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Add your first supplier to get started
               </p>
+              {isAdmin && (
               <button
                 onClick={() => setShowAddForm(true)}
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -259,6 +263,7 @@ export function SuppliersPage() {
                 <Plus className="w-4 h-4" />
                 Add First Supplier
               </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -328,6 +333,7 @@ export function SuppliersPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
+                          {isAdmin && (
                           <button
                             onClick={() => handleEdit(supplier)}
                             className="p-2 hover:bg-blue-100 text-blue-600 rounded transition-colors"
@@ -335,6 +341,8 @@ export function SuppliersPage() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() => handleDelete(supplier)}
                             className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
@@ -342,6 +350,7 @@ export function SuppliersPage() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

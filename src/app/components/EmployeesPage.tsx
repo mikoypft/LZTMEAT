@@ -109,7 +109,8 @@ const AVAILABLE_PERMISSIONS = [
   },
 ];
 
-export function EmployeesPage() {
+export function EmployeesPage({ userRole }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const [employees, setEmployees] = useState<AllUser[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<AllUser | null>(null);
@@ -581,6 +582,7 @@ export function EmployeesPage() {
               <p className="text-gray-600">Manage all users in the system</p>
             </div>
           </div>
+          {isAdmin && (
           <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -588,6 +590,7 @@ export function EmployeesPage() {
             <Plus className="w-5 h-5" />
             Add User
           </button>
+          )}
         </div>
 
         {/* Add/Edit Form */}
@@ -1430,6 +1433,7 @@ export function EmployeesPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
+                        {isAdmin ? (
                         <button
                           onClick={() => handleToggleCanLogin(employee)}
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
@@ -1455,6 +1459,19 @@ export function EmployeesPage() {
                             </>
                           )}
                         </button>
+                        ) : (
+                          <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                            employee.canLogin !== false
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {employee.canLogin !== false ? (
+                              <><CheckCircle className="w-3.5 h-3.5" /><span>Yes</span></>
+                            ) : (
+                              <><XCircle className="w-3.5 h-3.5" /><span>No</span></>
+                            )}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -1465,6 +1482,7 @@ export function EmployeesPage() {
                           >
                             <FileText className="w-4 h-4" />
                           </button>
+                          {isAdmin && (
                           <button
                             onClick={() => handleEdit(employee)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -1472,6 +1490,8 @@ export function EmployeesPage() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() =>
                               handleDelete(employee.id, employee.name)
@@ -1481,6 +1501,8 @@ export function EmployeesPage() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                          )}
+                          {isAdmin && (
                           <button
                             onClick={() => handlePasswordModalOpen(employee)}
                             className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
@@ -1488,6 +1510,7 @@ export function EmployeesPage() {
                           >
                             <Key className="w-4 h-4" />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>

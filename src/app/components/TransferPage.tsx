@@ -45,7 +45,8 @@ interface Transfer {
   receivedBy?: string;
 }
 
-export function TransferPage() {
+export function TransferPage({ userRole }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -514,6 +515,7 @@ export function TransferPage() {
               <h2>Transfer Management</h2>
             </div>
             <div className="flex items-center gap-2">
+              {isAdmin && (
               <button
                 onClick={() => {
                   setReturnData({
@@ -530,6 +532,8 @@ export function TransferPage() {
                 <Undo2 className="w-5 h-5" />
                 Return to Production
               </button>
+              )}
+              {isAdmin && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -537,6 +541,7 @@ export function TransferPage() {
                 <Plus className="w-5 h-5" />
                 New Transfer
               </button>
+              )}
             </div>
           </div>
 

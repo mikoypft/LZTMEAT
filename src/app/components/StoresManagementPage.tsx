@@ -24,7 +24,8 @@ import {
   type StoreLocation,
 } from "@/utils/api";
 
-export function StoresManagementPage() {
+export function StoresManagementPage({ userRole }: { userRole?: string }) {
+  const isAdmin = userRole === "ADMIN";
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -187,6 +188,7 @@ export function StoresManagementPage() {
             </p>
           </div>
 
+          {isAdmin && (
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
@@ -194,6 +196,7 @@ export function StoresManagementPage() {
             <Plus className="w-5 h-5" />
             Add New Store
           </button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -364,6 +367,7 @@ export function StoresManagementPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
+                          {isAdmin && (
                           <button
                             onClick={() => handleEdit(store)}
                             className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
@@ -371,7 +375,8 @@ export function StoresManagementPage() {
                           >
                             <Edit2 className="w-4 h-4 text-blue-600" />
                           </button>
-                          {store.name !== "Amparo Store" && (
+                          )}
+                          {isAdmin && store.name !== "Amparo Store" && (
                             <button
                               onClick={() =>
                                 handleDeleteStore(store.id, store.name)

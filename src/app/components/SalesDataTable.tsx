@@ -287,6 +287,7 @@ interface SalesDataTableProps {
 }
 
 export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
+  const isAdmin = userRole === "ADMIN";
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [storesList, setStoresList] = useState<string[]>(["All Stores"]);
@@ -960,6 +961,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+                          {isAdmin && (
                           <button
                             onClick={() => handleEditSale(sale)}
                             className="p-1.5 hover:bg-accent rounded"
@@ -967,6 +969,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>
