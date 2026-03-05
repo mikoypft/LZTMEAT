@@ -41,9 +41,21 @@ import {
 
 // Production sub-permissions
 const PRODUCTION_SUB_PERMISSIONS = [
-  { id: "production_mix", label: "Mixing", description: "Can start and perform mixing" },
-  { id: "production_pack", label: "Packing", description: "Can start and perform packing" },
-  { id: "production_cook", label: "Cooking", description: "Can start and perform cooking" },
+  {
+    id: "production_mix",
+    label: "Mixing",
+    description: "Can start and perform mixing",
+  },
+  {
+    id: "production_pack",
+    label: "Packing",
+    description: "Can start and perform packing",
+  },
+  {
+    id: "production_cook",
+    label: "Cooking",
+    description: "Can start and perform cooking",
+  },
 ];
 
 // Available permissions for Employee role
@@ -725,9 +737,15 @@ export function EmployeesPage() {
                                     (p) => p !== perm.id,
                                   );
                               // If unchecking production, also remove sub-permissions
-                              if (!e.target.checked && perm.id === "production") {
+                              if (
+                                !e.target.checked &&
+                                perm.id === "production"
+                              ) {
                                 newPermissions = newPermissions.filter(
-                                  (p) => !PRODUCTION_SUB_PERMISSIONS.some((s) => s.id === p),
+                                  (p) =>
+                                    !PRODUCTION_SUB_PERMISSIONS.some(
+                                      (s) => s.id === p,
+                                    ),
                                 );
                               }
                               setFormData({
@@ -750,7 +768,9 @@ export function EmployeesPage() {
                         {perm.id === "production" &&
                           formData.permissions?.includes("production") && (
                             <div className="ml-7 mt-2 space-y-2 border-l-2 border-red-200 pl-3">
-                              <p className="text-xs font-medium text-gray-600 mb-1">Production Actions</p>
+                              <p className="text-xs font-medium text-gray-600 mb-1">
+                                Production Actions
+                              </p>
                               {PRODUCTION_SUB_PERMISSIONS.map((sub) => (
                                 <label
                                   key={sub.id}
@@ -759,11 +779,15 @@ export function EmployeesPage() {
                                   <input
                                     type="checkbox"
                                     checked={
-                                      formData.permissions?.includes(sub.id) || false
+                                      formData.permissions?.includes(sub.id) ||
+                                      false
                                     }
                                     onChange={(e) => {
                                       const newPermissions = e.target.checked
-                                        ? [...(formData.permissions || []), sub.id]
+                                        ? [
+                                            ...(formData.permissions || []),
+                                            sub.id,
+                                          ]
                                         : (formData.permissions || []).filter(
                                             (p) => p !== sub.id,
                                           );
@@ -802,7 +826,9 @@ export function EmployeesPage() {
                     Production Permissions
                   </label>
                   <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 space-y-3">
-                    <p className="text-xs text-gray-500 mb-2">Select which production actions this employee can perform</p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Select which production actions this employee can perform
+                    </p>
                     {PRODUCTION_SUB_PERMISSIONS.map((sub) => (
                       <label
                         key={sub.id}

@@ -204,15 +204,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
     productionPerms.includes("production_cook");
   const canMix =
     isAdmin ||
-    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_mix"))) ||
+    (isProduction &&
+      (!hasAnySubPerm || productionPerms.includes("production_mix"))) ||
     (!isAdmin && !isProduction && productionPerms.includes("production_mix"));
   const canPack =
     isAdmin ||
-    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_pack"))) ||
+    (isProduction &&
+      (!hasAnySubPerm || productionPerms.includes("production_pack"))) ||
     (!isAdmin && !isProduction && productionPerms.includes("production_pack"));
   const canCook =
     isAdmin ||
-    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_cook"))) ||
+    (isProduction &&
+      (!hasAnySubPerm || productionPerms.includes("production_cook"))) ||
     (!isAdmin && !isProduction && productionPerms.includes("production_cook"));
 
   // Safety check - shouldn't be needed but helps with hot reload issues

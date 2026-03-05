@@ -826,7 +826,7 @@ export default function App() {
             {currentPage === "employees" && <EmployeesPage />}
             {currentPage === "suppliers" && <SuppliersPage />}
             {currentPage === "discounts" && <DiscountsPage />}
-            {currentPage === "history" && <HistoryPage />}
+            {currentPage === "history" && <HistoryPage currentUser={currentUser} />}
             {currentPage === "transactions" && (
               <TransactionsPage user={currentUser} />
             )}

@@ -23,6 +23,7 @@ import {
 } from "@/utils/api";
 import { toast } from "sonner";
 import React from "react";
+import { type UserData } from "@/app/components/LoginPage";
 
 const ACTION_TYPES = [
   { value: "all", label: "All Actions" },
@@ -31,7 +32,8 @@ const ACTION_TYPES = [
   { value: "inventory", label: "Inventory" },
 ];
 
-export function HistoryPage() {
+export function HistoryPage({ currentUser }: { currentUser?: UserData | null }) {
+  const isAdmin = currentUser?.role === "ADMIN";
   const [historyData, setHistoryData] = useState<SystemHistoryEntry[]>([]);
   const [filteredData, setFilteredData] = useState<SystemHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,17 @@ export function HistoryPage() {
 
   const filterAndSortData = () => {
     let filtered = [...historyData];
+
+    // Non-admin users only see their own history
+    if (!isAdmin && currentUser) {
+      const userName = currentUser.fullName?.toLowerCase() || "";
+      const userUsername = currentUser.username?.toLowerCase() || "";
+      filtered = filtered.filter(
+        (entry) =>
+          entry.user.toLowerCase() === userName ||
+          entry.user.toLowerCase() === userUsername,
+      );
+    }
 
     // Apply search filter
     if (searchTerm) {
@@ -206,13 +219,15 @@ export function HistoryPage() {
               Comprehensive log of all system activities and transactions
             </p>
           </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export to CSV
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Export to CSV
+            </button>
+          )}
         </div>
 
         {/* Filters and Search */}
