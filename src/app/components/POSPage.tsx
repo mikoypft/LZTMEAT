@@ -41,6 +41,7 @@ interface Product {
   stock: number;
   category: string;
   sku: string;
+  discountable?: boolean;
 }
 
 interface CartItem extends Product {
@@ -224,10 +225,12 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const calculateWholesalePrices = (
     cartItems: CartItem[],
   ): { salesType: "wholesale" | "retail"; wholesalePrices: Set<number> } => {
-    // Group items by base price (original price before weight adjustment)
+    // Group DISCOUNTABLE items by base price
     const itemsByBasePrice: { [price: number]: CartItem[] } = {};
 
     cartItems.forEach((item) => {
+      // Skip items excluded from discounts
+      if (item.discountable === false) return;
       const basePriceKey = item.basePrice || item.price;
       if (!itemsByBasePrice[basePriceKey]) {
         itemsByBasePrice[basePriceKey] = [];
@@ -349,6 +352,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           stock: inv?.quantity || 0,
           category: product.category,
           sku: `SKU-${product.id}`,
+          discountable: product.discountable !== false,
         };
       });
 
@@ -603,10 +607,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   let totalWholesaleDiscount = 0;
   const subtotal = cart.reduce((sum, item) => {
     const itemTotal = item.price * item.quantity;
-    // Apply wholesale discount if this item's base price qualifies
+    // Only apply wholesale discount to discountable items
     const basePrice = item.basePrice || item.price;
     let wholesaleDiscount = 0;
-    if (wholesalePrices.has(basePrice)) {
+    if (item.discountable !== false && wholesalePrices.has(basePrice)) {
       if (discountSettings.discountType === "percentage") {
         wholesaleDiscount =
           (itemTotal * discountSettings.wholesaleDiscountPercent) / 100;

@@ -140,6 +140,7 @@ export interface Product {
   price: number;
   unit: string;
   image: string | null;
+  discountable?: boolean;
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -165,6 +166,20 @@ export async function updateProduct(
     method: "PUT",
     body: JSON.stringify(updates),
   });
+  return data.product;
+}
+
+export async function toggleProductDiscountable(
+  id: string,
+  discountable: boolean,
+): Promise<Product> {
+  const data = await apiRequest<{ product: Product }>(
+    `/products/${id}/toggle-discount`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ discountable }),
+    },
+  );
   return data.product;
 }
 

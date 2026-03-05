@@ -592,6 +592,14 @@ $routes = [
     },
     
     'GET /api/products' => function() use ($pdo) {
+        // Ensure discountable column exists
+        try {
+            $col = $pdo->query("SHOW COLUMNS FROM products LIKE 'discountable'")->fetch();
+            if (!$col) {
+                $pdo->exec("ALTER TABLE products ADD COLUMN discountable TINYINT(1) NOT NULL DEFAULT 1");
+            }
+        } catch (Exception $e) { /* ignore */ }
+
         $stmt = $pdo->query('SELECT p.*, c.name as category FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name');
         $products = $stmt->fetchAll();
         
@@ -604,9 +612,60 @@ $routes = [
                     'price' => (float)$p['price'],
                     'unit' => $p['unit'],
                     'image' => $p['image'],
+                    'discountable' => isset($p['discountable']) ? (bool)$p['discountable'] : true,
                 ];
             }, $products),
         ];
+    },
+
+    'PUT /api/products/{id}/toggle-discount' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/products\/(\d+)\/toggle-discount/', $uri, $matches);
+        $id = $matches[1] ?? null;
+
+        if (empty($id)) {
+            return ['error' => 'Product ID is required'];
+        }
+
+        try {
+            // Ensure discountable column exists
+            $col = $pdo->query("SHOW COLUMNS FROM products LIKE 'discountable'")->fetch();
+            if (!$col) {
+                $pdo->exec("ALTER TABLE products ADD COLUMN discountable TINYINT(1) NOT NULL DEFAULT 1");
+            }
+
+            $discountable = isset($body['discountable']) ? (int)(bool)$body['discountable'] : 1;
+            $stmt = $pdo->prepare('UPDATE products SET discountable = ?, updated_at = NOW() WHERE id = ?');
+            $stmt->execute([$discountable, $id]);
+
+            $stmt = $pdo->prepare('SELECT p.*, c.name as category FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?');
+            $stmt->execute([$id]);
+            $product = $stmt->fetch();
+
+            if (!$product) {
+                return ['error' => 'Product not found'];
+            }
+
+            logSystemHistory($pdo, $discountable ? 'Product Discount Enabled' : 'Product Discount Disabled', 'Product', (string)$id, [
+                'name' => $product['name'],
+                'discountable' => (bool)$discountable,
+            ]);
+
+            return [
+                'product' => [
+                    'id' => (string)$product['id'],
+                    'name' => $product['name'],
+                    'category' => $product['category'] ?? 'Uncategorized',
+                    'price' => (float)$product['price'],
+                    'unit' => $product['unit'],
+                    'image' => $product['image'],
+                    'discountable' => (bool)$product['discountable'],
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to toggle discount: ' . $e->getMessage()];
+        }
     },
     
     'POST /api/products' => function() use ($pdo, $body) {
