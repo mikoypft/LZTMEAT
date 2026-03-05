@@ -37,6 +37,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [reference, setReference] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     fetchTransactions();
@@ -108,12 +110,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
   };
 
+  // Filter by date range
+  const filteredTransactions = transactions.filter((t) => {
+    const tDate = new Date(t.timestamp).toISOString().split("T")[0];
+    const matchesFrom = !dateFrom || tDate >= dateFrom;
+    const matchesTo = !dateTo || tDate <= dateTo;
+    return matchesFrom && matchesTo;
+  });
+
   // Calculate totals
-  const totalCashIn = transactions
+  const totalCashIn = filteredTransactions
     .filter((t) => t.type === "Cash In")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalCashOut = transactions
+  const totalCashOut = filteredTransactions
     .filter((t) => t.type === "Cash Out")
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -205,6 +215,36 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* Date Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">From:</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">To:</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            className="text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Clear dates
+          </button>
+        )}
+      </div>
+
       {/* Transactions Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
@@ -244,7 +284,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                     Loading transactions...
                   </td>
                 </tr>
-              ) : transactions.length === 0 ? (
+              ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
@@ -255,7 +295,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                   </td>
                 </tr>
               ) : (
-                transactions.map((transaction) => (
+                filteredTransactions.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(transaction.timestamp).toLocaleString("en-US", {
