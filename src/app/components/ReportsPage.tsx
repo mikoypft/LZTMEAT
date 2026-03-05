@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, FileText, Calendar, Edit3, Save, X } from "lucide-react";
+import { Download, FileText, Calendar, Edit3, Save, X, Plus, Trash2 } from "lucide-react";
 import {
   exportDailyReportPDF,
   exportDailyReportCSV,
@@ -10,6 +10,7 @@ import {
   type AllUser,
   type ReportPreview,
   type ReportRow,
+  type CashOutRow,
 } from "../../utils/api";
 import { toast } from "sonner";
 import type { StoreLocation } from "../../utils/api";
@@ -41,6 +42,8 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
   const [reporterName, setReporterName] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
   const [editedDenominations, setEditedDenominations] = useState<Record<string, number>>({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0});
+  const [editedCashOutRows, setEditedCashOutRows] = useState<CashOutRow[]>([]);
+  const [editedComputation, setEditedComputation] = useState({ totalSales: 0, cashOut: 0, grossSales: 0, over: 0 });
   const [saving, setSaving] = useState(false);
 
   const DENOM_LIST = ["5000", "1000", "500", "200", "100", "50", "20"];
@@ -81,6 +84,17 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
       setEditedDenominations(
         Object.assign({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0}, data.denominations ?? {})
       );
+      const cashOutRows = data.cashOutRows ?? [];
+      setEditedCashOutRows(cashOutRows);
+      const initCashOut = cashOutRows.reduce((s, r) => s + r.amount, 0);
+      setEditedComputation(
+        data.computationValues ?? {
+          totalSales: data.totalSales,
+          cashOut: initCashOut,
+          grossSales: data.totalSales,
+          over: data.totalSales - initCashOut,
+        },
+      );
     } catch (_) {
       toast.error("Failed to load report preview");
       setShowModal(false);
@@ -101,6 +115,55 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     );
   };
 
+  const handleCashOutRowChange = (
+    index: number,
+    field: "description" | "amount",
+    value: string,
+  ) => {
+    setEditedCashOutRows((prev) => {
+      const updated = prev.map((r, i) =>
+        i === index
+          ? { ...r, [field]: field === "amount" ? parseFloat(value) || 0 : value }
+          : r,
+      );
+      const newCashOut = updated.reduce((s, r) => s + r.amount, 0);
+      setEditedComputation((c) => ({ ...c, cashOut: newCashOut, over: c.grossSales - newCashOut }));
+      return updated;
+    });
+  };
+
+  const handleAddCashOutRow = () => {
+    setEditedCashOutRows((prev) => [...prev, { description: "", amount: 0 }]);
+  };
+
+  const handleRemoveCashOutRow = (index: number) => {
+    setEditedCashOutRows((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      const newCashOut = updated.reduce((s, r) => s + r.amount, 0);
+      setEditedComputation((c) => ({ ...c, cashOut: newCashOut, over: c.grossSales - newCashOut }));
+      return updated;
+    });
+  };
+
+  const handleComputationChange = (
+    field: keyof typeof editedComputation,
+    value: string,
+  ) => {
+    const num = parseFloat(value) || 0;
+    setEditedComputation((prev) => {
+      const updated = { ...prev, [field]: num };
+      if (field === "totalSales") {
+        updated.grossSales = num;
+        updated.over = num - updated.cashOut;
+      } else if (field === "cashOut") {
+        updated.over = updated.grossSales - num;
+      } else if (field === "grossSales") {
+        updated.over = num - updated.cashOut;
+      }
+      return updated;
+    });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -112,6 +175,8 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         remarks,
         rows: editedRows,
         denominations: editedDenominations,
+        cashOutRows: editedCashOutRows,
+        computation: editedComputation,
       });
       toast.success("Report data saved successfully");
     } catch (_) {
@@ -133,6 +198,8 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         remarks,
         rows: editedRows,
         denominations: editedDenominations,
+        cashOutRows: editedCashOutRows,
+        computation: editedComputation,
       });
     } catch (_) {
       /* non-fatal */
@@ -630,51 +697,108 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                     </div>
                   </div>
 
-                  {/* Payment Breakdown + Denomination Entry */}
+                  {/* Cash Out (editable) + SALES Denomination (editable) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Cash Out */}
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        Payment Breakdown
-                      </h3>
-                      {preview.paymentBreakdown.length === 0 ? (
-                        <p className="text-xs text-gray-400 italic">
-                          No payment records for this date.
-                        </p>
-                      ) : (
-                        <table className="w-full text-sm">
-                          <thead>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-700">
+                          CASH OUT ✏
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={handleAddCashOutRow}
+                          className="flex items-center gap-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Add Row
+                        </button>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="text-left text-xs text-blue-600 pb-1 font-semibold">
+                              Description
+                            </th>
+                            <th className="text-right text-xs text-blue-600 pb-1 font-semibold">
+                              Amount
+                            </th>
+                            <th className="w-7"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {editedCashOutRows.length === 0 ? (
                             <tr>
-                              <th className="text-left text-xs text-gray-500 pb-1">
-                                Method
-                              </th>
-                              <th className="text-right text-xs text-gray-500 pb-1">
-                                Count
-                              </th>
-                              <th className="text-right text-xs text-gray-500 pb-1">
-                                Amount
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {preview.paymentBreakdown.map((p) => (
-                              <tr
-                                key={p.method}
-                                className="border-t border-gray-200"
+                              <td
+                                colSpan={3}
+                                className="py-3 text-center text-xs text-gray-400 italic"
                               >
-                                <td className="py-1 text-gray-700">
-                                  {p.method}
+                                No cash out rows. Click Add Row.
+                              </td>
+                            </tr>
+                          ) : (
+                            editedCashOutRows.map((row, i) => (
+                              <tr key={i} className="border-t border-gray-200">
+                                <td className="py-1 pr-1">
+                                  <input
+                                    type="text"
+                                    value={row.description}
+                                    placeholder="Description..."
+                                    onChange={(e) =>
+                                      handleCashOutRowChange(
+                                        i,
+                                        "description",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full px-2 py-0.5 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
+                                  />
                                 </td>
-                                <td className="py-1 text-right text-gray-600">
-                                  {p.count}
+                                <td className="py-1 pl-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={row.amount === 0 ? "" : row.amount}
+                                    placeholder="0.00"
+                                    onChange={(e) =>
+                                      handleCashOutRowChange(
+                                        i,
+                                        "amount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full text-right px-2 py-0.5 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
+                                  />
                                 </td>
-                                <td className="py-1 text-right font-medium text-gray-800">
-                                  ₱{p.amount.toFixed(2)}
+                                <td className="py-1 pl-1 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCashOutRow(i)}
+                                    className="text-red-400 hover:text-red-600"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+                            ))
+                          )}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-gray-300 bg-yellow-50">
+                            <td className="py-1.5 font-bold text-gray-800">
+                              TOTAL
+                            </td>
+                            <td className="py-1.5 text-right font-bold text-gray-800">
+                              ₱
+                              {editedCashOutRows
+                                .reduce((s, r) => s + r.amount, 0)
+                                .toFixed(2)}
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
 
                     {/* SALES — denomination table (editable) */}
@@ -754,35 +878,91 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                     </div>
                   </div>
 
-                  {/* Computation Summary */}
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                      Computation
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-xs text-gray-500">Total Sales</p>
-                        <p className="font-semibold text-gray-800">
-                          ₱{preview.totalSales.toFixed(2)}
+                  {/* Payment Breakdown (read-only) + Computation (editable) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Payment Breakdown */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Payment Breakdown
+                      </h3>
+                      {preview.paymentBreakdown.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">
+                          No payment records for this date.
                         </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Cash Out</p>
-                        <p className="font-semibold text-gray-800">
-                          ₱{preview.cashOutTotal.toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Gross Sales</p>
-                        <p className="font-bold text-gray-900">
-                          ₱{(preview.totalSales + preview.cashOutTotal).toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">OVER</p>
-                        <p className="font-bold text-yellow-700">
-                          ₱{(preview.totalSales + preview.cashOutTotal - preview.cashOutTotal).toFixed(2)}
-                        </p>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr>
+                              <th className="text-left text-xs text-gray-500 pb-1">
+                                Method
+                              </th>
+                              <th className="text-right text-xs text-gray-500 pb-1">
+                                Count
+                              </th>
+                              <th className="text-right text-xs text-gray-500 pb-1">
+                                Amount
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {preview.paymentBreakdown.map((p) => (
+                              <tr
+                                key={p.method}
+                                className="border-t border-gray-200"
+                              >
+                                <td className="py-1 text-gray-700">
+                                  {p.method}
+                                </td>
+                                <td className="py-1 text-right text-gray-600">
+                                  {p.count}
+                                </td>
+                                <td className="py-1 text-right font-medium text-gray-800">
+                                  ₱{p.amount.toFixed(2)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    {/* Computation (editable) */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Computation ✏
+                      </h3>
+                      <div className="space-y-3">
+                        {(
+                          [
+                            { field: "totalSales", label: "TOTAL SALES" },
+                            { field: "cashOut", label: "CASH OUT" },
+                            { field: "grossSales", label: "GROSS SALES" },
+                            { field: "over", label: "OVER" },
+                          ] as {
+                            field: keyof typeof editedComputation;
+                            label: string;
+                          }[]
+                        ).map(({ field, label }) => (
+                          <div key={field} className="flex items-center gap-3">
+                            <label className="text-xs font-medium text-gray-600 w-28 flex-shrink-0">
+                              {label}
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={
+                                editedComputation[field] === 0
+                                  ? ""
+                                  : editedComputation[field]
+                              }
+                              placeholder="0.00"
+                              onChange={(e) =>
+                                handleComputationChange(field, e.target.value)
+                              }
+                              className="flex-1 text-right px-2 py-1 border border-blue-300 rounded text-sm focus:ring-1 focus:ring-blue-500 bg-white"
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>

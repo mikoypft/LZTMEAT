@@ -4686,6 +4686,8 @@ $routes = [
                 UNIQUE KEY unique_header (report_date, store_id, cashier_id)
             )");
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN cash_out_rows JSON DEFAULT NULL"); } catch (Exception $coErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN computation JSON DEFAULT NULL"); } catch (Exception $cpErr) { /* already exists */ }
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = (int)($_GET['storeId'] ?? 0);
@@ -4783,14 +4785,19 @@ $routes = [
                 ];
             }
 
-            // Cash out total
+            // Cash out rows (saved override takes priority over live transactions)
+            $cashOutRowsData = [];
             $cashOutTotal = 0;
             try {
                 $txCheck = $pdo->query("SHOW TABLES LIKE 'transactions'");
                 if ($txCheck->rowCount() > 0) {
-                    $txStmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) as total FROM transactions WHERE type = ? AND DATE(created_at) = ?');
+                    $txStmt = $pdo->prepare('SELECT description, category, amount FROM transactions WHERE type = ? AND DATE(created_at) = ? ORDER BY created_at ASC');
                     $txStmt->execute(['Cash Out', $date]);
-                    $cashOutTotal = (float)$txStmt->fetchColumn();
+                    foreach ($txStmt->fetchAll() as $tx) {
+                        $txAmount = (float)$tx['amount'];
+                        $cashOutTotal += $txAmount;
+                        $cashOutRowsData[] = ['description' => $tx['description'] ?? $tx['category'] ?? 'Cash Out', 'amount' => $txAmount];
+                    }
                 }
             } catch (Exception $e) {}
 
@@ -4799,6 +4806,22 @@ $routes = [
             if ($savedHeader && !empty($savedHeader['denominations'])) {
                 $decoded = json_decode($savedHeader['denominations'], true);
                 if (is_array($decoded)) $savedDenominations = array_merge($defaultDenominations, $decoded);
+            }
+
+            // Saved cash out rows override
+            if ($savedHeader && !empty($savedHeader['cash_out_rows'])) {
+                $decoded = json_decode($savedHeader['cash_out_rows'], true);
+                if (is_array($decoded)) {
+                    $cashOutRowsData = $decoded;
+                    $cashOutTotal = array_reduce($cashOutRowsData, fn($c, $r) => $c + (float)($r['amount'] ?? 0), 0);
+                }
+            }
+
+            // Computation values (saved override or computed)
+            $computationValues = ['totalSales' => $totalSales, 'cashOut' => $cashOutTotal, 'grossSales' => $totalSales, 'over' => $totalSales - $cashOutTotal];
+            if ($savedHeader && !empty($savedHeader['computation'])) {
+                $decoded = json_decode($savedHeader['computation'], true);
+                if (is_array($decoded)) $computationValues = array_merge($computationValues, $decoded);
             }
 
             return [
@@ -4812,7 +4835,9 @@ $routes = [
                 'paymentBreakdown' => array_values($paymentBreakdown),
                 'totalSales' => $totalSales,
                 'cashOutTotal' => $cashOutTotal,
+                'cashOutRows' => $cashOutRowsData,
                 'denominations' => $savedDenominations,
+                'computationValues' => $computationValues,
                 'hasSavedData' => !empty($savedEntries) || $savedHeader !== false,
             ];
         } catch (Exception $e) {
@@ -4850,6 +4875,8 @@ $routes = [
                 UNIQUE KEY unique_header (report_date, store_id, cashier_id)
             )");
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN cash_out_rows JSON DEFAULT NULL"); } catch (Exception $coErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN computation JSON DEFAULT NULL"); } catch (Exception $cpErr) { /* already exists */ }
 
             $date = $body['date'] ?? null;
             if (empty($date)) { return ['error' => 'Date is required']; }
@@ -4861,10 +4888,14 @@ $routes = [
             $rows = $body['rows'] ?? [];
             $denominationsRaw = $body['denominations'] ?? [];
             $denominationsJson = json_encode($denominationsRaw);
+            $cashOutRowsRaw = $body['cashOutRows'] ?? [];
+            $cashOutRowsJson = json_encode($cashOutRowsRaw);
+            $computationRaw = $body['computation'] ?? [];
+            $computationJson = json_encode($computationRaw);
 
             // Save header
-            $headerStmt = $pdo->prepare('INSERT INTO report_headers (report_date, store_id, cashier_id, reporter_name, remarks, denominations) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reporter_name = VALUES(reporter_name), remarks = VALUES(remarks), denominations = VALUES(denominations), updated_at = NOW()');
-            $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks, $denominationsJson]);
+            $headerStmt = $pdo->prepare('INSERT INTO report_headers (report_date, store_id, cashier_id, reporter_name, remarks, denominations, cash_out_rows, computation) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reporter_name = VALUES(reporter_name), remarks = VALUES(remarks), denominations = VALUES(denominations), cash_out_rows = VALUES(cash_out_rows), computation = VALUES(computation), updated_at = NOW()');
+            $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks, $denominationsJson, $cashOutRowsJson, $computationJson]);
 
             // Save rows
             $rowStmt = $pdo->prepare('INSERT INTO report_entries (report_date, store_id, cashier_id, product_id, wgs, add_qty, return_qty, scrap_bo, turn_over) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE wgs = VALUES(wgs), add_qty = VALUES(add_qty), return_qty = VALUES(return_qty), scrap_bo = VALUES(scrap_bo), turn_over = VALUES(turn_over), updated_at = NOW()');
@@ -5128,26 +5159,35 @@ $routes = [
             $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
-            // Query cash out transactions for this date if the table exists
+            // Cash out: use saved rows if available, else live transactions
             $cashOutRows = '';
             $cashOutTotal = 0;
-            try {
-                $txCheck = $pdo->query("SHOW TABLES LIKE 'transactions'");
-                if ($txCheck->rowCount() > 0) {
-                    $txQuery = 'SELECT * FROM transactions WHERE type = ? AND DATE(created_at) = ? ORDER BY created_at ASC';
-                    $txParams = ['Cash Out', $date];
-                    $txStmt = $pdo->prepare($txQuery);
-                    $txStmt->execute($txParams);
-                    $cashOutTxns = $txStmt->fetchAll();
-                    foreach ($cashOutTxns as $tx) {
-                        $txDesc = htmlspecialchars($tx['description'] ?? $tx['category'] ?? 'Cash Out');
-                        $txAmount = (float)($tx['amount'] ?? 0);
+            if ($savedHeaderData && !empty($savedHeaderData['cash_out_rows'])) {
+                $savedCashOutArr = json_decode($savedHeaderData['cash_out_rows'], true);
+                if (is_array($savedCashOutArr)) {
+                    foreach ($savedCashOutArr as $co) {
+                        $txDesc = htmlspecialchars($co['description'] ?? 'Cash Out');
+                        $txAmount = (float)($co['amount'] ?? 0);
                         $cashOutTotal += $txAmount;
                         $cashOutRows .= '<tr><td>' . $txDesc . '</td><td class="number">P ' . number_format($txAmount, 2) . '</td></tr>';
                     }
                 }
-            } catch (Exception $txErr) {
-                error_log('Cash out query error: ' . $txErr->getMessage());
+            } else {
+                try {
+                    $txCheck = $pdo->query("SHOW TABLES LIKE 'transactions'");
+                    if ($txCheck->rowCount() > 0) {
+                        $txStmt = $pdo->prepare('SELECT * FROM transactions WHERE type = ? AND DATE(created_at) = ? ORDER BY created_at ASC');
+                        $txStmt->execute(['Cash Out', $date]);
+                        foreach ($txStmt->fetchAll() as $tx) {
+                            $txDesc = htmlspecialchars($tx['description'] ?? $tx['category'] ?? 'Cash Out');
+                            $txAmount = (float)($tx['amount'] ?? 0);
+                            $cashOutTotal += $txAmount;
+                            $cashOutRows .= '<tr><td>' . $txDesc . '</td><td class="number">P ' . number_format($txAmount, 2) . '</td></tr>';
+                        }
+                    }
+                } catch (Exception $txErr) {
+                    error_log('Cash out query error: ' . $txErr->getMessage());
+                }
             }
 
             if (empty($cashOutRows)) {
@@ -5179,15 +5219,26 @@ $routes = [
             $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td>' . ($denTotalSum > 0 ? number_format($denTotalSum, 2) : '') . '</td></tr>';
             $html .= '</table></td></tr></table>';
 
-            // Computation
+            // Computation: use saved values if available
+            $compTotalSales = $totalSales;
+            $compCashOut = $cashOutTotal;
+            $compGrossSales = $totalSales;
+            $compOver = $totalSales - $cashOutTotal;
+            if ($savedHeaderData && !empty($savedHeaderData['computation'])) {
+                $savedComp = json_decode($savedHeaderData['computation'], true);
+                if (is_array($savedComp)) {
+                    if (isset($savedComp['totalSales'])) $compTotalSales = (float)$savedComp['totalSales'];
+                    if (isset($savedComp['cashOut'])) $compCashOut = (float)$savedComp['cashOut'];
+                    if (isset($savedComp['grossSales'])) $compGrossSales = (float)$savedComp['grossSales'];
+                    if (isset($savedComp['over'])) $compOver = (float)$savedComp['over'];
+                }
+            }
             $html .= '<div class="section-title">COMPUTATION</div>';
             $html .= '<table class="cash-out-table">';
-            $html .= '<tr><td>TOTAL SALES</td><td class="number">P ' . number_format($totalSales, 2) . '</td></tr>';
-            $html .= '<tr><td>CASH OUT</td><td class="number">P ' . number_format($cashOutTotal, 2) . '</td></tr>';
-            $netSales = $totalSales - $cashOutTotal;
-            $html .= '<tr><td style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>GROSS SALES</strong></td><td class="number" style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>P ' . number_format($grossSales, 2) . '</strong></td></tr>';
-            $over = $grossSales - $cashOutTotal;
-            $html .= '<tr style="background-color:#ffcc00;"><td><strong>OVER</strong></td><td class="number"><strong>P ' . number_format($over, 2) . '</strong></td></tr>';
+            $html .= '<tr><td>TOTAL SALES</td><td class="number">P ' . number_format($compTotalSales, 2) . '</td></tr>';
+            $html .= '<tr><td>CASH OUT</td><td class="number">P ' . number_format($compCashOut, 2) . '</td></tr>';
+            $html .= '<tr><td style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>GROSS SALES</strong></td><td class="number" style="border-top:2px solid #000;border-bottom:2px solid #000;"><strong>P ' . number_format($compGrossSales, 2) . '</strong></td></tr>';
+            $html .= '<tr style="background-color:#ffcc00;"><td><strong>OVER</strong></td><td class="number"><strong>P ' . number_format($compOver, 2) . '</strong></td></tr>';
             $html .= '</table>';
 
             // Remarks + Signatures
