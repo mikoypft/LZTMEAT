@@ -539,6 +539,9 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                             <th className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-right font-semibold text-gray-700 min-w-[90px]">
                               TOTAL SALES
                             </th>
+                            <th className="bg-yellow-100 border-b border-gray-200 px-3 py-2 text-right font-semibold text-yellow-700 min-w-[100px]">
+                              RESECO AMOUNT ✏
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -637,6 +640,22 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                               <td className="px-3 py-1.5 text-right text-gray-800 font-medium">
                                 ₱{row.totalSales.toFixed(2)}
                               </td>
+                              <td className="px-1.5 py-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={row.resecoAmount}
+                                  onChange={(e) =>
+                                    handleRowChange(
+                                      i,
+                                      "resecoAmount",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full text-right px-2 py-1 border border-yellow-400 rounded text-xs focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -690,6 +709,11 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                             </td>
                             <td className="px-3 py-2 text-right font-bold text-gray-800">
                               ₱{grandTotalSales.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-yellow-700">
+                              ₱{editedRows
+                                .reduce((s, r) => s + r.resecoAmount, 0)
+                                .toFixed(2)}
                             </td>
                           </tr>
                         </tfoot>

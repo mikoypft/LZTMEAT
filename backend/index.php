@@ -4688,6 +4688,7 @@ $routes = [
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN cash_out_rows JSON DEFAULT NULL"); } catch (Exception $coErr) { /* already exists */ }
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN computation JSON DEFAULT NULL"); } catch (Exception $cpErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_entries ADD COLUMN reseco_amount DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch (Exception $reErr) { /* already exists */ }
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = (int)($_GET['storeId'] ?? 0);
@@ -4782,6 +4783,7 @@ $routes = [
                     'wholesaleKg' => 0,
                     'wholesaleDisc' => 0,
                     'amount' => $totalSalesProd,
+                    'resecoAmount' => $saved ? (float)$saved['reseco_amount'] : 0,
                 ];
             }
 
@@ -4877,6 +4879,7 @@ $routes = [
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN cash_out_rows JSON DEFAULT NULL"); } catch (Exception $coErr) { /* already exists */ }
             try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN computation JSON DEFAULT NULL"); } catch (Exception $cpErr) { /* already exists */ }
+            try { $pdo->exec("ALTER TABLE report_entries ADD COLUMN reseco_amount DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch (Exception $reErr) { /* already exists */ }
 
             $date = $body['date'] ?? null;
             if (empty($date)) { return ['error' => 'Date is required']; }
@@ -4898,7 +4901,7 @@ $routes = [
             $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks, $denominationsJson, $cashOutRowsJson, $computationJson]);
 
             // Save rows
-            $rowStmt = $pdo->prepare('INSERT INTO report_entries (report_date, store_id, cashier_id, product_id, wgs, add_qty, return_qty, scrap_bo, turn_over) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE wgs = VALUES(wgs), add_qty = VALUES(add_qty), return_qty = VALUES(return_qty), scrap_bo = VALUES(scrap_bo), turn_over = VALUES(turn_over), updated_at = NOW()');
+            $rowStmt = $pdo->prepare('INSERT INTO report_entries (report_date, store_id, cashier_id, product_id, wgs, add_qty, return_qty, scrap_bo, turn_over, reseco_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE wgs = VALUES(wgs), add_qty = VALUES(add_qty), return_qty = VALUES(return_qty), scrap_bo = VALUES(scrap_bo), turn_over = VALUES(turn_over), reseco_amount = VALUES(reseco_amount), updated_at = NOW()');
             foreach ($rows as $row) {
                 $rowStmt->execute([
                     $date, $storeId, $cashierId,
@@ -4908,6 +4911,7 @@ $routes = [
                     (float)($row['returnQty'] ?? 0),
                     (float)($row['scrapBo'] ?? 0),
                     (float)($row['turnOver'] ?? 0),
+                    (float)($row['resecoAmount'] ?? 0),
                 ]);
             }
 
@@ -5038,6 +5042,7 @@ $routes = [
             $totalTotalWeight = 0;
             $totalWholesaleKg = 0;
             $totalWholesaleDisc = 0;
+            $totalReseco = 0;
 
             foreach ($products as $product) {
                 $productName = $product['name'];
@@ -5061,6 +5066,7 @@ $routes = [
                 $returnQty  = $savedEntry ? (float)$savedEntry['return_qty'] : 0;
                 $scrapBo    = $savedEntry ? (float)$savedEntry['scrap_bo'] : 0;
                 $turnOver   = $savedEntry ? (float)$savedEntry['turn_over'] : 0;
+                $resecoAmount = $savedEntry ? (float)$savedEntry['reseco_amount'] : 0;
 
                 $totalAmount += $productTotalSales;
                 $totalKgSales += $quantity;
@@ -5074,6 +5080,8 @@ $routes = [
                 $totalTurnOver += $turnOver;
                 $totalTotalSales += $productTotalSales;
                 $totalTotalWeight += $quantity;
+
+                $totalReseco += $resecoAmount;
 
                 $productTableRows .= '<tr>';
                 $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
@@ -5091,6 +5099,7 @@ $routes = [
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">0</td>';
                 $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
+                $productTableRows .= '<td class="number">P ' . number_format($resecoAmount, 2) . '</td>';
                 $productTableRows .= '</tr>';
             }
 
@@ -5137,8 +5146,8 @@ $routes = [
             $html .= '</div></div>';
             $html .= '<div class="section-title">PRODUCTS</div>';
             $html .= '<table class="products-table"><thead>';
-            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th></tr>';
-            $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL WEIGHT</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th></tr>';
+            $html .= '<tr><th colspan="12"></th><th colspan="2" style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">WHOLESALE</th><th></th><th style="background-color:#ffcc00;text-align:center;font-weight:bold;font-size:7px;border:1px solid #000;">RESECO</th></tr>';
+            $html .= '<tr><th>PRODUCTS</th><th>UNIT PRICE</th><th>WGs</th><th>STOCKS</th><th>ADD</th><th>PICK UP</th><th>RETURN</th><th>SCRAP/B.O.</th><th>TURN OVER</th><th>KG SALES</th><th>TOTAL WEIGHT</th><th>TOTAL SALES</th><th>KG</th><th>DISC.</th><th>AMOUNT</th><th>AMOUNT</th></tr>';
             $html .= '</thead><tbody>';
             $html .= $productTableRows;
             $html .= '<tr class="total-row">';
@@ -5157,6 +5166,7 @@ $routes = [
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleKg, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleDisc, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalReseco, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
             // Cash out: use saved rows if available, else live transactions

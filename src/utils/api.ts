@@ -1524,6 +1524,7 @@ export interface ReportRow {
   wholesaleKg: number;
   wholesaleDisc: number;
   amount: number;
+  resecoAmount: number;
 }
 
 export interface CashOutRow {
