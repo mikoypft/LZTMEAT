@@ -39,6 +39,13 @@ import {
   type EmployeeProfile,
 } from "@/utils/api";
 
+// Production sub-permissions
+const PRODUCTION_SUB_PERMISSIONS = [
+  { id: "production_mix", label: "Mixing", description: "Can start and perform mixing" },
+  { id: "production_pack", label: "Packing", description: "Can start and perform packing" },
+  { id: "production_cook", label: "Cooking", description: "Can start and perform cooking" },
+];
+
 // Available permissions for Employee role
 const AVAILABLE_PERMISSIONS = [
   {
@@ -704,20 +711,113 @@ export function EmployeesPage() {
                   </label>
                   <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 space-y-3">
                     {AVAILABLE_PERMISSIONS.map((perm) => (
+                      <div key={perm.id}>
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={
+                              formData.permissions?.includes(perm.id) || false
+                            }
+                            onChange={(e) => {
+                              let newPermissions = e.target.checked
+                                ? [...(formData.permissions || []), perm.id]
+                                : (formData.permissions || []).filter(
+                                    (p) => p !== perm.id,
+                                  );
+                              // If unchecking production, also remove sub-permissions
+                              if (!e.target.checked && perm.id === "production") {
+                                newPermissions = newPermissions.filter(
+                                  (p) => !PRODUCTION_SUB_PERMISSIONS.some((s) => s.id === p),
+                                );
+                              }
+                              setFormData({
+                                ...formData,
+                                permissions: newPermissions,
+                              });
+                            }}
+                            className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {perm.label}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {perm.description}
+                            </div>
+                          </div>
+                        </label>
+                        {/* Production sub-permissions — visible when production is checked */}
+                        {perm.id === "production" &&
+                          formData.permissions?.includes("production") && (
+                            <div className="ml-7 mt-2 space-y-2 border-l-2 border-red-200 pl-3">
+                              <p className="text-xs font-medium text-gray-600 mb-1">Production Actions</p>
+                              {PRODUCTION_SUB_PERMISSIONS.map((sub) => (
+                                <label
+                                  key={sub.id}
+                                  className="flex items-start gap-3 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      formData.permissions?.includes(sub.id) || false
+                                    }
+                                    onChange={(e) => {
+                                      const newPermissions = e.target.checked
+                                        ? [...(formData.permissions || []), sub.id]
+                                        : (formData.permissions || []).filter(
+                                            (p) => p !== sub.id,
+                                          );
+                                      setFormData({
+                                        ...formData,
+                                        permissions: newPermissions,
+                                      });
+                                    }}
+                                    className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {sub.label}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {sub.description}
+                                    </div>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select which features this employee can access
+                  </p>
+                </div>
+              )}
+
+              {/* Production sub-permissions for PRODUCTION role */}
+              {formData.role === "PRODUCTION" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Production Permissions
+                  </label>
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 space-y-3">
+                    <p className="text-xs text-gray-500 mb-2">Select which production actions this employee can perform</p>
+                    {PRODUCTION_SUB_PERMISSIONS.map((sub) => (
                       <label
-                        key={perm.id}
+                        key={sub.id}
                         className="flex items-start gap-3 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={
-                            formData.permissions?.includes(perm.id) || false
+                            formData.permissions?.includes(sub.id) || false
                           }
                           onChange={(e) => {
                             const newPermissions = e.target.checked
-                              ? [...(formData.permissions || []), perm.id]
+                              ? [...(formData.permissions || []), sub.id]
                               : (formData.permissions || []).filter(
-                                  (p) => p !== perm.id,
+                                  (p) => p !== sub.id,
                                 );
                             setFormData({
                               ...formData,
@@ -728,18 +828,15 @@ export function EmployeesPage() {
                         />
                         <div className="flex-1">
                           <div className="text-sm font-medium text-gray-900">
-                            {perm.label}
+                            {sub.label}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {perm.description}
+                            {sub.description}
                           </div>
                         </div>
                       </label>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Select which features this employee can access
-                  </p>
                 </div>
               )}
 

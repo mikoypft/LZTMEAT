@@ -193,6 +193,28 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const isAdmin = currentUser?.role === "ADMIN";
   const isProduction = currentUser?.role === "PRODUCTION";
 
+  // Production action permissions:
+  // - ADMIN: can do everything
+  // - PRODUCTION/EMPLOYEE with sub-permissions: check specific flags
+  // - If NO sub-permissions are set at all on a PRODUCTION user, default to all allowed (backward compat)
+  const productionPerms = currentUser?.permissions || [];
+  const hasAnySubPerm =
+    productionPerms.includes("production_mix") ||
+    productionPerms.includes("production_pack") ||
+    productionPerms.includes("production_cook");
+  const canMix =
+    isAdmin ||
+    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_mix"))) ||
+    (!isAdmin && !isProduction && productionPerms.includes("production_mix"));
+  const canPack =
+    isAdmin ||
+    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_pack"))) ||
+    (!isAdmin && !isProduction && productionPerms.includes("production_pack"));
+  const canCook =
+    isAdmin ||
+    (isProduction && (!hasAnySubPerm || productionPerms.includes("production_cook"))) ||
+    (!isAdmin && !isProduction && productionPerms.includes("production_cook"));
+
   // Safety check - shouldn't be needed but helps with hot reload issues
   if (!context) {
     return (
@@ -1845,10 +1867,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           <p className="text-xs text-muted-foreground mt-2">
                             Cost: ₱{mix.cost.toFixed(2)}
                           </p>
-                          {mix.stock > 0 && (
-                            inProgressCategoryIds.has(String(mix.productMixCategoryId)) ? (
+                          {mix.stock > 0 &&
+                            (inProgressCategoryIds.has(
+                              String(mix.productMixCategoryId),
+                            ) ? (
                               <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
                                 Ongoing Production
+                              </div>
+                            ) : !canPack ? (
+                              <div className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
+                                No Pack Permission
                               </div>
                             ) : (
                               <button
@@ -1857,8 +1885,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                               >
                                 Start Packing
                               </button>
-                            )
-                          )}
+                            ))}
                         </div>
                       </div>
                     </div>
@@ -1905,10 +1932,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                         <p className="text-xs text-muted-foreground mt-2">
                           Cost: ₱{item.cost.toFixed(2)}
                         </p>
-                        {item.stock > 0 && (
-                          inProgressCategoryIds.has(String(item.productMixCategoryId)) ? (
+                        {item.stock > 0 &&
+                          (inProgressCategoryIds.has(
+                            String(item.productMixCategoryId),
+                          ) ? (
                             <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
                               Ongoing Production
+                            </div>
+                          ) : !canCook ? (
+                            <div className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
+                              No Cook Permission
                             </div>
                           ) : (
                             <button
@@ -1917,8 +1950,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                             >
                               Start Cooking
                             </button>
-                          )
-                        )}
+                          ))}
                       </div>
                     </div>
                   </div>
@@ -1988,9 +2020,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                             </div>
 
                             <div className="mt-auto">
-                              {inProgressCategoryIds.has(String(category.id)) ? (
+                              {inProgressCategoryIds.has(
+                                String(category.id),
+                              ) ? (
                                 <div className="w-full px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
                                   Ongoing Production
+                                </div>
+                              ) : !canMix ? (
+                                <div className="w-full px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
+                                  No Mix Permission
                                 </div>
                               ) : (
                                 <button
@@ -2156,7 +2194,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             {/* Phase-based action buttons */}
-                            {production.phase === "mixing" && (
+                            {production.phase === "mixing" && canMix && (
                               <button
                                 onClick={() => {
                                   setSelectedProductionForMixing(
@@ -2169,7 +2207,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                 Complete Mixing
                               </button>
                             )}
-                            {production.phase === "packing" && (
+                            {production.phase === "packing" && canPack && (
                               <button
                                 onClick={() => {
                                   setSelectedProductionForPacking(
@@ -2184,7 +2222,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                                 Complete Packing
                               </button>
                             )}
-                            {production.phase === "cooking" && (
+                            {production.phase === "cooking" && canCook && (
                               <button
                                 onClick={async () => {
                                   setSelectedProductionForCooking(
