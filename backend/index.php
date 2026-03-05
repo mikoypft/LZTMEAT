@@ -272,6 +272,11 @@ try {
     try { $pdo->exec("ALTER TABLE inventory MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE production_records MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE transfers MODIFY COLUMN quantity DECIMAL(10,2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS discrepancy DECIMAL(10,2) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS quantity_received DECIMAL(10,2) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS discrepancy_reason TEXT DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS received_by VARCHAR(255) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE transfers ADD COLUMN IF NOT EXISTS received_at DATETIME DEFAULT NULL"); } catch(Exception $e) {}
 
     // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
     try {
@@ -3255,15 +3260,19 @@ $routes = [
                 UPDATE transfers 
                 SET status = ?, 
                     quantity_received = ?, 
+                    discrepancy = ?,
                     discrepancy_reason = ?, 
                     received_by = ?, 
                     received_at = NOW() 
                 WHERE id = ?
             ');
             
+            $discrepancyValue = (float)$originalQuantity - (float)$quantityReceived;
+            
             $stmt->execute([
                 'Completed',
                 $quantityReceived,
+                $discrepancyValue,
                 $body['discrepancyReason'] ?? null,
                 $body['receivedBy'] ?? null,
                 $transferId
@@ -3279,7 +3288,7 @@ $routes = [
                 return ['error' => 'Transfer not found after update'];
             }
             
-            $discrepancy = $originalQuantity - $quantityReceived;
+            $discrepancy = $discrepancyValue;
             
             logSystemHistory($pdo, 'Transfer Received', 'Transfer', (string)$transferId, [
                 'from' => $transfer['from'],
@@ -3287,6 +3296,7 @@ $routes = [
                 'quantitySent' => $originalQuantity,
                 'quantityReceived' => $quantityReceived,
                 'discrepancy' => $discrepancy,
+                'discrepancyReason' => $body['discrepancyReason'] ?? null,
                 'receivedBy' => $body['receivedBy'] ?? null,
             ]);
             
@@ -3301,7 +3311,7 @@ $routes = [
                     'to' => $updatedTransfer['to'],
                     'quantity' => (float)$updatedTransfer['quantity'],
                     'quantityReceived' => (float)$quantityReceived,
-                    'discrepancy' => $discrepancy,
+                    'discrepancy' => $updatedTransfer['discrepancy'] !== null ? (float)$updatedTransfer['discrepancy'] : $discrepancy,
                     'discrepancyReason' => $updatedTransfer['discrepancy_reason'],
                     'date' => substr($updatedTransfer['created_at'], 0, 10),
                     'time' => substr($updatedTransfer['created_at'], 11, 5),
