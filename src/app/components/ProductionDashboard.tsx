@@ -739,6 +739,13 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const productDistributionData = getProductDistribution();
   const vsLastWeek = calculateVsLastWeek();
 
+  // Set of category IDs that already have an ongoing (non-completed) production batch
+  const inProgressCategoryIds = new Set(
+    productions
+      .filter((p) => p.status !== "completed" && p.productMixCategoryId)
+      .map((p) => String(p.productMixCategoryId)),
+  );
+
   const addIngredientRow = () => {
     setSelectedIngredients([
       ...selectedIngredients,
@@ -1839,12 +1846,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                             Cost: ₱{mix.cost.toFixed(2)}
                           </p>
                           {mix.stock > 0 && (
-                            <button
-                              onClick={() => handleStartPackingFromMix(mix)}
-                              className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
-                            >
-                              Start Packing
-                            </button>
+                            inProgressCategoryIds.has(String(mix.productMixCategoryId)) ? (
+                              <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
+                                Ongoing Production
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleStartPackingFromMix(mix)}
+                                className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                              >
+                                Start Packing
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -1893,12 +1906,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                           Cost: ₱{item.cost.toFixed(2)}
                         </p>
                         {item.stock > 0 && (
-                          <button
-                            onClick={() => handleStartCookingFromRaw(item)}
-                            className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                          >
-                            Start Cooking
-                          </button>
+                          inProgressCategoryIds.has(String(item.productMixCategoryId)) ? (
+                            <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
+                              Ongoing Production
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleStartCookingFromRaw(item)}
+                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                            >
+                              Start Cooking
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
@@ -1969,15 +1988,21 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                             </div>
 
                             <div className="mt-auto">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMixCategoryCardClick(category);
-                                }}
-                                className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                              >
-                                Start Mixing
-                              </button>
+                              {inProgressCategoryIds.has(String(category.id)) ? (
+                                <div className="w-full px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
+                                  Ongoing Production
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMixCategoryCardClick(category);
+                                  }}
+                                  className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                >
+                                  Start Mixing
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

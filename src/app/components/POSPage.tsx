@@ -866,524 +866,530 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           )}
         </button>
       </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-row overflow-hidden">
-
-      {/* Left Side - Products */}
-      <div className={`flex-1 flex flex-col p-4 lg:p-6 bg-muted/30 overflow-hidden ${
-        mobileView === "products" ? "flex" : "hidden"
-      } lg:flex`}>
-        {/* Store Selector */}
-        <div className="mb-4 bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <Store className="w-5 h-5 text-primary" />
-            <label className="text-sm font-medium">Active Store:</label>
-            <select
-              value={selectedStore?.id?.toString() || ""}
-              onChange={(e) => {
-                const store = stores.find(
-                  (s) =>
-                    s.id === Number(e.target.value) || s.id === e.target.value,
-                );
-                if (store) {
-                  setSelectedStore(store);
-                  setCart([]); // Clear cart when switching stores
-                  loadProductsAndInventory(store.name);
-                }
-              }}
-              className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={!canSwitchStores}
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name} - {store.address}
-                </option>
-              ))}
-            </select>
-            {!canSwitchStores && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-yellow-600 font-medium bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200">
-                  🔒 Locked to Your Store
-                </span>
-              </div>
+        {/* Left Side - Products */}
+        <div
+          className={`flex-1 flex flex-col p-4 lg:p-6 bg-muted/30 overflow-hidden ${
+            mobileView === "products" ? "flex" : "hidden"
+          } lg:flex`}
+        >
+          {/* Store Selector */}
+          <div className="mb-4 bg-card border border-border rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <Store className="w-5 h-5 text-primary" />
+              <label className="text-sm font-medium">Active Store:</label>
+              <select
+                value={selectedStore?.id?.toString() || ""}
+                onChange={(e) => {
+                  const store = stores.find(
+                    (s) =>
+                      s.id === Number(e.target.value) ||
+                      s.id === e.target.value,
+                  );
+                  if (store) {
+                    setSelectedStore(store);
+                    setCart([]); // Clear cart when switching stores
+                    loadProductsAndInventory(store.name);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={!canSwitchStores}
+              >
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name} - {store.address}
+                  </option>
+                ))}
+              </select>
+              {!canSwitchStores && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-yellow-600 font-medium bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200">
+                    🔒 Locked to Your Store
+                  </span>
+                </div>
+              )}
+            </div>
+            {selectedStore && (
+              <p className="text-xs text-muted-foreground mt-2 ml-8">
+                {canSwitchStores
+                  ? `All transactions will be recorded at ${selectedStore.name}`
+                  : `You are assigned to ${selectedStore.name}. All transactions will be recorded here.`}
+              </p>
             )}
           </div>
-          {selectedStore && (
-            <p className="text-xs text-muted-foreground mt-2 ml-8">
-              {canSwitchStores
-                ? `All transactions will be recorded at ${selectedStore.name}`
-                : `You are assigned to ${selectedStore.name}. All transactions will be recorded here.`}
-            </p>
+
+          {/* Action Bar */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => {
+                setEditingProduct(null);
+                setShowProductManager(true);
+              }}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Product</span>
+            </button>
+            <button
+              onClick={() => setShowCustomerForm(!showCustomerForm)}
+              className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {customer ? customer.name : "Add Customer"}
+              </span>
+            </button>
+            <button
+              onClick={() => loadProductsAndInventory()}
+              disabled={loading}
+              className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+              title="Refresh inventory from database"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+              <span className="hidden sm:inline">Sync Inventory</span>
+            </button>
+          </div>
+
+          {/* Customer Form */}
+          {showCustomerForm && (
+            <div className="mb-4 p-4 bg-card border border-border rounded-lg">
+              <h3 className="mb-3 flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Customer Information
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                <input
+                  type="text"
+                  placeholder="Customer Name"
+                  value={customer?.name || ""}
+                  onChange={(e) =>
+                    setCustomer({
+                      name: e.target.value,
+                    })
+                  }
+                  className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    setCustomer(null);
+                    setShowCustomerForm(false);
+                  }}
+                  className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors text-sm"
+                >
+                  Clear Customer
+                </button>
+                <button
+                  onClick={() => setShowCustomerForm(false)}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           )}
-        </div>
 
-        {/* Action Bar */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => {
-              setEditingProduct(null);
-              setShowProductManager(true);
-            }}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Product</span>
-          </button>
-          <button
-            onClick={() => setShowCustomerForm(!showCustomerForm)}
-            className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {customer ? customer.name : "Add Customer"}
-            </span>
-          </button>
-          <button
-            onClick={() => loadProductsAndInventory()}
-            disabled={loading}
-            className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
-            title="Refresh inventory from database"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Sync Inventory</span>
-          </button>
-        </div>
-
-        {/* Customer Form */}
-        {showCustomerForm && (
-          <div className="mb-4 p-4 bg-card border border-border rounded-lg">
-            <h3 className="mb-3 flex items-center gap-2">
-              <UserPlus className="w-5 h-5" />
-              Customer Information
-            </h3>
-            <div className="grid grid-cols-1 gap-3">
+          {/* Search and Filter */}
+          <div className="mb-4">
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Customer Name"
-                value={customer?.name || ""}
-                onChange={(e) =>
-                  setCustomer({
-                    name: e.target.value,
-                  })
-                }
-                className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Search products by name or SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => {
-                  setCustomer(null);
-                  setShowCustomerForm(false);
-                }}
-                className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors text-sm"
-              >
-                Clear Customer
-              </button>
-              <button
-                onClick={() => setShowCustomerForm(false)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Search and Filter */}
-        <div className="mb-4">
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search products by name or SKU..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setSelectedCategory("All")}
-              className={`px-4 py-2 rounded-lg transition-colors text-sm ${
-                selectedCategory === "All"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background border border-border hover:bg-accent"
-              }`}
-            >
-              All
-            </button>
-            {categories.map((category) => (
+            <div className="flex gap-2 flex-wrap">
               <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.name)}
+                onClick={() => setSelectedCategory("All")}
                 className={`px-4 py-2 rounded-lg transition-colors text-sm ${
-                  selectedCategory === category.name
+                  selectedCategory === "All"
                     ? "bg-primary text-primary-foreground"
                     : "bg-background border border-border hover:bg-accent"
                 }`}
               >
-                {category.name}
+                All
               </button>
-            ))}
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.name)}
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm ${
+                    selectedCategory === category.name
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background border border-border hover:bg-accent"
+                  }`}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Products Grid */}
-        <div className="flex-1 overflow-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {sortedProducts.map((product) => (
-              <div
-                key={product.id}
-                onClick={() =>
-                  product.stock > 0 && openWeightAdjustmentModal(product)
-                }
-                className={`bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all group ${product.stock > 0 ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
-              >
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium text-sm flex-1">
-                      {product.name}
-                    </h3>
-                    {currentUser?.role === "ADMIN" && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingProduct(product);
-                            setShowProductManager(true);
-                          }}
-                          className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteProduct(product.id);
-                          }}
-                          className="p-1 hover:bg-destructive/10 text-destructive rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+          {/* Products Grid */}
+          <div className="flex-1 overflow-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+              {sortedProducts.map((product) => (
+                <div
+                  key={product.id}
+                  onClick={() =>
+                    product.stock > 0 && openWeightAdjustmentModal(product)
+                  }
+                  className={`bg-card border border-border rounded-lg p-4 hover:shadow-lg hover:border-primary transition-all group ${product.stock > 0 ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
+                >
+                  <div className="flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-sm flex-1">
+                        {product.name}
+                      </h3>
+                      {currentUser?.role === "ADMIN" && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingProduct(product);
+                              setShowProductManager(true);
+                            }}
+                            className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProduct(product.id);
+                            }}
+                            className="p-1 hover:bg-destructive/10 text-destructive rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-2">
+                      {product.category}
+                    </span>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      SKU: {product.sku}
+                    </p>
+                    <div className="mt-auto flex justify-between items-end">
+                      <div>
+                        <p className="text-xl text-primary">
+                          ₱{product.price.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Stock: {product.stock}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                  <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded w-fit mb-2">
-                    {product.category}
-                  </span>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    SKU: {product.sku}
-                  </p>
-                  <div className="mt-auto flex justify-between items-end">
-                    <div>
-                      <p className="text-xl text-primary">
-                        ₱{product.price.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Stock: {product.stock}
-                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Right Side - Cart */}
-      <div className={`w-full lg:w-96 bg-card border-l border-border flex flex-col lg:max-h-none ${
-        mobileView === "cart" ? "flex" : "hidden"
-      } lg:flex`}>
-        <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3 flex-shrink-0">
-          <ShoppingCart className="w-6 h-6" />
-          <h2 className="flex-1">Current Order</h2>
-          <span className="bg-primary-foreground text-primary px-3 py-1 rounded-full text-sm">
-            {cart.reduce((sum, item) => sum + item.quantity, 0)} items
-          </span>
-        </div>
+        {/* Right Side - Cart */}
+        <div
+          className={`w-full lg:w-96 bg-card border-l border-border flex flex-col lg:max-h-none ${
+            mobileView === "cart" ? "flex" : "hidden"
+          } lg:flex`}
+        >
+          <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3 flex-shrink-0">
+            <ShoppingCart className="w-6 h-6" />
+            <h2 className="flex-1">Current Order</h2>
+            <span className="bg-primary-foreground text-primary px-3 py-1 rounded-full text-sm">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)} items
+            </span>
+          </div>
 
-        {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <ShoppingCart className="w-16 h-16 mb-4 opacity-20" />
-              <p>No items in cart</p>
-              <p className="text-sm">Add products to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Group items by price */}
-              {Object.entries(
-                cart.reduce(
-                  (acc, item) => {
-                    const basePrice = item.basePrice || item.price;
-                    if (!acc[basePrice]) {
-                      acc[basePrice] = [];
-                    }
-                    acc[basePrice].push(item);
-                    return acc;
-                  },
-                  {} as { [key: number]: CartItem[] },
-                ),
-              )
-                .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
-                .map(([basePrice, items]) => {
-                  const basePriceNum = parseFloat(basePrice);
-                  // Check if this base price group qualifies for wholesale
-                  const isWholesale = wholesalePrices.has(basePriceNum);
-                  const categoryTotal = items.reduce(
-                    (sum, item) => sum + item.quantity,
-                    0,
-                  );
-
-                  return (
-                    <div
-                      key={basePrice}
-                      className="border border-border rounded-lg overflow-hidden"
-                    >
-                      {/* Category Header */}
-                      <div
-                        className={`p-3 font-semibold text-sm flex justify-between items-center ${
-                          isWholesale
-                            ? "bg-blue-50 text-blue-900 border-b border-blue-200"
-                            : "bg-gray-50 text-gray-900 border-b border-gray-200"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span>₱{basePriceNum.toFixed(2)} Category</span>
-                          <span className="text-xs bg-background px-2 py-1 rounded">
-                            {categoryTotal} units
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold px-2 py-1 rounded ${
-                              isWholesale
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-600 text-white"
-                            }`}
-                          >
-                            {isWholesale ? "WHOLESALE" : "RETAIL"}
-                          </span>
-                          {isWholesale && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                              {discountSettings.discountType === "percentage"
-                                ? `${discountSettings.wholesaleDiscountPercent}% OFF`
-                                : `₱${discountSettings.wholesaleDiscountAmount.toFixed(2)} OFF`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Category Items */}
-                      <div className="space-y-2 p-3 bg-background/50">
-                        {items.map((item) => (
-                          <div
-                            key={`${item.id}-${item.price}`}
-                            className="bg-background rounded p-2 border border-border/50"
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">
-                                  {item.name}
-                                </h4>
-                                <p className="text-xs text-muted-foreground">
-                                  ₱{item.price.toFixed(2)} each
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => removeFromCart(item.id)}
-                                className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="flex items-center gap-1 bg-muted rounded-lg border border-border">
-                                <button
-                                  onClick={() => updateQuantity(item.id, -1)}
-                                  disabled={item.quantity <= 1}
-                                  className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </button>
-                                <span className="w-6 text-center text-sm">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() => {
-                                    setWeightAdjustmentModal({
-                                      show: true,
-                                      product: item,
-                                      weight: "1",
-                                    });
-                                  }}
-                                  disabled={item.quantity >= item.stock}
-                                  className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
-                              </div>
-
-                              <div className="flex items-center gap-1 flex-1">
-                                <Percent className="w-3 h-3 text-muted-foreground" />
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={item.discount}
-                                  onChange={(e) =>
-                                    updateItemDiscount(
-                                      item.id,
-                                      parseFloat(e.target.value) || 0,
-                                    )
-                                  }
-                                  placeholder="0"
-                                  className="w-full px-2 py-0.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                                <span className="text-xs">%</span>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">
-                                Total:
-                              </span>
-                              <span className="text-primary font-medium">
-                                ₱
-                                {(
-                                  item.price * item.quantity -
-                                  (item.price * item.quantity * item.discount) /
-                                    100 -
-                                  (isWholesale
-                                    ? discountSettings.discountType ===
-                                      "percentage"
-                                      ? (item.price *
-                                          item.quantity *
-                                          discountSettings.wholesaleDiscountPercent) /
-                                        100
-                                      : discountSettings.wholesaleDiscountAmount *
-                                        item.quantity
-                                    : 0)
-                                ).toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-
-        {/* Cart Summary */}
-        {cart.length > 0 && (
-          <div className="border-t border-border p-4 space-y-4 flex-shrink-0 bg-background/95">
-            {/* Global Discount */}
-            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-              <Percent className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm">Global Discount:</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={globalDiscount}
-                onChange={(e) =>
-                  setGlobalDiscount(parseFloat(e.target.value) || 0)
-                }
-                placeholder="0"
-                className="w-16 px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <span className="text-sm">%</span>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>₱{subtotal.toFixed(2)}</span>
-              </div>
-              {totalWholesaleDiscount > 0 && (
-                <div className="flex justify-between text-blue-600">
-                  <span>Wholesale Discount:</span>
-                  <span>-₱{totalWholesaleDiscount.toFixed(2)}</span>
-                </div>
-              )}
-              {globalDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount ({globalDiscount}%):</span>
-                  <span>-₱{globalDiscountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-border">
-                <span className="text-base">Total:</span>
-                <span className="text-xl text-primary">
-                  ₱{total.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {!showCheckout ? (
-              <div className="space-y-2">
-                <button
-                  onClick={() => setShowCheckout(true)}
-                  className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Proceed to Payment
-                </button>
-                <button
-                  onClick={clearCart}
-                  className="w-full border border-border py-2 rounded-lg hover:bg-accent transition-colors text-sm"
-                >
-                  Clear Cart
-                </button>
+          {/* Cart Items */}
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <ShoppingCart className="w-16 h-16 mb-4 opacity-20" />
+                <p>No items in cart</p>
+                <p className="text-sm">Add products to get started</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-center mb-2">
-                  Select Payment Method
-                </p>
-                <button
-                  onClick={() => handleCheckout("Cash")}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <Banknote className="w-5 h-5" />
-                  Cash
-                </button>
-                <button
-                  onClick={() => handleCheckout("Card")}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <CreditCard className="w-5 h-5" />
-                  Card
-                </button>
-                <button
-                  onClick={() => handleCheckout("Mobile Payment")}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  <Smartphone className="w-5 h-5" />
-                  Mobile Payment
-                </button>
-                <button
-                  onClick={() => setShowCheckout(false)}
-                  className="w-full border border-border py-2 rounded-lg hover:bg-accent transition-colors text-sm"
-                >
-                  Back
-                </button>
+              <div className="space-y-4">
+                {/* Group items by price */}
+                {Object.entries(
+                  cart.reduce(
+                    (acc, item) => {
+                      const basePrice = item.basePrice || item.price;
+                      if (!acc[basePrice]) {
+                        acc[basePrice] = [];
+                      }
+                      acc[basePrice].push(item);
+                      return acc;
+                    },
+                    {} as { [key: number]: CartItem[] },
+                  ),
+                )
+                  .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+                  .map(([basePrice, items]) => {
+                    const basePriceNum = parseFloat(basePrice);
+                    // Check if this base price group qualifies for wholesale
+                    const isWholesale = wholesalePrices.has(basePriceNum);
+                    const categoryTotal = items.reduce(
+                      (sum, item) => sum + item.quantity,
+                      0,
+                    );
+
+                    return (
+                      <div
+                        key={basePrice}
+                        className="border border-border rounded-lg overflow-hidden"
+                      >
+                        {/* Category Header */}
+                        <div
+                          className={`p-3 font-semibold text-sm flex justify-between items-center ${
+                            isWholesale
+                              ? "bg-blue-50 text-blue-900 border-b border-blue-200"
+                              : "bg-gray-50 text-gray-900 border-b border-gray-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>₱{basePriceNum.toFixed(2)} Category</span>
+                            <span className="text-xs bg-background px-2 py-1 rounded">
+                              {categoryTotal} units
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs font-bold px-2 py-1 rounded ${
+                                isWholesale
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-gray-600 text-white"
+                              }`}
+                            >
+                              {isWholesale ? "WHOLESALE" : "RETAIL"}
+                            </span>
+                            {isWholesale && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
+                                {discountSettings.discountType === "percentage"
+                                  ? `${discountSettings.wholesaleDiscountPercent}% OFF`
+                                  : `₱${discountSettings.wholesaleDiscountAmount.toFixed(2)} OFF`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Category Items */}
+                        <div className="space-y-2 p-3 bg-background/50">
+                          {items.map((item) => (
+                            <div
+                              key={`${item.id}-${item.price}`}
+                              className="bg-background rounded p-2 border border-border/50"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-sm">
+                                    {item.name}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    ₱{item.price.toFixed(2)} each
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-1 bg-muted rounded-lg border border-border">
+                                  <button
+                                    onClick={() => updateQuantity(item.id, -1)}
+                                    disabled={item.quantity <= 1}
+                                    className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="w-6 text-center text-sm">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setWeightAdjustmentModal({
+                                        show: true,
+                                        product: item,
+                                        weight: "1",
+                                      });
+                                    }}
+                                    disabled={item.quantity >= item.stock}
+                                    className="p-1 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-1 flex-1">
+                                  <Percent className="w-3 h-3 text-muted-foreground" />
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={item.discount}
+                                    onChange={(e) =>
+                                      updateItemDiscount(
+                                        item.id,
+                                        parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    placeholder="0"
+                                    className="w-full px-2 py-0.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                                  />
+                                  <span className="text-xs">%</span>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-muted-foreground">
+                                  Total:
+                                </span>
+                                <span className="text-primary font-medium">
+                                  ₱
+                                  {(
+                                    item.price * item.quantity -
+                                    (item.price *
+                                      item.quantity *
+                                      item.discount) /
+                                      100 -
+                                    (isWholesale
+                                      ? discountSettings.discountType ===
+                                        "percentage"
+                                        ? (item.price *
+                                            item.quantity *
+                                            discountSettings.wholesaleDiscountPercent) /
+                                          100
+                                        : discountSettings.wholesaleDiscountAmount *
+                                          item.quantity
+                                      : 0)
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      </div> {/* End Main Content */}
+          {/* Cart Summary */}
+          {cart.length > 0 && (
+            <div className="border-t border-border p-4 space-y-4 flex-shrink-0 bg-background/95">
+              {/* Global Discount */}
+              <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                <Percent className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">Global Discount:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={globalDiscount}
+                  onChange={(e) =>
+                    setGlobalDiscount(parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="0"
+                  className="w-16 px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-sm">%</span>
+              </div>
 
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>₱{subtotal.toFixed(2)}</span>
+                </div>
+                {totalWholesaleDiscount > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span>Wholesale Discount:</span>
+                    <span>-₱{totalWholesaleDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {globalDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount ({globalDiscount}%):</span>
+                    <span>-₱{globalDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-border">
+                  <span className="text-base">Total:</span>
+                  <span className="text-xl text-primary">
+                    ₱{total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {!showCheckout ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    Proceed to Payment
+                  </button>
+                  <button
+                    onClick={clearCart}
+                    className="w-full border border-border py-2 rounded-lg hover:bg-accent transition-colors text-sm"
+                  >
+                    Clear Cart
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-center mb-2">
+                    Select Payment Method
+                  </p>
+                  <button
+                    onClick={() => handleCheckout("Cash")}
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <Banknote className="w-5 h-5" />
+                    Cash
+                  </button>
+                  <button
+                    onClick={() => handleCheckout("Card")}
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    Card
+                  </button>
+                  <button
+                    onClick={() => handleCheckout("Mobile Payment")}
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <Smartphone className="w-5 h-5" />
+                    Mobile Payment
+                  </button>
+                  <button
+                    onClick={() => setShowCheckout(false)}
+                    className="w-full border border-border py-2 rounded-lg hover:bg-accent transition-colors text-sm"
+                  >
+                    Back
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>{" "}
+      {/* End Main Content */}
       {/* Product Manager Modal */}
       {showProductManager && (
         <ProductManagerModal
@@ -1395,7 +1401,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           }}
         />
       )}
-
       {/* Receipt Modal */}
       {showReceiptModal && receiptData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1507,7 +1512,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           </div>
         </div>
       )}
-
       {/* Weight Adjustment Modal */}
       {weightAdjustmentModal.show && weightAdjustmentModal.product && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

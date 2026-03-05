@@ -313,15 +313,27 @@ export function DashboardPage({ userRole, userName }: DashboardPageProps) {
       const inventoryTrend = [
         {
           name: "Week 1",
-          stock: parseFloat((inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.85).toFixed(2)),
+          stock: parseFloat(
+            (
+              inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.85
+            ).toFixed(2),
+          ),
         },
         {
           name: "Week 2",
-          stock: parseFloat((inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.92).toFixed(2)),
+          stock: parseFloat(
+            (
+              inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.92
+            ).toFixed(2),
+          ),
         },
         {
           name: "Week 3",
-          stock: parseFloat((inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.88).toFixed(2)),
+          stock: parseFloat(
+            (
+              inventory.reduce((sum, inv) => sum + inv.quantity, 0) * 0.88
+            ).toFixed(2),
+          ),
         },
         {
           name: "Week 4",

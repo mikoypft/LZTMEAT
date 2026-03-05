@@ -748,13 +748,17 @@ export function TransferPage() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-right text-primary">
-                        {parseFloat(Number(transfer.quantity).toFixed(3))} {transfer.unit}
+                        {parseFloat(Number(transfer.quantity).toFixed(3))}{" "}
+                        {transfer.unit}
                       </td>
                       <td className="py-3 px-4 text-right">
                         {transfer.quantityReceived !== undefined &&
                         transfer.quantityReceived !== null ? (
                           <span className="text-green-600 font-medium">
-                            {parseFloat(Number(transfer.quantityReceived).toFixed(3))} {transfer.unit}
+                            {parseFloat(
+                              Number(transfer.quantityReceived).toFixed(3),
+                            )}{" "}
+                            {transfer.unit}
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
@@ -768,7 +772,10 @@ export function TransferPage() {
                         transfer.discrepancy !== 0 ? (
                           <span className="text-orange-600 font-medium">
                             {transfer.discrepancy > 0 ? "-" : "+"}
-                            {parseFloat(Math.abs(transfer.discrepancy).toFixed(3))} {transfer.unit}
+                            {parseFloat(
+                              Math.abs(transfer.discrepancy).toFixed(3),
+                            )}{" "}
+                            {transfer.unit}
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
@@ -782,7 +789,9 @@ export function TransferPage() {
                             {transfer.from}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">
+                            -
+                          </span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
