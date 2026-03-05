@@ -40,7 +40,10 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
   const [editedRows, setEditedRows] = useState<ReportRow[]>([]);
   const [reporterName, setReporterName] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
+  const [editedDenominations, setEditedDenominations] = useState<Record<string, number>>({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0});
   const [saving, setSaving] = useState(false);
+
+  const DENOM_LIST = ["5000", "1000", "500", "200", "100", "50", "20"];
 
   useEffect(() => {
     const loadData = async () => {
@@ -75,6 +78,9 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
           (currentUser?.fullName || currentUser?.username || ""),
       );
       setRemarks(data.header.remarks ?? "");
+      setEditedDenominations(
+        Object.assign({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0}, data.denominations ?? {})
+      );
     } catch (_) {
       toast.error("Failed to load report preview");
       setShowModal(false);
@@ -105,6 +111,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         reporterName,
         remarks,
         rows: editedRows,
+        denominations: editedDenominations,
       });
       toast.success("Report data saved successfully");
     } catch (_) {
@@ -125,6 +132,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         reporterName,
         remarks,
         rows: editedRows,
+        denominations: editedDenominations,
       });
     } catch (_) {
       /* non-fatal */
@@ -622,7 +630,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                     </div>
                   </div>
 
-                  {/* Payment Summary */}
+                  {/* Payment Breakdown + Denomination Entry */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -668,34 +676,113 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                         </table>
                       )}
                     </div>
+
+                    {/* SALES — denomination table (editable) */}
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        Summary
+                        SALES — Denomination Entry ✏
                       </h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Total Sales</span>
-                          <span className="font-medium">
-                            ₱{preview.totalSales.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Cash Out</span>
-                          <span className="font-medium">
-                            ₱{preview.cashOutTotal.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t border-gray-200 pt-2">
-                          <span className="font-semibold text-gray-700">
-                            Gross Sales
-                          </span>
-                          <span className="font-bold text-gray-900">
-                            ₱
-                            {(
-                              preview.totalSales + preview.cashOutTotal
-                            ).toFixed(2)}
-                          </span>
-                        </div>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="text-left text-xs text-blue-600 pb-1 font-semibold">
+                              DEN
+                            </th>
+                            <th className="text-right text-xs text-blue-600 pb-1 font-semibold">
+                              # (Count)
+                            </th>
+                            <th className="text-right text-xs text-gray-500 pb-1">
+                              TOTAL
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {DENOM_LIST.map((den) => {
+                            const count = editedDenominations[den] ?? 0;
+                            const total = count * parseInt(den);
+                            return (
+                              <tr key={den} className="border-t border-gray-200">
+                                <td className="py-1 text-gray-700 font-medium">
+                                  {den}
+                                </td>
+                                <td className="py-1 pl-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={count === 0 ? "" : count}
+                                    placeholder="0"
+                                    onChange={(e) =>
+                                      setEditedDenominations((prev) => ({
+                                        ...prev,
+                                        [den]: parseInt(e.target.value) || 0,
+                                      }))
+                                    }
+                                    className="w-full text-right px-2 py-0.5 border border-blue-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </td>
+                                <td className="py-1 text-right text-gray-700">
+                                  {total > 0 ? `₱${total.toLocaleString()}` : ""}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-gray-300 bg-yellow-50">
+                            <td className="py-1 font-bold text-gray-800">
+                              TOTAL
+                            </td>
+                            <td className="py-1 text-right font-bold text-gray-800">
+                              {DENOM_LIST.reduce(
+                                (s, d) => s + (editedDenominations[d] ?? 0),
+                                0,
+                              )}
+                            </td>
+                            <td className="py-1 text-right font-bold text-gray-800">
+                              ₱
+                              {DENOM_LIST.reduce(
+                                (s, d) =>
+                                  s +
+                                  (editedDenominations[d] ?? 0) * parseInt(d),
+                                0,
+                              ).toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Computation Summary */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                      Computation
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500">Total Sales</p>
+                        <p className="font-semibold text-gray-800">
+                          ₱{preview.totalSales.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Cash Out</p>
+                        <p className="font-semibold text-gray-800">
+                          ₱{preview.cashOutTotal.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Gross Sales</p>
+                        <p className="font-bold text-gray-900">
+                          ₱{(preview.totalSales + preview.cashOutTotal).toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">OVER</p>
+                        <p className="font-bold text-yellow-700">
+                          ₱{(preview.totalSales + preview.cashOutTotal - preview.cashOutTotal).toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   </div>

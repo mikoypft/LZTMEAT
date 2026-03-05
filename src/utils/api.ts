@@ -1537,6 +1537,7 @@ export interface ReportPreview {
   paymentBreakdown: { method: string; count: number; amount: number }[];
   totalSales: number;
   cashOutTotal: number;
+  denominations: Record<string, number>;
   hasSavedData: boolean;
 }
 
@@ -1558,6 +1559,7 @@ export async function saveReportData(payload: {
   reporterName: string;
   remarks: string;
   rows: ReportRow[];
+  denominations: Record<string, number>;
 }): Promise<void> {
   await apiRequest<{ success: boolean }>("/reports/save-data", {
     method: "POST",

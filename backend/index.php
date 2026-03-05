@@ -4685,6 +4685,7 @@ $routes = [
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_header (report_date, store_id, cashier_id)
             )");
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
 
             $date = $_GET['date'] ?? date('Y-m-d');
             $storeId = (int)($_GET['storeId'] ?? 0);
@@ -4793,6 +4794,13 @@ $routes = [
                 }
             } catch (Exception $e) {}
 
+            $defaultDenominations = ['5000' => 0, '1000' => 0, '500' => 0, '200' => 0, '100' => 0, '50' => 0, '20' => 0];
+            $savedDenominations = $defaultDenominations;
+            if ($savedHeader && !empty($savedHeader['denominations'])) {
+                $decoded = json_decode($savedHeader['denominations'], true);
+                if (is_array($decoded)) $savedDenominations = array_merge($defaultDenominations, $decoded);
+            }
+
             return [
                 'header' => [
                     'reporterName' => $savedHeader ? $savedHeader['reporter_name'] : null,
@@ -4804,6 +4812,7 @@ $routes = [
                 'paymentBreakdown' => array_values($paymentBreakdown),
                 'totalSales' => $totalSales,
                 'cashOutTotal' => $cashOutTotal,
+                'denominations' => $savedDenominations,
                 'hasSavedData' => !empty($savedEntries) || $savedHeader !== false,
             ];
         } catch (Exception $e) {
@@ -4840,6 +4849,7 @@ $routes = [
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_header (report_date, store_id, cashier_id)
             )");
+            try { $pdo->exec("ALTER TABLE report_headers ADD COLUMN denominations JSON DEFAULT NULL"); } catch (Exception $colErr) { /* already exists */ }
 
             $date = $body['date'] ?? null;
             if (empty($date)) { return ['error' => 'Date is required']; }
@@ -4849,10 +4859,12 @@ $routes = [
             $reporterName = $body['reporterName'] ?? null;
             $remarks = $body['remarks'] ?? null;
             $rows = $body['rows'] ?? [];
+            $denominationsRaw = $body['denominations'] ?? [];
+            $denominationsJson = json_encode($denominationsRaw);
 
             // Save header
-            $headerStmt = $pdo->prepare('INSERT INTO report_headers (report_date, store_id, cashier_id, reporter_name, remarks) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reporter_name = VALUES(reporter_name), remarks = VALUES(remarks), updated_at = NOW()');
-            $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks]);
+            $headerStmt = $pdo->prepare('INSERT INTO report_headers (report_date, store_id, cashier_id, reporter_name, remarks, denominations) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reporter_name = VALUES(reporter_name), remarks = VALUES(remarks), denominations = VALUES(denominations), updated_at = NOW()');
+            $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks, $denominationsJson]);
 
             // Save rows
             $rowStmt = $pdo->prepare('INSERT INTO report_entries (report_date, store_id, cashier_id, product_id, wgs, add_qty, return_qty, scrap_bo, turn_over) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE wgs = VALUES(wgs), add_qty = VALUES(add_qty), return_qty = VALUES(return_qty), scrap_bo = VALUES(scrap_bo), turn_over = VALUES(turn_over), updated_at = NOW()');
@@ -5152,10 +5164,19 @@ $routes = [
             $html .= '<div class="section-title">SALES</div>';
             $html .= '<table><tr><th>DEN</th><th>#</th><th>TOTAL</th></tr>';
             $denominations = ['5000', '1000', '500', '200', '100', '50', '20'];
-            foreach ($denominations as $den) {
-                $html .= '<tr><td>' . $den . '</td><td></td><td></td></tr>';
+            $savedDenominations = ['5000' => 0, '1000' => 0, '500' => 0, '200' => 0, '100' => 0, '50' => 0, '20' => 0];
+            if ($savedHeaderData && !empty($savedHeaderData['denominations'])) {
+                $decoded = json_decode($savedHeaderData['denominations'], true);
+                if (is_array($decoded)) $savedDenominations = array_merge($savedDenominations, $decoded);
             }
-            $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td></td></tr>';
+            $denTotalSum = 0;
+            foreach ($denominations as $den) {
+                $count = (int)($savedDenominations[$den] ?? 0);
+                $denTotal = $count * (int)$den;
+                $denTotalSum += $denTotal;
+                $html .= '<tr><td>' . $den . '</td><td>' . ($count > 0 ? $count : '') . '</td><td>' . ($denTotal > 0 ? number_format($denTotal, 2) : '') . '</td></tr>';
+            }
+            $html .= '<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td>' . ($denTotalSum > 0 ? number_format($denTotalSum, 2) : '') . '</td></tr>';
             $html .= '</table></td></tr></table>';
 
             // Computation
