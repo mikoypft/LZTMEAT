@@ -294,6 +294,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const [selectedStore, setSelectedStore] = useState<string>("All Stores");
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
   const [selectedStatus, setSelectedStatus] = useState<string>("All Status");
+  const [selectedCashier, setSelectedCashier] = useState<string>("All Cashiers");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [sortField, setSortField] = useState<keyof SaleRecord>("date");
@@ -365,7 +366,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
             tax: taxVal,
             total: totalVal,
             paymentMethod: (sale.paymentMethod as any) || "Cash",
-            cashier: String(sale.cashier || sale.username || "Unknown"),
+            cashier: String(sale.cashierName || sale.cashier || sale.username || "Unknown"),
             status: "Completed" as const,
           };
 
@@ -418,12 +419,14 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
         sale.paymentMethod === selectedPayment;
       const matchesStatus =
         selectedStatus === "All Status" || sale.status === selectedStatus;
+      const matchesCashier =
+        selectedCashier === "All Cashiers" || sale.cashier === selectedCashier;
 
       const saleDate = sale.date; // already "YYYY-MM-DD"
       const matchesFrom = !startDate || saleDate >= startDate;
       const matchesTo = !endDate || saleDate <= endDate;
 
-      return matchesSearch && matchesStore && matchesPayment && matchesStatus && matchesFrom && matchesTo;
+      return matchesSearch && matchesStore && matchesPayment && matchesStatus && matchesCashier && matchesFrom && matchesTo;
     } catch (err) {
       console.error("Filter error for sale:", sale, err);
       return false;
@@ -790,6 +793,18 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 {statuses.map((status) => (
                   <option key={status} value={status}>
                     {status}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={selectedCashier}
+                onChange={(e) => setSelectedCashier(e.target.value)}
+                className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              >
+                <option value="All Cashiers">All Cashiers</option>
+                {Array.from(new Set(sales.map((s) => s.cashier).filter((c) => c && c !== "Unknown"))).sort().map((cashier) => (
+                  <option key={cashier} value={cashier}>
+                    {cashier}
                   </option>
                 ))}
               </select>

@@ -1575,7 +1575,7 @@ $routes = [
         
         error_log('[Sales API] Params: startDate=' . ($startDate ?? 'NULL') . ', endDate=' . ($endDate ?? 'NULL') . ', location=' . ($location ?? 'NULL'));
         
-        $query = 'SELECT s.* FROM sales s';
+        $query = 'SELECT s.*, u.full_name as cashier_name, u.username as cashier_username FROM sales s LEFT JOIN users u ON s.user_id = u.id';
         $params = [];
         $where = [];
         
@@ -1664,6 +1664,7 @@ $routes = [
                     'paymentMethod' => $s['payment_method'],
                     'storeId' => $s['store_id'] ? (string)$s['store_id'] : null,
                     'userId' => $s['user_id'] ? (string)$s['user_id'] : null,
+                    'cashierName' => $s['cashier_name'] ?? $s['cashier_username'] ?? null,
                     'items' => array_map(function($item) {
                         return [
                             'id' => (string)$item['id'],
