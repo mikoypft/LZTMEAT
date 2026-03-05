@@ -419,7 +419,11 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
       const matchesStatus =
         selectedStatus === "All Status" || sale.status === selectedStatus;
 
-      return matchesSearch && matchesStore && matchesPayment && matchesStatus;
+      const saleDate = sale.date; // already "YYYY-MM-DD"
+      const matchesFrom = !startDate || saleDate >= startDate;
+      const matchesTo = !endDate || saleDate <= endDate;
+
+      return matchesSearch && matchesStore && matchesPayment && matchesStatus && matchesFrom && matchesTo;
     } catch (err) {
       console.error("Filter error for sale:", sale, err);
       return false;
@@ -749,7 +753,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
@@ -789,6 +793,34 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                   </option>
                 ))}
               </select>
+
+              {/* Date range */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">From:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">To:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => { setStartDate(""); setEndDate(""); }}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors"
+                >
+                  Clear dates
+                </button>
+              )}
             </div>
           </div>
 

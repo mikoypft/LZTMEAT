@@ -2628,20 +2628,27 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
 
               {/* Discrepancy reason — shown when actual differs from planned */}
               {(() => {
-                const ingredients = selectedProductionForMixing.initialIngredients ?? [];
-                const totalIngKg = ingredients.reduce((s, ing: any) => s + (parseFloat(ing.quantity) || 0), 0);
+                const ingredients =
+                  selectedProductionForMixing.initialIngredients ?? [];
+                const totalIngKg = ingredients.reduce(
+                  (s, ing: any) => s + (parseFloat(ing.quantity) || 0),
+                  0,
+                );
                 const actual = parseFloat(mixWeight) || 0;
                 const diff = parseFloat((totalIngKg - actual).toFixed(3));
                 if (totalIngKg === 0 || diff === 0) return null;
                 return (
                   <div>
                     <label className="block text-sm mb-1 text-amber-600 font-medium">
-                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                      Discrepancy: {diff > 0 ? "+" : ""}
+                      {diff} KG — Reason (optional)
                     </label>
                     <textarea
                       rows={2}
                       value={mixingDiscrepancyReason}
-                      onChange={(e) => setMixingDiscrepancyReason(e.target.value)}
+                      onChange={(e) =>
+                        setMixingDiscrepancyReason(e.target.value)
+                      }
                       placeholder="e.g. moisture loss, spillage…"
                       className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
                     />
@@ -2752,12 +2759,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 return (
                   <div>
                     <label className="block text-sm mb-1 text-amber-600 font-medium">
-                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                      Discrepancy: {diff > 0 ? "+" : ""}
+                      {diff} KG — Reason (optional)
                     </label>
                     <textarea
                       rows={2}
                       value={packingDiscrepancyReason}
-                      onChange={(e) => setPackingDiscrepancyReason(e.target.value)}
+                      onChange={(e) =>
+                        setPackingDiscrepancyReason(e.target.value)
+                      }
                       placeholder="e.g. moisture loss, trimming waste…"
                       className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
                     />
@@ -3067,12 +3077,15 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 return (
                   <div>
                     <label className="block text-sm mb-1 text-amber-600 font-medium">
-                      Discrepancy: {diff > 0 ? "+" : ""}{diff} KG — Reason (optional)
+                      Discrepancy: {diff > 0 ? "+" : ""}
+                      {diff} KG — Reason (optional)
                     </label>
                     <textarea
                       rows={2}
                       value={cookingDiscrepancyReason}
-                      onChange={(e) => setCookingDiscrepancyReason(e.target.value)}
+                      onChange={(e) =>
+                        setCookingDiscrepancyReason(e.target.value)
+                      }
                       placeholder="e.g. cooking loss, wastage…"
                       className="w-full px-3 py-2 bg-background border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm resize-none"
                     />

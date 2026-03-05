@@ -32,7 +32,11 @@ const ACTION_TYPES = [
   { value: "inventory", label: "Inventory" },
 ];
 
-export function HistoryPage({ currentUser }: { currentUser?: UserData | null }) {
+export function HistoryPage({
+  currentUser,
+}: {
+  currentUser?: UserData | null;
+}) {
   const isAdmin = currentUser?.role === "ADMIN";
   const [historyData, setHistoryData] = useState<SystemHistoryEntry[]>([]);
   const [filteredData, setFilteredData] = useState<SystemHistoryEntry[]>([]);
