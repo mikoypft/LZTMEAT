@@ -1881,7 +1881,7 @@ $routes = [
                 
                 $invStmt = $pdo->prepare('
                     UPDATE inventory 
-                    SET quantity = quantity - ? 
+                    SET quantity = GREATEST(quantity - ?, 0) 
                     WHERE product_id = ? AND location = ?
                 ');
                 
@@ -4759,7 +4759,7 @@ $routes = [
                 if ($storeId) $invParams[] = $storeLocation;
                 $invStmt->execute($invParams);
                 $inv = $invStmt->fetch();
-                $stock = $inv ? (float)$inv['quantity'] : 0;
+                $stock = $inv ? max(0, (float)$inv['quantity']) : 0;
 
                 $pickUp = $salesByProduct[$productName]['quantity'] ?? 0;
                 $totalSalesProd = $salesByProduct[$productName]['total_sales'] ?? 0;
@@ -5049,7 +5049,7 @@ $routes = [
                 if ($storeId) $invParams[] = $storeLocation;
                 $invStmt->execute($invParams);
                 $inv = $invStmt->fetch();
-                $stock = $inv ? (float)$inv['quantity'] : 0;
+                $stock = $inv ? max(0, (float)$inv['quantity']) : 0;
 
                 $quantity = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['quantity'] : 0;
                 $productTotalSales = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['total_sales'] : 0;
