@@ -4653,6 +4653,232 @@ $routes = [
         }
     },
 
+    'GET /api/reports/preview' => function() use ($pdo) {
+        try {
+            date_default_timezone_set('Asia/Manila');
+            try { $pdo->exec("SET time_zone = '+08:00'"); } catch (Exception $tzErr) { /* ignore */ }
+
+            // Ensure tables exist
+            $pdo->exec("CREATE TABLE IF NOT EXISTS report_entries (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                report_date DATE NOT NULL,
+                store_id INT NOT NULL DEFAULT 0,
+                cashier_id INT NOT NULL DEFAULT 0,
+                product_id INT NOT NULL,
+                wgs DECIMAL(10,3) NOT NULL DEFAULT 0,
+                add_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+                return_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+                scrap_bo DECIMAL(10,3) NOT NULL DEFAULT 0,
+                turn_over DECIMAL(10,3) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_entry (report_date, store_id, cashier_id, product_id)
+            )");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS report_headers (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                report_date DATE NOT NULL,
+                store_id INT NOT NULL DEFAULT 0,
+                cashier_id INT NOT NULL DEFAULT 0,
+                reporter_name VARCHAR(255) DEFAULT NULL,
+                remarks TEXT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_header (report_date, store_id, cashier_id)
+            )");
+
+            $date = $_GET['date'] ?? date('Y-m-d');
+            $storeId = (int)($_GET['storeId'] ?? 0);
+            $cashierId = (int)($_GET['cashierId'] ?? 0);
+
+            // Get store info
+            $storeName = 'All Stores';
+            $storeLocation = 'N/A';
+            if ($storeId) {
+                $storeStmt = $pdo->prepare('SELECT * FROM stores WHERE id = ?');
+                $storeStmt->execute([$storeId]);
+                $store = $storeStmt->fetch();
+                if ($store) { $storeName = $store['name']; $storeLocation = $store['location'] ?? 'N/A'; }
+            }
+
+            // Get sales
+            $salesQuery = 'SELECT s.*, u.full_name as cashier_name FROM sales s LEFT JOIN users u ON s.user_id = u.id WHERE DATE(s.created_at) = ?';
+            $params = [$date];
+            if ($storeId) { $salesQuery .= ' AND s.store_id = ?'; $params[] = $storeId; }
+            if ($cashierId) { $salesQuery .= ' AND s.user_id = ?'; $params[] = $cashierId; }
+            $salesStmt = $pdo->prepare($salesQuery);
+            $salesStmt->execute($params);
+            $sales = $salesStmt->fetchAll();
+
+            $salesByProduct = [];
+            $totalSales = 0;
+            $paymentBreakdown = [];
+            foreach ($sales as $sale) {
+                $totalSales += (float)$sale['total'];
+                $method = $sale['payment_method'] ?? 'Cash';
+                if (!isset($paymentBreakdown[$method])) $paymentBreakdown[$method] = ['method' => $method, 'count' => 0, 'amount' => 0];
+                $paymentBreakdown[$method]['count']++;
+                $paymentBreakdown[$method]['amount'] += (float)$sale['total'];
+                $items = json_decode($sale['items'], true);
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $name = $item['name'] ?? 'Unknown';
+                        if (!isset($salesByProduct[$name])) $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
+                        $salesByProduct[$name]['quantity'] += ($item['quantity'] ?? 0);
+                        $salesByProduct[$name]['total_sales'] += (($item['quantity'] ?? 0) * ($item['price'] ?? 0));
+                    }
+                }
+            }
+
+            // Get products
+            $productsStmt = $pdo->query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name');
+            $products = $productsStmt->fetchAll();
+
+            // Load saved entries
+            $entriesStmt = $pdo->prepare('SELECT * FROM report_entries WHERE report_date = ? AND store_id = ? AND cashier_id = ?');
+            $entriesStmt->execute([$date, $storeId, $cashierId]);
+            $savedEntries = [];
+            foreach ($entriesStmt->fetchAll() as $e) { $savedEntries[(int)$e['product_id']] = $e; }
+
+            // Load saved header
+            $headerStmt = $pdo->prepare('SELECT * FROM report_headers WHERE report_date = ? AND store_id = ? AND cashier_id = ?');
+            $headerStmt->execute([$date, $storeId, $cashierId]);
+            $savedHeader = $headerStmt->fetch();
+
+            // Build rows
+            $rows = [];
+            foreach ($products as $product) {
+                $productId = (int)$product['id'];
+                $productName = $product['name'];
+                $unitPrice = (float)$product['price'];
+
+                $invStmt = $pdo->prepare('SELECT quantity FROM inventory WHERE product_id = ?' . ($storeId ? ' AND location = ?' : '') . ' LIMIT 1');
+                $invParams = [$productId];
+                if ($storeId) $invParams[] = $storeLocation;
+                $invStmt->execute($invParams);
+                $inv = $invStmt->fetch();
+                $stock = $inv ? (float)$inv['quantity'] : 0;
+
+                $pickUp = $salesByProduct[$productName]['quantity'] ?? 0;
+                $totalSalesProd = $salesByProduct[$productName]['total_sales'] ?? 0;
+                $saved = $savedEntries[$productId] ?? null;
+
+                $rows[] = [
+                    'productId' => $productId,
+                    'productName' => $productName,
+                    'unitPrice' => $unitPrice,
+                    'wgs' => $saved ? (float)$saved['wgs'] : 0,
+                    'stocks' => $stock,
+                    'addQty' => $saved ? (float)$saved['add_qty'] : 0,
+                    'pickUp' => (float)$pickUp,
+                    'returnQty' => $saved ? (float)$saved['return_qty'] : 0,
+                    'scrapBo' => $saved ? (float)$saved['scrap_bo'] : 0,
+                    'turnOver' => $saved ? (float)$saved['turn_over'] : 0,
+                    'kgSales' => (float)$pickUp,
+                    'totalWeight' => (float)$pickUp,
+                    'totalSales' => $totalSalesProd,
+                    'wholesaleKg' => 0,
+                    'wholesaleDisc' => 0,
+                    'amount' => $totalSalesProd,
+                ];
+            }
+
+            // Cash out total
+            $cashOutTotal = 0;
+            try {
+                $txCheck = $pdo->query("SHOW TABLES LIKE 'transactions'");
+                if ($txCheck->rowCount() > 0) {
+                    $txStmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) as total FROM transactions WHERE type = ? AND DATE(created_at) = ?');
+                    $txStmt->execute(['Cash Out', $date]);
+                    $cashOutTotal = (float)$txStmt->fetchColumn();
+                }
+            } catch (Exception $e) {}
+
+            return [
+                'header' => [
+                    'reporterName' => $savedHeader ? $savedHeader['reporter_name'] : null,
+                    'remarks' => $savedHeader ? $savedHeader['remarks'] : null,
+                    'storeName' => $storeName,
+                    'date' => $date,
+                ],
+                'rows' => $rows,
+                'paymentBreakdown' => array_values($paymentBreakdown),
+                'totalSales' => $totalSales,
+                'cashOutTotal' => $cashOutTotal,
+                'hasSavedData' => !empty($savedEntries) || $savedHeader !== false,
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to load report preview: ' . $e->getMessage()];
+        }
+    },
+
+    'POST /api/reports/save-data' => function() use ($pdo, $body) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS report_entries (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                report_date DATE NOT NULL,
+                store_id INT NOT NULL DEFAULT 0,
+                cashier_id INT NOT NULL DEFAULT 0,
+                product_id INT NOT NULL,
+                wgs DECIMAL(10,3) NOT NULL DEFAULT 0,
+                add_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+                return_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+                scrap_bo DECIMAL(10,3) NOT NULL DEFAULT 0,
+                turn_over DECIMAL(10,3) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_entry (report_date, store_id, cashier_id, product_id)
+            )");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS report_headers (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                report_date DATE NOT NULL,
+                store_id INT NOT NULL DEFAULT 0,
+                cashier_id INT NOT NULL DEFAULT 0,
+                reporter_name VARCHAR(255) DEFAULT NULL,
+                remarks TEXT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_header (report_date, store_id, cashier_id)
+            )");
+
+            $date = $body['date'] ?? null;
+            if (empty($date)) { return ['error' => 'Date is required']; }
+
+            $storeId = (int)($body['storeId'] ?? 0);
+            $cashierId = (int)($body['cashierId'] ?? 0);
+            $reporterName = $body['reporterName'] ?? null;
+            $remarks = $body['remarks'] ?? null;
+            $rows = $body['rows'] ?? [];
+
+            // Save header
+            $headerStmt = $pdo->prepare('INSERT INTO report_headers (report_date, store_id, cashier_id, reporter_name, remarks) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reporter_name = VALUES(reporter_name), remarks = VALUES(remarks), updated_at = NOW()');
+            $headerStmt->execute([$date, $storeId, $cashierId, $reporterName, $remarks]);
+
+            // Save rows
+            $rowStmt = $pdo->prepare('INSERT INTO report_entries (report_date, store_id, cashier_id, product_id, wgs, add_qty, return_qty, scrap_bo, turn_over) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE wgs = VALUES(wgs), add_qty = VALUES(add_qty), return_qty = VALUES(return_qty), scrap_bo = VALUES(scrap_bo), turn_over = VALUES(turn_over), updated_at = NOW()');
+            foreach ($rows as $row) {
+                $rowStmt->execute([
+                    $date, $storeId, $cashierId,
+                    (int)$row['productId'],
+                    (float)($row['wgs'] ?? 0),
+                    (float)($row['addQty'] ?? 0),
+                    (float)($row['returnQty'] ?? 0),
+                    (float)($row['scrapBo'] ?? 0),
+                    (float)($row['turnOver'] ?? 0),
+                ]);
+            }
+
+            logSystemHistory($pdo, 'Report Data Saved', 'Report', $date, [
+                'storeId' => $storeId, 'cashierId' => $cashierId, 'rowCount' => count($rows),
+            ]);
+
+            return ['success' => true, 'message' => 'Report data saved successfully'];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to save report data: ' . $e->getMessage()];
+        }
+    },
+
     'GET /api/reports/daily-pdf' => function() use ($pdo) {
         try {
             // Set timezone to Philippines
@@ -4663,6 +4889,23 @@ $routes = [
             $storeId = $_GET['storeId'] ?? null;
             $cashierId = $_GET['cashierId'] ?? null;
             $userName = $_GET['userName'] ?? 'Unknown';
+            $storeIdInt = (int)($storeId ?? 0);
+            $cashierIdInt = (int)($cashierId ?? 0);
+
+            // Load saved header (reporter name + remarks override)
+            $savedHeaderData = null;
+            $savedEntriesData = [];
+            try {
+                $hStmt = $pdo->prepare('SELECT * FROM report_headers WHERE report_date = ? AND store_id = ? AND cashier_id = ?');
+                $hStmt->execute([$date, $storeIdInt, $cashierIdInt]);
+                $savedHeaderData = $hStmt->fetch();
+                if ($savedHeaderData && !empty($savedHeaderData['reporter_name'])) {
+                    $userName = $savedHeaderData['reporter_name'];
+                }
+                $eStmt = $pdo->prepare('SELECT * FROM report_entries WHERE report_date = ? AND store_id = ? AND cashier_id = ?');
+                $eStmt->execute([$date, $storeIdInt, $cashierIdInt]);
+                foreach ($eStmt->fetchAll() as $e) { $savedEntriesData[(int)$e['product_id']] = $e; }
+            } catch (Exception $savedErr) { /* ignore if tables don't exist yet */ }
 
             $dateFormatted = date('m/d/Y', strtotime($date));
 
@@ -4767,24 +5010,38 @@ $routes = [
 
                 $quantity = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['quantity'] : 0;
                 $productTotalSales = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['total_sales'] : 0;
+
+                // Use saved editable values if available
+                $savedEntry = $savedEntriesData[(int)$product['id']] ?? null;
+                $wgs        = $savedEntry ? (float)$savedEntry['wgs'] : 0;
+                $addQty     = $savedEntry ? (float)$savedEntry['add_qty'] : 0;
+                $returnQty  = $savedEntry ? (float)$savedEntry['return_qty'] : 0;
+                $scrapBo    = $savedEntry ? (float)$savedEntry['scrap_bo'] : 0;
+                $turnOver   = $savedEntry ? (float)$savedEntry['turn_over'] : 0;
+
                 $totalAmount += $productTotalSales;
                 $totalKgSales += $quantity;
                 $totalUnitPrice += $unitPrice;
+                $totalWGs += $wgs;
                 $totalStocks += $stock;
+                $totalAdd += $addQty;
                 $totalPickUp += $quantity;
+                $totalReturn += $returnQty;
+                $totalScrapBO += $scrapBo;
+                $totalTurnOver += $turnOver;
                 $totalTotalSales += $productTotalSales;
                 $totalTotalWeight += $quantity;
 
                 $productTableRows .= '<tr>';
                 $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($unitPrice, 2) . '</td>';
-                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . number_format($wgs, 3) . '</td>';
                 $productTableRows .= '<td class="number">' . $stock . '</td>';
-                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . number_format($addQty, 3) . '</td>';
                 $productTableRows .= '<td class="number">' . $quantity . '</td>';
-                $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">0</td>';
+                $productTableRows .= '<td class="number">' . number_format($returnQty, 3) . '</td>';
+                $productTableRows .= '<td class="number">' . number_format($scrapBo, 3) . '</td>';
+                $productTableRows .= '<td class="number">' . number_format($turnOver, 3) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
                 $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
@@ -4914,7 +5171,7 @@ $routes = [
 
             // Remarks + Signatures
             $html .= '<div class="section-title">REMARKS</div>';
-            $html .= '<div style="border:1px solid #000;padding:5px;min-height:20px;"></div>';
+            $html .= '<div style="border:1px solid #000;padding:5px;min-height:20px;">' . htmlspecialchars($savedHeaderData['remarks'] ?? '') . '</div>';
             $html .= '<div class="signature-box">';
             $html .= '<div class="signature"><p>Prepared By:</p><div class="signature-line">_____________________</div></div>';
             $html .= '<div class="signature"><p>Checked By:</p><div class="signature-line">_____________________</div></div>';

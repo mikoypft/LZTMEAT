@@ -1504,3 +1504,63 @@ export async function exportDailyReportCSV(
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+// ─── Report Preview & Save ────────────────────────────────────────────────────
+
+export interface ReportRow {
+  productId: number;
+  productName: string;
+  unitPrice: number;
+  wgs: number;
+  stocks: number;
+  addQty: number;
+  pickUp: number;
+  returnQty: number;
+  scrapBo: number;
+  turnOver: number;
+  kgSales: number;
+  totalWeight: number;
+  totalSales: number;
+  wholesaleKg: number;
+  wholesaleDisc: number;
+  amount: number;
+}
+
+export interface ReportPreview {
+  header: {
+    reporterName: string | null;
+    remarks: string | null;
+    storeName: string;
+    date: string;
+  };
+  rows: ReportRow[];
+  paymentBreakdown: { method: string; count: number; amount: number }[];
+  totalSales: number;
+  cashOutTotal: number;
+  hasSavedData: boolean;
+}
+
+export async function getReportPreview(
+  date: string,
+  storeId?: string,
+  cashierId?: string,
+): Promise<ReportPreview> {
+  let url = `/reports/preview?date=${date}`;
+  if (storeId) url += `&storeId=${storeId}`;
+  if (cashierId) url += `&cashierId=${cashierId}`;
+  return await apiRequest<ReportPreview>(url);
+}
+
+export async function saveReportData(payload: {
+  date: string;
+  storeId?: string;
+  cashierId?: string;
+  reporterName: string;
+  remarks: string;
+  rows: ReportRow[];
+}): Promise<void> {
+  await apiRequest<{ success: boolean }>("/reports/save-data", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
