@@ -13,6 +13,7 @@ import {
   Edit2,
   Check,
   X,
+  Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -22,8 +23,12 @@ import {
   deleteDiscount,
   updateDiscountProducts,
   getProducts,
+  getFractionalPrices,
+  setFractionalPrice,
+  deleteFractionalPrice,
   type Discount,
   type Product,
+  type FractionalPriceRule,
 } from "../../utils/api";
 
 interface DiscountCardProps {
@@ -111,7 +116,9 @@ function DiscountCard({
     const newActive = !isActive;
     setIsActive(newActive);
     try {
-      const updated = await updateDiscount(discount.id, { isActive: newActive });
+      const updated = await updateDiscount(discount.id, {
+        isActive: newActive,
+      });
       onUpdated({ ...updated, productIds: Array.from(selectedProductIds) });
     } catch {
       setIsActive(isActive);
@@ -331,13 +338,20 @@ function DiscountCard({
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-600">
             <span className="flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5 text-red-500" />
-              Min <strong className="text-gray-800">{discount.wholesaleMinUnits}</strong> units
+              Min{" "}
+              <strong className="text-gray-800">
+                {discount.wholesaleMinUnits}
+              </strong>{" "}
+              units
             </span>
             <span className="flex items-center gap-1.5">
               <Percent className="w-3.5 h-3.5 text-red-500" />
               {discount.discountType === "percentage" ? (
                 <>
-                  <strong className="text-gray-800">{discount.discountValue}%</strong> off
+                  <strong className="text-gray-800">
+                    {discount.discountValue}%
+                  </strong>{" "}
+                  off
                 </>
               ) : (
                 <>
@@ -373,9 +387,7 @@ function DiscountCard({
                     min="1"
                     max="9999"
                     value={minUnits}
-                    onChange={(e) =>
-                      setMinUnits(parseInt(e.target.value) || 1)
-                    }
+                    onChange={(e) => setMinUnits(parseInt(e.target.value) || 1)}
                     className="w-24 px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                   />
                   <span className="text-sm text-gray-500">units</span>
@@ -512,9 +524,7 @@ function DiscountCard({
                       key={product.id}
                       onClick={() => isAdmin && handleToggleProduct(pid)}
                       className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 transition-colors ${
-                        isAdmin
-                          ? "cursor-pointer hover:bg-gray-50"
-                          : ""
+                        isAdmin ? "cursor-pointer hover:bg-gray-50" : ""
                       } ${isSelected ? "bg-green-50" : ""}`}
                     >
                       <div
@@ -572,18 +582,34 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
   const isAdmin = userRole === "ADMIN";
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [fractionalRules, setFractionalRules] = useState<
+    Map<number, number>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [fractSearch, setFractSearch] = useState("");
+  // Local pending edits for fractional prices (productId -> string input)
+  const [fractInputs, setFractInputs] = useState<Map<number, string>>(
+    new Map(),
+  );
+  const [fractSaving, setFractSaving] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     Promise.all([
       getDiscounts().then(setDiscounts),
       getProducts().then(setProducts),
+      getFractionalPrices().then((rules) => {
+        const map = new Map<number, number>();
+        rules.forEach((r) => map.set(r.productId, r.fractionalPrice));
+        setFractionalRules(map);
+      }),
     ])
-      .catch(() => toast.error("Failed to load discounts"))
+      .catch(() => toast.error("Failed to load settings"))
       .finally(() => setLoading(false));
   }, []);
+
+  // ── Discounts handlers ────────────────────────────────────────────────────
 
   const handleCreate = async () => {
     const name = newName.trim() || "New Discount";
@@ -617,6 +643,62 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
     setDiscounts((prev) => prev.filter((d) => d.id !== id));
   };
 
+  // ── Fractional price handlers ─────────────────────────────────────────────
+
+  const getFractInput = (pid: number) => {
+    if (fractInputs.has(pid)) return fractInputs.get(pid)!;
+    const existing = fractionalRules.get(pid);
+    return existing !== undefined ? String(existing) : "";
+  };
+
+  const setFractInput = (pid: number, val: string) => {
+    setFractInputs((prev) => new Map(prev).set(pid, val));
+  };
+
+  const handleSaveFractional = async (pid: number) => {
+    const raw = getFractInput(pid);
+    const price = parseFloat(raw);
+    if (isNaN(price) || price < 0) {
+      toast.error("Enter a valid price (0 or greater)");
+      return;
+    }
+    setFractSaving((prev) => new Set(prev).add(pid));
+    try {
+      if (price === 0 && !fractionalRules.has(pid)) {
+        // Nothing to save
+        setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+        return;
+      }
+      if (price === 0) {
+        await deleteFractionalPrice(pid);
+        setFractionalRules((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      } else {
+        const rule = await setFractionalPrice(pid, price);
+        setFractionalRules((prev) => new Map(prev).set(pid, rule.fractionalPrice));
+      }
+      setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      toast.success("Partial unit price saved");
+    } catch {
+      toast.error("Failed to save partial unit price");
+    } finally {
+      setFractSaving((prev) => { const s = new Set(prev); s.delete(pid); return s; });
+    }
+  };
+
+  const handleClearFractional = async (pid: number) => {
+    setFractSaving((prev) => new Set(prev).add(pid));
+    try {
+      await deleteFractionalPrice(pid);
+      setFractionalRules((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      toast.success("Partial unit price removed");
+    } catch {
+      toast.error("Failed to remove partial unit price");
+    } finally {
+      setFractSaving((prev) => { const s = new Set(prev); s.delete(pid); return s; });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -625,82 +707,259 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
     );
   }
 
+  const filteredFractProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(fractSearch.toLowerCase()) ||
+      (p.category ?? "").toLowerCase().includes(fractSearch.toLowerCase()),
+  );
+  const rulesCount = fractionalRules.size;
+
   return (
-    <div className="p-6 max-w-4xl">
-      {/* Header */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Discounts</h1>
-          <p className="text-gray-500 mt-1">
-            Create and manage wholesale discount rules. Each discount can have
-            its own threshold and product selection.
-          </p>
+    <div className="p-6 max-w-4xl space-y-10">
+      {/* ── Page Header ───────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+        <p className="text-gray-500 mt-1">
+          Manage discount rules and partial-unit pricing for your products.
+        </p>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SECTION 1 — DISCOUNT RULES                               */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Percent className="w-5 h-5 text-red-600" />
+              Discount Rules
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Each discount applies to its own set of products when the minimum
+              units threshold is reached.
+            </p>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Discount name…"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-44"
+              />
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                {creating ? "Adding…" : "Add Discount"}
+              </button>
+            </div>
+          )}
         </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Discount name…"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-44"
-            />
-            <button
-              onClick={handleCreate}
-              disabled={creating}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              {creating ? "Adding…" : "Add Discount"}
-            </button>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-700">
+            <p className="font-medium">How discounts work</p>
+            <p className="mt-1">
+              When a customer orders at least the configured minimum units of
+              the selected products, the wholesale discount is applied to those
+              items. Multiple discounts coexist and apply independently.
+            </p>
+          </div>
+        </div>
+
+        {discounts.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-200">
+            <Tag className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-gray-500">No discounts yet</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              {isAdmin
+                ? 'Click "Add Discount" to create your first discount rule.'
+                : "No discount rules have been configured."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {discounts.map((d) => (
+              <DiscountCard
+                key={d.id}
+                discount={d}
+                products={products}
+                isAdmin={isAdmin}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+              />
+            ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Info banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex gap-3">
-        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-700">
-          <p className="font-medium">How it works</p>
-          <p className="mt-1">
-            Each discount has a{" "}
-            <strong>minimum units threshold</strong>. When a customer orders at
-            least that many units of the discount's selected products, the
-            wholesale discount is applied to those items. Multiple discounts
-            coexist — each applies independently to its own product set.
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SECTION 2 — PARTIAL UNIT PRICING                         */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <Scale className="w-5 h-5 text-red-600" />
+            Partial Unit Pricing
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Set a special flat price for when a product is sold at less than 1
+            unit (e.g., less than 1 kg). Normal proportional pricing applies
+            for quantities ≥ 1.
           </p>
         </div>
-      </div>
 
-      {/* Discount list */}
-      {discounts.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg border-2 border-dashed border-gray-200">
-          <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-gray-500">
-            No discounts yet
-          </h3>
-          <p className="text-sm text-gray-400 mt-1">
-            {isAdmin
-              ? 'Click "Add Discount" to create your first discount rule.'
-              : "No discount rules have been configured."}
-          </p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-700">
+            <p className="font-medium">How partial unit pricing works</p>
+            <p className="mt-1">
+              If a product is sold at <strong>less than 1 unit/kg</strong>, the
+              configured price below is charged as a flat rate instead of the
+              proportional price. For example: 1 kg costs ₱100, but if you set
+              a partial price of ₱30, then selling 250 g charges ₱30 flat.
+              Leave blank or set to 0 to use normal proportional pricing.
+            </p>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {discounts.map((d) => (
-            <DiscountCard
-              key={d.id}
-              discount={d}
-              products={products}
-              isAdmin={isAdmin}
-              onUpdated={handleUpdated}
-              onDeleted={handleDeleted}
-            />
-          ))}
+
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          {/* Header row */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products…"
+                value={fractSearch}
+                onChange={(e) => setFractSearch(e.target.value)}
+                className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent w-full"
+              />
+            </div>
+            <span className="text-xs text-gray-500 ml-4">
+              {rulesCount} rule{rulesCount !== 1 ? "s" : ""} configured
+            </span>
+          </div>
+
+          {/* Product rows */}
+          <div className="divide-y divide-gray-100 max-h-[520px] overflow-y-auto">
+            {filteredFractProducts.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">
+                No products found
+              </div>
+            ) : (
+              filteredFractProducts.map((product) => {
+                const pid = parseInt(String(product.id));
+                const hasRule = fractionalRules.has(pid);
+                const inputVal = getFractInput(pid);
+                const isDirty =
+                  fractInputs.has(pid) &&
+                  fractInputs.get(pid) !==
+                    String(fractionalRules.get(pid) ?? "");
+                const isSaving = fractSaving.has(pid);
+
+                return (
+                  <div
+                    key={product.id}
+                    className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      hasRule ? "bg-green-50/40" : ""
+                    }`}
+                  >
+                    {/* Product info */}
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Scale
+                        className={`w-4 h-4 flex-shrink-0 ${
+                          hasRule ? "text-green-500" : "text-gray-300"
+                        }`}
+                      />
+                      <div className="min-w-0">
+                        <p
+                          className={`text-sm font-medium truncate ${
+                            hasRule ? "text-gray-900" : "text-gray-600"
+                          }`}
+                        >
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {product.category} &middot; Base: ₱
+                          {(product.price ?? 0).toFixed(2)}/unit
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Price input */}
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm text-gray-500">₱</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={inputVal}
+                          onChange={(e) => setFractInput(pid, e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleSaveFractional(pid)
+                          }
+                          disabled={isSaving}
+                          className="w-28 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+                        />
+                        {isDirty && (
+                          <button
+                            onClick={() => handleSaveFractional(pid)}
+                            disabled={isSaving}
+                            className="flex items-center gap-1 px-2 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Save
+                          </button>
+                        )}
+                        {hasRule && !isDirty && (
+                          <button
+                            onClick={() => handleClearFractional(pid)}
+                            disabled={isSaving}
+                            title="Remove partial unit price rule"
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span
+                        className={`text-sm font-medium ${
+                          hasRule ? "text-green-700" : "text-gray-400"
+                        }`}
+                      >
+                        {hasRule
+                          ? `₱${fractionalRules.get(pid)!.toFixed(2)}`
+                          : "—"}
+                      </span>
+                    )}
+
+                    {/* Status badge */}
+                    <span
+                      className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+                        hasRule
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      {hasRule ? "Custom price" : "Default"}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      )}
+      </section>
     </div>
   );
 }
-

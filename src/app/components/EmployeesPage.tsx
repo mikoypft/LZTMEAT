@@ -100,7 +100,7 @@ const AVAILABLE_PERMISSIONS = [
     description: "Manage users and employees",
   },
   { id: "suppliers", label: "Suppliers", description: "Manage suppliers" },
-  { id: "discounts", label: "Discounts", description: "Manage discounts" },
+  { id: "discounts", label: "Settings", description: "Manage price settings" },
   { id: "history", label: "History", description: "View history logs" },
   {
     id: "transactions",

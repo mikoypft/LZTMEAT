@@ -1454,7 +1454,9 @@ export async function getDiscounts(): Promise<Discount[]> {
   return data.discounts;
 }
 
-export async function createDiscount(discount: Omit<Discount, "id" | "createdAt">): Promise<Discount> {
+export async function createDiscount(
+  discount: Omit<Discount, "id" | "createdAt">,
+): Promise<Discount> {
   const data = await apiRequest<{ discount: Discount }>("/discounts", {
     method: "POST",
     body: JSON.stringify(discount),
@@ -1486,6 +1488,35 @@ export async function updateDiscountProducts(
     { method: "PUT", body: JSON.stringify({ productIds }) },
   );
   return data.discount;
+}
+
+// ==================== FRACTIONAL PRICE RULES API ====================
+
+export interface FractionalPriceRule {
+  productId: number;
+  fractionalPrice: number;
+}
+
+export async function getFractionalPrices(): Promise<FractionalPriceRule[]> {
+  const data = await apiRequest<{ rules: FractionalPriceRule[] }>(
+    "/fractional-prices",
+  );
+  return data.rules;
+}
+
+export async function setFractionalPrice(
+  productId: number,
+  fractionalPrice: number,
+): Promise<FractionalPriceRule> {
+  const data = await apiRequest<{ rule: FractionalPriceRule }>(
+    `/fractional-prices/${productId}`,
+    { method: "PUT", body: JSON.stringify({ fractionalPrice }) },
+  );
+  return data.rule;
+}
+
+export async function deleteFractionalPrice(productId: number): Promise<void> {
+  await apiRequest(`/fractional-prices/${productId}`, { method: "DELETE" });
 }
 
 // ==================== REPORTS API ====================

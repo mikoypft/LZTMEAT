@@ -347,7 +347,7 @@ export default function App() {
         {
           id: "discounts" as Page,
           icon: Percent,
-          label: "Discounts",
+          label: "Settings",
           permission: "discounts",
         },
         {
@@ -538,7 +538,7 @@ export default function App() {
       {
         id: "discounts" as Page,
         icon: Percent,
-        label: "Discounts",
+        label: "Settings",
         roles: ["ADMIN"],
       },
       {

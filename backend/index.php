@@ -4709,6 +4709,78 @@ $routes = [
         }
     },
 
+    // ==================== FRACTIONAL (PARTIAL-UNIT) PRICE RULES ====================
+
+    'GET /api/fractional-prices' => function() use ($pdo) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS product_fractional_prices (
+                product_id INT NOT NULL PRIMARY KEY,
+                fractional_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $rows = $pdo->query('SELECT * FROM product_fractional_prices')->fetchAll();
+            $result = [];
+            foreach ($rows as $r) {
+                $result[] = [
+                    'productId' => (int)$r['product_id'],
+                    'fractionalPrice' => (float)$r['fractional_price'],
+                ];
+            }
+            return ['rules' => $result];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get fractional prices: ' . $e->getMessage()];
+        }
+    },
+
+    'PUT /api/fractional-prices/{product_id}' => function() use ($pdo, $body) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            preg_match('#/api/fractional-prices/(\d+)$#', $uri, $m);
+            $productId = isset($m[1]) ? (int)$m[1] : 0;
+            if (!$productId) { http_response_code(400); return ['error' => 'Invalid product_id']; }
+
+            $pdo->exec("CREATE TABLE IF NOT EXISTS product_fractional_prices (
+                product_id INT NOT NULL PRIMARY KEY,
+                fractional_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+
+            $price = max(0, (float)($body['fractionalPrice'] ?? 0));
+
+            $stmt = $pdo->prepare('INSERT INTO product_fractional_prices (product_id, fractional_price)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE fractional_price = ?, updated_at = NOW()');
+            $stmt->execute([$productId, $price, $price]);
+
+            return [
+                'rule' => [
+                    'productId' => $productId,
+                    'fractionalPrice' => $price,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to set fractional price: ' . $e->getMessage()];
+        }
+    },
+
+    'DELETE /api/fractional-prices/{product_id}' => function() use ($pdo) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            preg_match('#/api/fractional-prices/(\d+)$#', $uri, $m);
+            $productId = isset($m[1]) ? (int)$m[1] : 0;
+            if (!$productId) { http_response_code(400); return ['error' => 'Invalid product_id']; }
+            $pdo->prepare('DELETE FROM product_fractional_prices WHERE product_id = ?')->execute([$productId]);
+            return ['success' => true];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete fractional price rule: ' . $e->getMessage()];
+        }
+    },
+
     'GET /api/history' => function() use ($pdo) {
         try {
             // Create table if it doesn't exist

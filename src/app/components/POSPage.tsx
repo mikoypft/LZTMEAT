@@ -26,7 +26,9 @@ import {
   addInventory,
   getCategories,
   getDiscounts,
+  getFractionalPrices,
   type Discount,
+  type FractionalPriceRule,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -192,6 +194,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const [wholesaleDiscount, setWholesaleDiscount] = useState<number>(0);
   const [salesType, setSalesType] = useState<"wholesale" | "retail">("retail");
   const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [fractionalPriceRules, setFractionalPriceRules] = useState<FractionalPriceRule[]>([]);
   const [weightAdjustmentModal, setWeightAdjustmentModal] = useState<{
     show: boolean;
     product: Product | null;
@@ -240,7 +243,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     let hasAnyWholesale = false;
 
     for (const [discountId, items] of Object.entries(itemsByDiscount)) {
-      const discount = activeDiscounts.find((d) => d.id === parseInt(discountId));
+      const discount = activeDiscounts.find(
+        (d) => d.id === parseInt(discountId),
+      );
       if (!discount) continue;
       const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
       if (totalQuantity >= discount.wholesaleMinUnits) {
@@ -391,9 +396,14 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
 
   const loadDiscounts = async () => {
     try {
-      const data = await getDiscounts();
+      const [data, fractRules] = await Promise.all([
+        getDiscounts(),
+        getFractionalPrices(),
+      ]);
       setDiscounts(data);
+      setFractionalPriceRules(fractRules);
       console.log("✓ Discounts loaded:", data);
+      console.log("✓ Fractional price rules loaded:", fractRules);
     } catch (error) {
       console.error("Error loading discounts:", error);
     }
@@ -1175,7 +1185,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                             </span>
                             {isWholesale && applicableDiscount && (
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                                {applicableDiscount.discountType === "percentage"
+                                {applicableDiscount.discountType ===
+                                "percentage"
                                   ? `${applicableDiscount.discountValue}% OFF`
                                   : `₱${applicableDiscount.discountValue.toFixed(2)} OFF`}
                               </span>
@@ -1267,7 +1278,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                                       item.discount) /
                                       100 -
                                     (isWholesale && applicableDiscount
-                                      ? applicableDiscount.discountType === "percentage"
+                                      ? applicableDiscount.discountType ===
+                                        "percentage"
                                         ? (item.price *
                                             item.quantity *
                                             applicableDiscount.discountValue) /
@@ -1565,49 +1577,66 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
             </div>
 
             {/* Adjusted Price Display */}
-            <div className="bg-primary/10 rounded-lg p-4 mb-6">
-              <div className="text-sm text-muted-foreground mb-1">
-                Adjusted Price:
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                ₱
-                {(
-                  weightAdjustmentModal.product.price *
-                  (parseFloat(weightAdjustmentModal.weight) || 1)
-                ).toFixed(2)}
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                {parseFloat(weightAdjustmentModal.weight) || 1}kg × ₱
-                {weightAdjustmentModal.product.price.toFixed(2)}/kg
-              </div>
-            </div>
+            {(() => {
+              const wt = parseFloat(weightAdjustmentModal.weight) || 1;
+              const pid = parseInt(String(weightAdjustmentModal.product.id));
+              const fractRule = fractionalPriceRules.find(
+                (r) => r.productId === pid,
+              );
+              const usesFractional = wt < 1 && !!fractRule;
+              const displayPrice = usesFractional
+                ? fractRule!.fractionalPrice
+                : weightAdjustmentModal.product.price * wt;
+              return (
+                <>
+                  <div className="bg-primary/10 rounded-lg p-4 mb-6">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Adjusted Price:
+                    </div>
+                    <div className="text-2xl font-bold text-primary">
+                      ₱{displayPrice.toFixed(2)}
+                    </div>
+                    {usesFractional ? (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                          Partial unit pricing applied
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          (flat rate for &lt;1 unit)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {wt}kg × ₱
+                        {weightAdjustmentModal.product.price.toFixed(2)}/kg
+                      </div>
+                    )}
+                  </div>
 
-            {/* Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() =>
-                  setWeightAdjustmentModal({
-                    show: false,
-                    product: null,
-                    weight: "1",
-                  })
-                }
-                className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const adjustedPrice =
-                    weightAdjustmentModal.product.price *
-                    (parseFloat(weightAdjustmentModal.weight) || 1);
-                  addToCart(adjustedPrice);
-                }}
-                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
-              >
-                Add to Cart
-              </button>
-            </div>
+                  {/* Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() =>
+                        setWeightAdjustmentModal({
+                          show: false,
+                          product: null,
+                          weight: "1",
+                        })
+                      }
+                      className="flex-1 border border-border py-2 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => addToCart(displayPrice)}
+                      className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
