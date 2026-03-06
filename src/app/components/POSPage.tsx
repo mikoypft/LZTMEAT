@@ -25,7 +25,8 @@ import {
   addProduct,
   addInventory,
   getCategories,
-  getDiscountSettings,
+  getDiscounts,
+  type Discount,
   type Product as APIProduct,
   type InventoryRecord,
   type StoreLocation,
@@ -190,12 +191,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   } | null>(null);
   const [wholesaleDiscount, setWholesaleDiscount] = useState<number>(0);
   const [salesType, setSalesType] = useState<"wholesale" | "retail">("retail");
-  const [discountSettings, setDiscountSettings] = useState({
-    wholesaleMinUnits: 5,
-    discountType: "percentage" as "percentage" | "fixed_amount",
-    wholesaleDiscountPercent: 1,
-    wholesaleDiscountAmount: 0,
-  });
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [weightAdjustmentModal, setWeightAdjustmentModal] = useState<{
     show: boolean;
     product: Product | null;
@@ -221,69 +217,68 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   console.log("Can Switch Stores:", canSwitchStores);
   console.log("=======================================");
 
-  // Calculate which price categories qualify for wholesale discount
-  const calculateWholesalePrices = (
+  // Calculate which discounts qualify (enough units in cart for their threshold)
+  const calculateQualifiedDiscounts = (
     cartItems: CartItem[],
-  ): { salesType: "wholesale" | "retail"; wholesalePrices: Set<number> } => {
-    // Group DISCOUNTABLE items by base price
-    const itemsByBasePrice: { [price: number]: CartItem[] } = {};
+  ): {
+    salesType: "wholesale" | "retail";
+    qualifiedDiscountIds: Set<number>;
+  } => {
+    const activeDiscounts = discounts.filter((d) => d.isActive);
+    const itemsByDiscount: { [discountId: number]: CartItem[] } = {};
 
     cartItems.forEach((item) => {
-      // Skip items excluded from discounts
-      if (item.discountable === false) return;
-      const basePriceKey = item.basePrice || item.price;
-      if (!itemsByBasePrice[basePriceKey]) {
-        itemsByBasePrice[basePriceKey] = [];
-      }
-      itemsByBasePrice[basePriceKey].push(item);
+      const discount = activeDiscounts.find((d) =>
+        d.productIds.includes(parseInt(String(item.id))),
+      );
+      if (!discount) return;
+      if (!itemsByDiscount[discount.id]) itemsByDiscount[discount.id] = [];
+      itemsByDiscount[discount.id].push(item);
     });
 
-    // Check each base price group to see if total quantity exceeds the threshold
-    const wholesalePrices = new Set<number>();
+    const qualifiedDiscountIds = new Set<number>();
     let hasAnyWholesale = false;
 
-    for (const [basePrice, priceGroup] of Object.entries(itemsByBasePrice)) {
-      const totalQuantity = priceGroup.reduce(
-        (sum, item) => sum + item.quantity,
-        0,
-      );
-      // If quantity >= minimum units threshold, this base price category qualifies for wholesale
-      if (totalQuantity >= discountSettings.wholesaleMinUnits) {
-        wholesalePrices.add(parseFloat(basePrice));
+    for (const [discountId, items] of Object.entries(itemsByDiscount)) {
+      const discount = activeDiscounts.find((d) => d.id === parseInt(discountId));
+      if (!discount) continue;
+      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      if (totalQuantity >= discount.wholesaleMinUnits) {
+        qualifiedDiscountIds.add(parseInt(discountId));
         hasAnyWholesale = true;
       }
     }
 
-    const salesType = hasAnyWholesale ? "wholesale" : "retail";
-
-    return { salesType, wholesalePrices };
+    return {
+      salesType: hasAnyWholesale ? "wholesale" : "retail",
+      qualifiedDiscountIds,
+    };
   };
 
-  // Calculate wholesale/retail status based on products with same price
+  // Calculate wholesale/retail status and total discount amount
   const calculateWholesaleStatus = (
     cartItems: CartItem[],
   ): { salesType: "wholesale" | "retail"; discountAmount: number } => {
-    const { salesType } = calculateWholesalePrices(cartItems);
+    const { salesType, qualifiedDiscountIds } =
+      calculateQualifiedDiscounts(cartItems);
+    if (salesType !== "wholesale") return { salesType, discountAmount: 0 };
 
-    if (salesType !== "wholesale") {
-      return { salesType, discountAmount: 0 };
-    }
-
-    // Calculate discount based on type
+    const activeDiscounts = discounts.filter((d) => d.isActive);
     let discountAmount = 0;
-    if (discountSettings.discountType === "percentage") {
-      // Calculate percentage discount on total
-      const total = cartItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
+    cartItems.forEach((item) => {
+      const discount = activeDiscounts.find(
+        (d) =>
+          qualifiedDiscountIds.has(d.id) &&
+          d.productIds.includes(parseInt(String(item.id))),
       );
-      discountAmount =
-        (discountSettings.wholesaleDiscountPercent / 100) * total;
-    } else {
-      // Use fixed amount discount
-      discountAmount = discountSettings.wholesaleDiscountAmount || 0;
-    }
-
+      if (!discount) return;
+      const itemTotal = item.price * item.quantity;
+      if (discount.discountType === "percentage") {
+        discountAmount += (itemTotal * discount.discountValue) / 100;
+      } else {
+        discountAmount += discount.discountValue * item.quantity;
+      }
+    });
     return { salesType, discountAmount };
   };
 
@@ -291,7 +286,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   useEffect(() => {
     loadStoresFirst();
     loadCategories();
-    loadDiscountSettings();
+    loadDiscounts();
   }, []);
 
   const loadStoresFirst = async () => {
@@ -394,19 +389,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     }
   };
 
-  const loadDiscountSettings = async () => {
+  const loadDiscounts = async () => {
     try {
-      const settings = await getDiscountSettings();
-      setDiscountSettings({
-        wholesaleMinUnits: settings.wholesaleMinUnits,
-        discountType: settings.discountType,
-        wholesaleDiscountPercent: settings.wholesaleDiscountPercent,
-        wholesaleDiscountAmount: settings.wholesaleDiscountAmount || 0,
-      });
-      console.log("✓ Discount settings loaded:", settings);
+      const data = await getDiscounts();
+      setDiscounts(data);
+      console.log("✓ Discounts loaded:", data);
     } catch (error) {
-      console.error("Error loading discount settings:", error);
-      // Use defaults if fails
+      console.error("Error loading discounts:", error);
     }
   };
 
@@ -601,29 +590,29 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     return itemTotal - itemDiscount;
   };
 
-  // Calculate subtotal with per-category wholesale discounts
-  const { wholesalePrices } = calculateWholesalePrices(cart);
+  // Calculate subtotal with per-discount wholesale pricing
+  const { qualifiedDiscountIds } = calculateQualifiedDiscounts(cart);
+  const activeDiscounts = discounts.filter((d) => d.isActive);
 
   let totalWholesaleDiscount = 0;
   const subtotal = cart.reduce((sum, item) => {
     const itemTotal = item.price * item.quantity;
-    // Only apply wholesale discount to discountable items
-    const basePrice = item.basePrice || item.price;
+    const discount = activeDiscounts.find(
+      (d) =>
+        qualifiedDiscountIds.has(d.id) &&
+        d.productIds.includes(parseInt(String(item.id))),
+    );
     let wholesaleDiscount = 0;
-    if (item.discountable !== false && wholesalePrices.has(basePrice)) {
-      if (discountSettings.discountType === "percentage") {
-        wholesaleDiscount =
-          (itemTotal * discountSettings.wholesaleDiscountPercent) / 100;
+    if (discount) {
+      if (discount.discountType === "percentage") {
+        wholesaleDiscount = (itemTotal * discount.discountValue) / 100;
       } else {
-        // Apply fixed amount discount per unit
-        wholesaleDiscount =
-          discountSettings.wholesaleDiscountAmount * item.quantity;
+        wholesaleDiscount = discount.discountValue * item.quantity;
       }
     }
     totalWholesaleDiscount += wholesaleDiscount;
     const itemDiscount = (itemTotal * item.discount) / 100;
-    const totalDiscount = itemDiscount + wholesaleDiscount;
-    return sum + itemTotal - totalDiscount;
+    return sum + itemTotal - itemDiscount - wholesaleDiscount;
   }, 0);
 
   const globalDiscountAmount = (subtotal * globalDiscount) / 100;
@@ -1141,8 +1130,15 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                   .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
                   .map(([basePrice, items]) => {
                     const basePriceNum = parseFloat(basePrice);
-                    // Check if this base price group qualifies for wholesale
-                    const isWholesale = wholesalePrices.has(basePriceNum);
+                    // Find the applicable discount for items in this group
+                    const applicableDiscount = activeDiscounts.find(
+                      (d) =>
+                        qualifiedDiscountIds.has(d.id) &&
+                        items.some((item) =>
+                          d.productIds.includes(parseInt(String(item.id))),
+                        ),
+                    );
+                    const isWholesale = !!applicableDiscount;
                     const categoryTotal = items.reduce(
                       (sum, item) => sum + item.quantity,
                       0,
@@ -1177,11 +1173,11 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                             >
                               {isWholesale ? "WHOLESALE" : "RETAIL"}
                             </span>
-                            {isWholesale && (
+                            {isWholesale && applicableDiscount && (
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                                {discountSettings.discountType === "percentage"
-                                  ? `${discountSettings.wholesaleDiscountPercent}% OFF`
-                                  : `₱${discountSettings.wholesaleDiscountAmount.toFixed(2)} OFF`}
+                                {applicableDiscount.discountType === "percentage"
+                                  ? `${applicableDiscount.discountValue}% OFF`
+                                  : `₱${applicableDiscount.discountValue.toFixed(2)} OFF`}
                               </span>
                             )}
                           </div>
@@ -1270,14 +1266,13 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                                       item.quantity *
                                       item.discount) /
                                       100 -
-                                    (isWholesale
-                                      ? discountSettings.discountType ===
-                                        "percentage"
+                                    (isWholesale && applicableDiscount
+                                      ? applicableDiscount.discountType === "percentage"
                                         ? (item.price *
                                             item.quantity *
-                                            discountSettings.wholesaleDiscountPercent) /
+                                            applicableDiscount.discountValue) /
                                           100
-                                        : discountSettings.wholesaleDiscountAmount *
+                                        : applicableDiscount.discountValue *
                                           item.quantity
                                       : 0)
                                   ).toFixed(2)}

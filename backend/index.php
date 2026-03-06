@@ -4500,7 +4500,215 @@ $routes = [
             return ['error' => 'Failed to update discount settings: ' . $e->getMessage()];
         }
     },
-    
+
+    // ==================== MULTIPLE DISCOUNTS CRUD ====================
+
+    'GET /api/discounts' => function() use ($pdo) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL DEFAULT 'Discount',
+                wholesale_min_units INT NOT NULL DEFAULT 5,
+                discount_type VARCHAR(50) NOT NULL DEFAULT 'percentage',
+                discount_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discount_product_map (
+                discount_id INT NOT NULL,
+                product_id INT NOT NULL,
+                PRIMARY KEY (discount_id, product_id),
+                INDEX (product_id)
+            )");
+            $discounts = $pdo->query('SELECT * FROM discounts ORDER BY created_at ASC')->fetchAll();
+            $result = [];
+            foreach ($discounts as $d) {
+                $stmt = $pdo->prepare('SELECT product_id FROM discount_product_map WHERE discount_id = ?');
+                $stmt->execute([$d['id']]);
+                $productIds = array_map('intval', array_column($stmt->fetchAll(), 'product_id'));
+                $result[] = [
+                    'id' => (int)$d['id'],
+                    'name' => $d['name'],
+                    'wholesaleMinUnits' => (int)$d['wholesale_min_units'],
+                    'discountType' => $d['discount_type'],
+                    'discountValue' => (float)$d['discount_value'],
+                    'isActive' => (bool)$d['is_active'],
+                    'productIds' => $productIds,
+                    'createdAt' => $d['created_at'],
+                ];
+            }
+            return ['discounts' => $result];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get discounts: ' . $e->getMessage()];
+        }
+    },
+
+    'POST /api/discounts' => function() use ($pdo, $body) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL DEFAULT 'Discount',
+                wholesale_min_units INT NOT NULL DEFAULT 5,
+                discount_type VARCHAR(50) NOT NULL DEFAULT 'percentage',
+                discount_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS discount_product_map (
+                discount_id INT NOT NULL,
+                product_id INT NOT NULL,
+                PRIMARY KEY (discount_id, product_id),
+                INDEX (product_id)
+            )");
+            $name = trim($body['name'] ?? 'New Discount');
+            if ($name === '') $name = 'New Discount';
+            $minUnits = max(1, (int)($body['wholesaleMinUnits'] ?? 5));
+            $discountType = in_array($body['discountType'] ?? '', ['percentage', 'fixed_amount'])
+                ? $body['discountType'] : 'percentage';
+            $discountValue = max(0, (float)($body['discountValue'] ?? 0));
+            $isActive = isset($body['isActive']) ? (int)(bool)$body['isActive'] : 1;
+
+            $stmt = $pdo->prepare('INSERT INTO discounts (name, wholesale_min_units, discount_type, discount_value, is_active) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute([$name, $minUnits, $discountType, $discountValue, $isActive]);
+            $discountId = (int)$pdo->lastInsertId();
+
+            $productIds = [];
+            if (!empty($body['productIds']) && is_array($body['productIds'])) {
+                $ins = $pdo->prepare('INSERT IGNORE INTO discount_product_map (discount_id, product_id) VALUES (?, ?)');
+                foreach ($body['productIds'] as $pid) {
+                    $pid = (int)$pid;
+                    if ($pid > 0) {
+                        $ins->execute([$discountId, $pid]);
+                        $productIds[] = $pid;
+                    }
+                }
+            }
+
+            return [
+                'discount' => [
+                    'id' => $discountId,
+                    'name' => $name,
+                    'wholesaleMinUnits' => $minUnits,
+                    'discountType' => $discountType,
+                    'discountValue' => $discountValue,
+                    'isActive' => (bool)$isActive,
+                    'productIds' => $productIds,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to create discount: ' . $e->getMessage()];
+        }
+    },
+
+    'PUT /api/discounts/{id}' => function() use ($pdo, $body) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            preg_match('#/api/discounts/(\d+)$#', $uri, $m);
+            $id = isset($m[1]) ? (int)$m[1] : 0;
+            if (!$id) { http_response_code(400); return ['error' => 'Invalid discount id']; }
+
+            $stmt = $pdo->prepare('SELECT * FROM discounts WHERE id = ?');
+            $stmt->execute([$id]);
+            $existing = $stmt->fetch();
+            if (!$existing) { http_response_code(404); return ['error' => 'Discount not found']; }
+
+            $name = isset($body['name']) ? trim($body['name']) : $existing['name'];
+            if ($name === '') $name = $existing['name'];
+            $minUnits = isset($body['wholesaleMinUnits']) ? max(1, (int)$body['wholesaleMinUnits']) : (int)$existing['wholesale_min_units'];
+            $discountType = isset($body['discountType']) && in_array($body['discountType'], ['percentage', 'fixed_amount'])
+                ? $body['discountType'] : $existing['discount_type'];
+            $discountValue = isset($body['discountValue']) ? max(0, (float)$body['discountValue']) : (float)$existing['discount_value'];
+            $isActive = isset($body['isActive']) ? (int)(bool)$body['isActive'] : (int)$existing['is_active'];
+
+            $stmt = $pdo->prepare('UPDATE discounts SET name=?, wholesale_min_units=?, discount_type=?, discount_value=?, is_active=?, updated_at=NOW() WHERE id=?');
+            $stmt->execute([$name, $minUnits, $discountType, $discountValue, $isActive, $id]);
+
+            $stmt2 = $pdo->prepare('SELECT product_id FROM discount_product_map WHERE discount_id = ?');
+            $stmt2->execute([$id]);
+            $productIds = array_map('intval', array_column($stmt2->fetchAll(), 'product_id'));
+
+            return [
+                'discount' => [
+                    'id' => $id,
+                    'name' => $name,
+                    'wholesaleMinUnits' => $minUnits,
+                    'discountType' => $discountType,
+                    'discountValue' => $discountValue,
+                    'isActive' => (bool)$isActive,
+                    'productIds' => $productIds,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update discount: ' . $e->getMessage()];
+        }
+    },
+
+    'DELETE /api/discounts/{id}' => function() use ($pdo) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            preg_match('#/api/discounts/(\d+)$#', $uri, $m);
+            $id = isset($m[1]) ? (int)$m[1] : 0;
+            if (!$id) { http_response_code(400); return ['error' => 'Invalid discount id']; }
+            $pdo->prepare('DELETE FROM discount_product_map WHERE discount_id = ?')->execute([$id]);
+            $pdo->prepare('DELETE FROM discounts WHERE id = ?')->execute([$id]);
+            return ['success' => true, 'message' => 'Discount deleted'];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete discount: ' . $e->getMessage()];
+        }
+    },
+
+    'PUT /api/discounts/{id}/products' => function() use ($pdo, $body) {
+        try {
+            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            preg_match('#/api/discounts/(\d+)/products#', $uri, $m);
+            $id = isset($m[1]) ? (int)$m[1] : 0;
+            if (!$id) { http_response_code(400); return ['error' => 'Invalid discount id']; }
+
+            $stmt = $pdo->prepare('SELECT id FROM discounts WHERE id = ?');
+            $stmt->execute([$id]);
+            if (!$stmt->fetch()) { http_response_code(404); return ['error' => 'Discount not found']; }
+
+            // Replace all product associations
+            $pdo->prepare('DELETE FROM discount_product_map WHERE discount_id = ?')->execute([$id]);
+            $productIds = [];
+            if (!empty($body['productIds']) && is_array($body['productIds'])) {
+                $ins = $pdo->prepare('INSERT IGNORE INTO discount_product_map (discount_id, product_id) VALUES (?, ?)');
+                foreach ($body['productIds'] as $pid) {
+                    $pid = (int)$pid;
+                    if ($pid > 0) {
+                        $ins->execute([$id, $pid]);
+                        $productIds[] = $pid;
+                    }
+                }
+            }
+
+            $stmt = $pdo->prepare('SELECT * FROM discounts WHERE id = ?');
+            $stmt->execute([$id]);
+            $d = $stmt->fetch();
+
+            return [
+                'discount' => [
+                    'id' => (int)$d['id'],
+                    'name' => $d['name'],
+                    'wholesaleMinUnits' => (int)$d['wholesale_min_units'],
+                    'discountType' => $d['discount_type'],
+                    'discountValue' => (float)$d['discount_value'],
+                    'isActive' => (bool)$d['is_active'],
+                    'productIds' => $productIds,
+                ]
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update discount products: ' . $e->getMessage()];
+        }
+    },
+
     'GET /api/history' => function() use ($pdo) {
         try {
             // Create table if it doesn't exist

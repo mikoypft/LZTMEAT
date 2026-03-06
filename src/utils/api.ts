@@ -1435,6 +1435,59 @@ export async function updateDiscountSettings(settings: {
   );
   return data.settings;
 }
+
+// ==================== MULTIPLE DISCOUNTS API ====================
+
+export interface Discount {
+  id: number;
+  name: string;
+  wholesaleMinUnits: number;
+  discountType: "percentage" | "fixed_amount";
+  discountValue: number;
+  isActive: boolean;
+  productIds: number[];
+  createdAt?: string;
+}
+
+export async function getDiscounts(): Promise<Discount[]> {
+  const data = await apiRequest<{ discounts: Discount[] }>("/discounts");
+  return data.discounts;
+}
+
+export async function createDiscount(discount: Omit<Discount, "id" | "createdAt">): Promise<Discount> {
+  const data = await apiRequest<{ discount: Discount }>("/discounts", {
+    method: "POST",
+    body: JSON.stringify(discount),
+  });
+  return data.discount;
+}
+
+export async function updateDiscount(
+  id: number,
+  discount: Partial<Omit<Discount, "id" | "createdAt" | "productIds">>,
+): Promise<Discount> {
+  const data = await apiRequest<{ discount: Discount }>(`/discounts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(discount),
+  });
+  return data.discount;
+}
+
+export async function deleteDiscount(id: number): Promise<void> {
+  await apiRequest(`/discounts/${id}`, { method: "DELETE" });
+}
+
+export async function updateDiscountProducts(
+  id: number,
+  productIds: number[],
+): Promise<Discount> {
+  const data = await apiRequest<{ discount: Discount }>(
+    `/discounts/${id}/products`,
+    { method: "PUT", body: JSON.stringify({ productIds }) },
+  );
+  return data.discount;
+}
+
 // ==================== REPORTS API ====================
 
 export async function exportDailyReportPDF(
