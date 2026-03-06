@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
-import { Building2, Plus, X, Edit2, Trash2, User, Phone, Mail, MapPin } from 'lucide-react';
-import { toast } from 'sonner';
-import { 
-  getSuppliers, 
-  createSupplier, 
-  updateSupplier, 
+import { useState, useEffect } from "react";
+import {
+  Building2,
+  Plus,
+  X,
+  Edit2,
+  Trash2,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  getSuppliers,
+  createSupplier,
+  updateSupplier,
   deleteSupplier,
-  type Supplier
-} from '@/utils/api';
+  type Supplier,
+} from "@/utils/api";
 
 export function SuppliersPage({ userRole }: { userRole?: string }) {
   const isAdmin = userRole === "ADMIN";
@@ -16,11 +26,11 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    contactPerson: '',
-    phone: '',
-    email: '',
-    address: ''
+    name: "",
+    contactPerson: "",
+    phone: "",
+    email: "",
+    address: "",
   });
 
   useEffect(() => {
@@ -33,8 +43,8 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
       const data = await getSuppliers();
       setSuppliers(data);
     } catch (error) {
-      console.error('Error loading suppliers:', error);
-      toast.error('Failed to load suppliers');
+      console.error("Error loading suppliers:", error);
+      toast.error("Failed to load suppliers");
     } finally {
       setLoading(false);
     }
@@ -44,7 +54,7 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      toast.error('Supplier name is required');
+      toast.error("Supplier name is required");
       return;
     }
 
@@ -52,21 +62,27 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
       if (editingSupplier) {
         // Update existing supplier
         await updateSupplier(editingSupplier.id, formData);
-        toast.success('Supplier updated successfully');
+        toast.success("Supplier updated successfully");
       } else {
         // Create new supplier
         await createSupplier(formData);
-        toast.success('Supplier added successfully');
+        toast.success("Supplier added successfully");
       }
 
       // Reset form and reload
-      setFormData({ name: '', contactPerson: '', phone: '', email: '', address: '' });
+      setFormData({
+        name: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        address: "",
+      });
       setShowAddForm(false);
       setEditingSupplier(null);
       loadSuppliers();
     } catch (error) {
-      console.error('Error saving supplier:', error);
-      toast.error('Failed to save supplier');
+      console.error("Error saving supplier:", error);
+      toast.error("Failed to save supplier");
     }
   };
 
@@ -77,28 +93,36 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
       contactPerson: supplier.contactPerson,
       phone: supplier.phone,
       email: supplier.email,
-      address: supplier.address
+      address: supplier.address,
     });
     setShowAddForm(true);
   };
 
   const handleDelete = async (supplier: Supplier) => {
-    if (!confirm(`Are you sure you want to delete supplier "${supplier.name}"?`)) {
+    if (
+      !confirm(`Are you sure you want to delete supplier "${supplier.name}"?`)
+    ) {
       return;
     }
 
     try {
       await deleteSupplier(supplier.id);
-      toast.success('Supplier deleted successfully');
+      toast.success("Supplier deleted successfully");
       loadSuppliers();
     } catch (error) {
-      console.error('Error deleting supplier:', error);
-      toast.error('Failed to delete supplier');
+      console.error("Error deleting supplier:", error);
+      toast.error("Failed to delete supplier");
     }
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', contactPerson: '', phone: '', email: '', address: '' });
+    setFormData({
+      name: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+    });
     setShowAddForm(false);
     setEditingSupplier(null);
   };
@@ -125,17 +149,19 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Supplier Management</h1>
-              <p className="text-sm text-muted-foreground">Manage your ingredient suppliers</p>
+              <p className="text-sm text-muted-foreground">
+                Manage your ingredient suppliers
+              </p>
             </div>
           </div>
           {isAdmin && (
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add Supplier
-          </button>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add Supplier
+            </button>
           )}
         </div>
 
@@ -144,7 +170,7 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
           <div className="bg-card rounded-lg border border-border p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
-                {editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+                {editingSupplier ? "Edit Supplier" : "Add New Supplier"}
               </h2>
               <button
                 onClick={handleCancel}
@@ -163,7 +189,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Enter supplier name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     required
@@ -177,7 +205,12 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                   <input
                     type="text"
                     value={formData.contactPerson}
-                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contactPerson: e.target.value,
+                      })
+                    }
                     placeholder="Enter contact person name"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -190,7 +223,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     placeholder="Enter phone number"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -203,7 +238,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="Enter email address"
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
@@ -216,7 +253,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                 </label>
                 <textarea
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   placeholder="Enter complete address"
                   rows={3}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
@@ -235,7 +274,7 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                   type="submit"
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
-                  {editingSupplier ? 'Update Supplier' : 'Add Supplier'}
+                  {editingSupplier ? "Update Supplier" : "Add Supplier"}
                 </button>
               </div>
             </form>
@@ -245,7 +284,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
         {/* Suppliers List */}
         <div className="bg-card rounded-lg border border-border">
           <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-semibold">All Suppliers ({suppliers.length})</h2>
+            <h2 className="text-lg font-semibold">
+              All Suppliers ({suppliers.length})
+            </h2>
           </div>
 
           {suppliers.length === 0 ? (
@@ -256,13 +297,13 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                 Add your first supplier to get started
               </p>
               {isAdmin && (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add First Supplier
-              </button>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add First Supplier
+                </button>
               )}
             </div>
           ) : (
@@ -270,8 +311,12 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left py-3 px-4 font-medium">Supplier Name</th>
-                    <th className="text-left py-3 px-4 font-medium">Contact Person</th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      Supplier Name
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      Contact Person
+                    </th>
                     <th className="text-left py-3 px-4 font-medium">Phone</th>
                     <th className="text-left py-3 px-4 font-medium">Email</th>
                     <th className="text-left py-3 px-4 font-medium">Address</th>
@@ -280,7 +325,10 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                 </thead>
                 <tbody>
                   {suppliers.map((supplier) => (
-                    <tr key={supplier.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={supplier.id}
+                      className="border-b border-border hover:bg-muted/50 transition-colors"
+                    >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-primary" />
@@ -295,7 +343,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                               {supplier.contactPerson}
                             </>
                           )}
-                          {!supplier.contactPerson && <span className="text-xs">-</span>}
+                          {!supplier.contactPerson && (
+                            <span className="text-xs">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -306,7 +356,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                               {supplier.phone}
                             </>
                           )}
-                          {!supplier.phone && <span className="text-xs">-</span>}
+                          {!supplier.phone && (
+                            <span className="text-xs">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -317,7 +369,9 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                               {supplier.email}
                             </>
                           )}
-                          {!supplier.email && <span className="text-xs">-</span>}
+                          {!supplier.email && (
+                            <span className="text-xs">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -325,31 +379,35 @@ export function SuppliersPage({ userRole }: { userRole?: string }) {
                           {supplier.address && (
                             <>
                               <MapPin className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">{supplier.address}</span>
+                              <span className="truncate">
+                                {supplier.address}
+                              </span>
                             </>
                           )}
-                          {!supplier.address && <span className="text-xs">-</span>}
+                          {!supplier.address && (
+                            <span className="text-xs">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           {isAdmin && (
-                          <button
-                            onClick={() => handleEdit(supplier)}
-                            className="p-2 hover:bg-blue-100 text-blue-600 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handleEdit(supplier)}
+                              className="p-2 hover:bg-blue-100 text-blue-600 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(supplier)}
-                            className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handleDelete(supplier)}
+                              className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>

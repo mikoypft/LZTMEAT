@@ -1155,7 +1155,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         mixingDiscrepancyReason.trim() || undefined,
       );
 
-      toast.success(`Mixing completed! Batch is now in packing phase.`);
+      toast.success(`Mixing completed! Output of ${mixWeight} KG saved to mix inventory.`);
 
       // Reload data
       await loadProductionRecords();

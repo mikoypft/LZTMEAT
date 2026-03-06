@@ -811,7 +811,9 @@ export default function App() {
             {currentPage === "ingredients" && (
               <IngredientsInventoryPage currentUser={currentUser} />
             )}
-            {currentPage === "transfer" && <TransferPage userRole={currentUser.role} />}
+            {currentPage === "transfer" && (
+              <TransferPage userRole={currentUser.role} />
+            )}
             {currentPage === "sales" && (
               <SalesDataTable
                 userRole={currentUser.role}
@@ -821,11 +823,21 @@ export default function App() {
             {currentPage === "reports" && (
               <ReportsPage currentUser={currentUser} />
             )}
-            {currentPage === "categories" && <CategoriesPage userRole={currentUser.role} />}
-            {currentPage === "stores" && <StoresManagementPage userRole={currentUser.role} />}
-            {currentPage === "employees" && <EmployeesPage userRole={currentUser.role} />}
-            {currentPage === "suppliers" && <SuppliersPage userRole={currentUser.role} />}
-            {currentPage === "discounts" && <DiscountsPage userRole={currentUser.role} />}
+            {currentPage === "categories" && (
+              <CategoriesPage userRole={currentUser.role} />
+            )}
+            {currentPage === "stores" && (
+              <StoresManagementPage userRole={currentUser.role} />
+            )}
+            {currentPage === "employees" && (
+              <EmployeesPage userRole={currentUser.role} />
+            )}
+            {currentPage === "suppliers" && (
+              <SuppliersPage userRole={currentUser.role} />
+            )}
+            {currentPage === "discounts" && (
+              <DiscountsPage userRole={currentUser.role} />
+            )}
             {currentPage === "history" && (
               <HistoryPage currentUser={currentUser} />
             )}

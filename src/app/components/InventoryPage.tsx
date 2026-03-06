@@ -297,7 +297,8 @@ export function InventoryPage({
     // Refresh inventory whenever a stock-changing action fires the custom event
     const handleInventoryChanged = () => loadInventoryData(false);
     window.addEventListener("inventory-changed", handleInventoryChanged);
-    return () => window.removeEventListener("inventory-changed", handleInventoryChanged);
+    return () =>
+      window.removeEventListener("inventory-changed", handleInventoryChanged);
   }, []);
 
   const loadInventoryData = async (showLoader = true) => {
@@ -535,7 +536,7 @@ export function InventoryPage({
       adjustment.toLocation === "Production Facility"
     ) {
       toast.error(
-        "Use the \"Return to Production\" button on the Transfer page to return items to production.",
+        'Use the "Return to Production" button on the Transfer page to return items to production.',
       );
       return;
     }
@@ -761,13 +762,13 @@ export function InventoryPage({
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {isAdmin && (
-          <button
-            onClick={() => setShowEncodeProductModal(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Encode Product
-          </button>
+            <button
+              onClick={() => setShowEncodeProductModal(true)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Encode Product
+            </button>
           )}
           <button
             onClick={() => setShowReorderReport(!showReorderReport)}
@@ -1014,27 +1015,27 @@ export function InventoryPage({
                             <RefreshCw className="w-4 h-4" />
                           </button>
                           {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setSelectedItem(item);
-                              setShowAddProductModal(true);
-                            }}
-                            className="p-1.5 hover:bg-accent rounded"
-                            title="Edit Item"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setShowAddProductModal(true);
+                              }}
+                              className="p-1.5 hover:bg-accent rounded"
+                              title="Edit Item"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() =>
-                              handleDeleteProduct(item.id, item.name)
-                            }
-                            className="p-1.5 hover:bg-red-600 rounded"
-                            title="Delete Product"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteProduct(item.id, item.name)
+                              }
+                              className="p-1.5 hover:bg-red-600 rounded"
+                              title="Delete Product"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>

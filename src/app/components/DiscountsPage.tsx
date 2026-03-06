@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Save, AlertCircle, Percent, Package, Search, Tag, XCircle } from "lucide-react";
+import {
+  Save,
+  AlertCircle,
+  Percent,
+  Package,
+  Search,
+  Tag,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   getDiscountSettings,
@@ -143,12 +151,21 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
     const newVal = product.discountable === false ? true : false;
     setTogglingId(String(product.id));
     try {
-      const updated = await toggleProductDiscountable(String(product.id), newVal);
+      const updated = await toggleProductDiscountable(
+        String(product.id),
+        newVal,
+      );
       setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, discountable: updated.discountable } : p)),
+        prev.map((p) =>
+          p.id === product.id
+            ? { ...p, discountable: updated.discountable }
+            : p,
+        ),
       );
       toast.success(
-        newVal ? `${product.name} is now discountable` : `${product.name} excluded from discounts`,
+        newVal
+          ? `${product.name} is now discountable`
+          : `${product.name} excluded from discounts`,
       );
     } catch (error) {
       toast.error("Failed to update product discount eligibility");
@@ -171,11 +188,14 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
       ? (settings.wholesaleDiscountPercent / 100) * exampleOrderTotal
       : settings.wholesaleDiscountAmount;
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    (p.category ?? "").toLowerCase().includes(productSearch.toLowerCase()),
+  const filteredProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+      (p.category ?? "").toLowerCase().includes(productSearch.toLowerCase()),
   );
-  const discountableCount = products.filter((p) => p.discountable !== false).length;
+  const discountableCount = products.filter(
+    (p) => p.discountable !== false,
+  ).length;
 
   return (
     <div className="p-6">
@@ -258,7 +278,9 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                       name="discountType"
                       value="percentage"
                       checked={settings.discountType === "percentage"}
-                      onChange={() => handleChange("discountType", "percentage")}
+                      onChange={() =>
+                        handleChange("discountType", "percentage")
+                      }
                       className="w-4 h-4 text-red-600 cursor-pointer"
                     />
                     <span className="text-sm font-medium text-gray-700">
@@ -271,7 +293,9 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                       name="discountType"
                       value="fixed_amount"
                       checked={settings.discountType === "fixed_amount"}
-                      onChange={() => handleChange("discountType", "fixed_amount")}
+                      onChange={() =>
+                        handleChange("discountType", "fixed_amount")
+                      }
                       className="w-4 h-4 text-red-600 cursor-pointer"
                     />
                     <span className="text-sm font-medium text-gray-700">
@@ -353,7 +377,8 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                       <p>
                         <strong>Current:</strong>{" "}
                         <strong>
-                          ₱{settings.wholesaleDiscountAmount.toFixed(2)} discount
+                          ₱{settings.wholesaleDiscountAmount.toFixed(2)}{" "}
+                          discount
                         </strong>{" "}
                         applied to wholesale orders
                       </p>
@@ -390,23 +415,23 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
 
             <div className="mt-8 flex gap-3">
               {isAdmin && (
-              <button
-                onClick={handleSave}
-                disabled={!hasChanges || saving}
-                className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                <Save className="w-5 h-5" />
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!hasChanges || saving}
+                  className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  <Save className="w-5 h-5" />
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
               )}
               {isAdmin && (
-              <button
-                onClick={handleReset}
-                disabled={!hasChanges}
-                className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Reset
-              </button>
+                <button
+                  onClick={handleReset}
+                  disabled={!hasChanges}
+                  className="flex items-center gap-2 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  Reset
+                </button>
               )}
             </div>
 
@@ -474,19 +499,29 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                           <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <p className={`text-sm font-medium truncate ${isDiscountable ? "text-gray-900" : "text-gray-400"}`}>
+                          <p
+                            className={`text-sm font-medium truncate ${isDiscountable ? "text-gray-900" : "text-gray-400"}`}
+                          >
                             {product.name}
                           </p>
-                          <p className="text-xs text-gray-400 truncate">{product.category}</p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {product.category}
+                          </p>
                         </div>
                       </div>
                       {isAdmin ? (
                         <button
                           onClick={() => handleToggleDiscountable(product)}
                           disabled={isToggling}
-                          title={isDiscountable ? "Click to exclude from discounts" : "Click to include in discounts"}
+                          title={
+                            isDiscountable
+                              ? "Click to exclude from discounts"
+                              : "Click to include in discounts"
+                          }
                           className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none ml-2 ${
-                            isToggling ? "opacity-50 cursor-wait" : "cursor-pointer"
+                            isToggling
+                              ? "opacity-50 cursor-wait"
+                              : "cursor-pointer"
                           } ${isDiscountable ? "bg-green-500" : "bg-gray-300"}`}
                         >
                           <span
@@ -498,7 +533,9 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                       ) : (
                         <span
                           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                            isDiscountable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                            isDiscountable
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
                           }`}
                         >
                           {isDiscountable ? "Eligible" : "Excluded"}

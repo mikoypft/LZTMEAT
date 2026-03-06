@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { Download, FileText, Calendar, Edit3, Save, X, Plus, Trash2 } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Calendar,
+  Edit3,
+  Save,
+  X,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   exportDailyReportPDF,
   exportDailyReportCSV,
@@ -41,9 +50,16 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
   const [editedRows, setEditedRows] = useState<ReportRow[]>([]);
   const [reporterName, setReporterName] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
-  const [editedDenominations, setEditedDenominations] = useState<Record<string, number>>({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0});
+  const [editedDenominations, setEditedDenominations] = useState<
+    Record<string, number>
+  >({ "5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0 });
   const [editedCashOutRows, setEditedCashOutRows] = useState<CashOutRow[]>([]);
-  const [editedComputation, setEditedComputation] = useState({ totalSales: 0, cashOut: 0, grossSales: 0, over: 0 });
+  const [editedComputation, setEditedComputation] = useState({
+    totalSales: 0,
+    cashOut: 0,
+    grossSales: 0,
+    over: 0,
+  });
   const [saving, setSaving] = useState(false);
 
   const DENOM_LIST = ["5000", "1000", "500", "200", "100", "50", "20"];
@@ -82,7 +98,18 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
       );
       setRemarks(data.header.remarks ?? "");
       setEditedDenominations(
-        Object.assign({"5000": 0, "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0}, data.denominations ?? {})
+        Object.assign(
+          {
+            "5000": 0,
+            "1000": 0,
+            "500": 0,
+            "200": 0,
+            "100": 0,
+            "50": 0,
+            "20": 0,
+          },
+          data.denominations ?? {},
+        ),
       );
       const cashOutRows = data.cashOutRows ?? [];
       setEditedCashOutRows(cashOutRows);
@@ -123,11 +150,18 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     setEditedCashOutRows((prev) => {
       const updated = prev.map((r, i) =>
         i === index
-          ? { ...r, [field]: field === "amount" ? parseFloat(value) || 0 : value }
+          ? {
+              ...r,
+              [field]: field === "amount" ? parseFloat(value) || 0 : value,
+            }
           : r,
       );
       const newCashOut = updated.reduce((s, r) => s + r.amount, 0);
-      setEditedComputation((c) => ({ ...c, cashOut: newCashOut, over: c.grossSales - newCashOut }));
+      setEditedComputation((c) => ({
+        ...c,
+        cashOut: newCashOut,
+        over: c.grossSales - newCashOut,
+      }));
       return updated;
     });
   };
@@ -140,7 +174,11 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
     setEditedCashOutRows((prev) => {
       const updated = prev.filter((_, i) => i !== index);
       const newCashOut = updated.reduce((s, r) => s + r.amount, 0);
-      setEditedComputation((c) => ({ ...c, cashOut: newCashOut, over: c.grossSales - newCashOut }));
+      setEditedComputation((c) => ({
+        ...c,
+        cashOut: newCashOut,
+        over: c.grossSales - newCashOut,
+      }));
       return updated;
     });
   };
@@ -213,7 +251,10 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         exportDailyReportPDF(
           selectedDate,
           selectedStore || undefined,
-          reporterName || currentUser?.fullName || currentUser?.username || "Unknown",
+          reporterName ||
+            currentUser?.fullName ||
+            currentUser?.username ||
+            "Unknown",
           selectedCashier || undefined,
         ),
         {
@@ -259,9 +300,7 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
         <div className="container mx-auto p-4 lg:p-6 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-2xl lg:text-3xl font-semibold mb-1">
-              Reports
-            </h1>
+            <h1 className="text-2xl lg:text-3xl font-semibold mb-1">Reports</h1>
             <p className="text-sm text-muted-foreground">
               Generate and download daily sales reports
             </p>
@@ -711,7 +750,8 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                               ₱{grandTotalSales.toFixed(2)}
                             </td>
                             <td className="px-3 py-2 text-right font-bold text-yellow-700">
-                              ₱{editedRows
+                              ₱
+                              {editedRows
                                 .reduce((s, r) => s + r.resecoAmount, 0)
                                 .toFixed(2)}
                             </td>
@@ -849,7 +889,10 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                             const count = editedDenominations[den] ?? 0;
                             const total = count * parseInt(den);
                             return (
-                              <tr key={den} className="border-t border-gray-200">
+                              <tr
+                                key={den}
+                                className="border-t border-gray-200"
+                              >
                                 <td className="py-1 text-gray-700 font-medium">
                                   {den}
                                 </td>
@@ -870,7 +913,9 @@ export function ReportsPage({ currentUser }: ReportsPageProps) {
                                   />
                                 </td>
                                 <td className="py-1 text-right text-gray-700">
-                                  {total > 0 ? `₱${total.toLocaleString()}` : ""}
+                                  {total > 0
+                                    ? `₱${total.toLocaleString()}`
+                                    : ""}
                                 </td>
                               </tr>
                             );

@@ -516,31 +516,31 @@ export function TransferPage({ userRole }: { userRole?: string }) {
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
-              <button
-                onClick={() => {
-                  setReturnData({
-                    productId: "",
-                    quantity: "",
-                    from: stores.length > 0 ? stores[0].name : "",
-                    notes: "",
-                    returnedBy: "",
-                  });
-                  setShowReturnModal(true);
-                }}
-                className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                <Undo2 className="w-5 h-5" />
-                Return to Production
-              </button>
+                <button
+                  onClick={() => {
+                    setReturnData({
+                      productId: "",
+                      quantity: "",
+                      from: stores.length > 0 ? stores[0].name : "",
+                      notes: "",
+                      returnedBy: "",
+                    });
+                    setShowReturnModal(true);
+                  }}
+                  className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  <Undo2 className="w-5 h-5" />
+                  Return to Production
+                </button>
               )}
               {isAdmin && (
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                New Transfer
-              </button>
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Transfer
+                </button>
               )}
             </div>
           </div>

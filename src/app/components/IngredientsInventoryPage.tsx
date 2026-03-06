@@ -345,13 +345,13 @@ export function IngredientsInventoryPage({
             </div>
             <div className="flex gap-2">
               {isAdmin && (
-              <button
-                onClick={() => setShowAddIngredientModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
+                <button
+                  onClick={() => setShowAddIngredientModal(true)}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add</span>
+                </button>
               )}
               <button
                 onClick={exportToCSV}
@@ -512,40 +512,40 @@ export function IngredientsInventoryPage({
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
                           {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setSelectedIngredient(item);
-                              setShowEditIngredientModal(true);
-                            }}
-                            className="p-1.5 hover:bg-blue-100 rounded text-blue-600"
-                            title="Edit Ingredient"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setSelectedIngredient(item);
+                                setShowEditIngredientModal(true);
+                              }}
+                              className="p-1.5 hover:bg-blue-100 rounded text-blue-600"
+                              title="Edit Ingredient"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setSelectedIngredient(item);
-                              setShowAdjustmentModal(true);
-                            }}
-                            className="p-1.5 hover:bg-accent rounded"
-                            title="Adjust Stock"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setSelectedIngredient(item);
+                                setShowAdjustmentModal(true);
+                              }}
+                              className="p-1.5 hover:bg-accent rounded"
+                              title="Adjust Stock"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setSelectedIngredient(item);
-                              setShowDeleteConfirm(true);
-                            }}
-                            className="p-1.5 hover:bg-red-100 rounded text-red-600"
-                            title="Delete Ingredient"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setSelectedIngredient(item);
+                                setShowDeleteConfirm(true);
+                              }}
+                              className="p-1.5 hover:bg-red-100 rounded text-red-600"
+                              title="Delete Ingredient"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>

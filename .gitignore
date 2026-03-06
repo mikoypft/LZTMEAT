@@ -74,6 +74,14 @@ coverage/
 .coverage
 .pytest_cache/
 
+# Playwright
+.env.test                   # Test credentials (contains passwords)
+tests/                      # Playwright test specs and helpers
+playwright.config.ts        # Playwright configuration
+tests/.auth/                # Saved browser auth state
+test-results/               # Playwright test artefacts
+playwright-report/          # Playwright HTML report
+
 # ============================================================================
 # DATABASE & BACKUPS (Keep these in separate location, not in repo)
 # ============================================================================

@@ -2576,14 +2576,15 @@ $routes = [
                 $mixCategoryId, $mixCategoryName, $mixWeight, 'kg', $mixWeight, $cost, $id
             ]);
 
-            // Transition to packing phase (mix inventory created after packing is done)
+            // Mixing is complete — store the output in mix inventory (done above) and mark batch as completed.
+            // Do NOT automatically advance to packing; the user will manually start packing from mix inventory when ready.
             $mixingDiscrepancyReason = $body['discrepancyReason'] ?? null;
             $stmt = $pdo->prepare('
                 UPDATE production_records 
                 SET phase = ?, status = ?, mix_weight = ?, raw_packed_items = ?, product_mix_category_name = ?, mixing_discrepancy = ?, mixing_discrepancy_reason = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['packing', 'in-progress', $mixWeight, $rawPackedItems, $mixCategoryName, $mixingDiscrepancy, $mixingDiscrepancyReason, $id]);
+            $stmt->execute(['completed', 'completed', $mixWeight, $rawPackedItems, $mixCategoryName, $mixingDiscrepancy, $mixingDiscrepancyReason, $id]);
             
             // Return updated record
             $stmt = $pdo->prepare('

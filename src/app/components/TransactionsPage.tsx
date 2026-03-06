@@ -134,19 +134,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cash-in / Cash-out</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Cash-in / Cash-out
+          </h1>
           <p className="text-gray-600 mt-1">
             Manage cash in and cash out transactions
           </p>
         </div>
         {isAdmin && (
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Transaction
-        </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Transaction
+          </button>
         )}
       </div>
 
@@ -240,7 +242,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         </div>
         {(dateFrom || dateTo) && (
           <button
-            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            onClick={() => {
+              setDateFrom("");
+              setDateTo("");
+            }}
             className="text-sm text-red-600 hover:text-red-800 underline"
           >
             Clear dates

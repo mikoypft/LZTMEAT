@@ -189,13 +189,13 @@ export function StoresManagementPage({ userRole }: { userRole?: string }) {
           </div>
 
           {isAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add New Store
-          </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Store
+            </button>
           )}
         </div>
 
@@ -368,13 +368,13 @@ export function StoresManagementPage({ userRole }: { userRole?: string }) {
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
                           {isAdmin && (
-                          <button
-                            onClick={() => handleEdit(store)}
-                            className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
-                            title="Edit Store"
-                          >
-                            <Edit2 className="w-4 h-4 text-blue-600" />
-                          </button>
+                            <button
+                              onClick={() => handleEdit(store)}
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                              title="Edit Store"
+                            >
+                              <Edit2 className="w-4 h-4 text-blue-600" />
+                            </button>
                           )}
                           {isAdmin && store.name !== "Amparo Store" && (
                             <button

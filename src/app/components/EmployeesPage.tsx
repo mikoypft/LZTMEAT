@@ -583,13 +583,13 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
             </div>
           </div>
           {isAdmin && (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add User
-          </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add User
+            </button>
           )}
         </div>
 
@@ -1434,41 +1434,49 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                       </td>
                       <td className="px-6 py-4 text-center">
                         {isAdmin ? (
-                        <button
-                          onClick={() => handleToggleCanLogin(employee)}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                            employee.canLogin !== false
-                              ? "bg-green-100 text-green-700 hover:bg-green-200"
-                              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                          }`}
-                          title={
-                            employee.canLogin !== false
-                              ? "Click to disable login"
-                              : "Click to enable login"
-                          }
-                        >
-                          {employee.canLogin !== false ? (
-                            <>
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>Yes</span>
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>No</span>
-                            </>
-                          )}
-                        </button>
-                        ) : (
-                          <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                            employee.canLogin !== false
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
-                          }`}>
+                          <button
+                            onClick={() => handleToggleCanLogin(employee)}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                              employee.canLogin !== false
+                                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            }`}
+                            title={
+                              employee.canLogin !== false
+                                ? "Click to disable login"
+                                : "Click to enable login"
+                            }
+                          >
                             {employee.canLogin !== false ? (
-                              <><CheckCircle className="w-3.5 h-3.5" /><span>Yes</span></>
+                              <>
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Yes</span>
+                              </>
                             ) : (
-                              <><XCircle className="w-3.5 h-3.5" /><span>No</span></>
+                              <>
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>No</span>
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                              employee.canLogin !== false
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-500"
+                            }`}
+                          >
+                            {employee.canLogin !== false ? (
+                              <>
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Yes</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>No</span>
+                              </>
                             )}
                           </span>
                         )}
@@ -1483,33 +1491,33 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                             <FileText className="w-4 h-4" />
                           </button>
                           {isAdmin && (
-                          <button
-                            onClick={() => handleEdit(employee)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handleEdit(employee)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() =>
-                              handleDelete(employee.id, employee.name)
-                            }
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() =>
+                                handleDelete(employee.id, employee.name)
+                              }
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                           {isAdmin && (
-                          <button
-                            onClick={() => handlePasswordModalOpen(employee)}
-                            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                            title="Set Password"
-                          >
-                            <Key className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handlePasswordModalOpen(employee)}
+                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                              title="Set Password"
+                            >
+                              <Key className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>

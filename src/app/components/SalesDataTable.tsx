@@ -295,7 +295,8 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const [selectedStore, setSelectedStore] = useState<string>("All Stores");
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
   const [selectedStatus, setSelectedStatus] = useState<string>("All Status");
-  const [selectedCashier, setSelectedCashier] = useState<string>("All Cashiers");
+  const [selectedCashier, setSelectedCashier] =
+    useState<string>("All Cashiers");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [sortField, setSortField] = useState<keyof SaleRecord>("date");
@@ -367,7 +368,9 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
             tax: taxVal,
             total: totalVal,
             paymentMethod: (sale.paymentMethod as any) || "Cash",
-            cashier: String(sale.cashierName || sale.cashier || sale.username || "Unknown"),
+            cashier: String(
+              sale.cashierName || sale.cashier || sale.username || "Unknown",
+            ),
             status: "Completed" as const,
           };
 
@@ -427,7 +430,15 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
       const matchesFrom = !startDate || saleDate >= startDate;
       const matchesTo = !endDate || saleDate <= endDate;
 
-      return matchesSearch && matchesStore && matchesPayment && matchesStatus && matchesCashier && matchesFrom && matchesTo;
+      return (
+        matchesSearch &&
+        matchesStore &&
+        matchesPayment &&
+        matchesStatus &&
+        matchesCashier &&
+        matchesFrom &&
+        matchesTo
+      );
     } catch (err) {
       console.error("Filter error for sale:", sale, err);
       return false;
@@ -803,11 +814,19 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               >
                 <option value="All Cashiers">All Cashiers</option>
-                {Array.from(new Set(sales.map((s) => s.cashier).filter((c) => c && c !== "Unknown"))).sort().map((cashier) => (
-                  <option key={cashier} value={cashier}>
-                    {cashier}
-                  </option>
-                ))}
+                {Array.from(
+                  new Set(
+                    sales
+                      .map((s) => s.cashier)
+                      .filter((c) => c && c !== "Unknown"),
+                  ),
+                )
+                  .sort()
+                  .map((cashier) => (
+                    <option key={cashier} value={cashier}>
+                      {cashier}
+                    </option>
+                  ))}
               </select>
 
               {/* Date range */}
@@ -831,7 +850,10 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
               </div>
               {(startDate || endDate) && (
                 <button
-                  onClick={() => { setStartDate(""); setEndDate(""); }}
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
                   className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors"
                 >
                   Clear dates
@@ -962,13 +984,13 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                             <Eye className="w-4 h-4" />
                           </button>
                           {isAdmin && (
-                          <button
-                            onClick={() => handleEditSale(sale)}
-                            className="p-1.5 hover:bg-accent rounded"
-                            title="Edit Reseco"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => handleEditSale(sale)}
+                              className="p-1.5 hover:bg-accent rounded"
+                              title="Edit Reseco"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                       </td>
