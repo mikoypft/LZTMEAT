@@ -1185,6 +1185,16 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       return;
     }
 
+    // Validate raw packed items cannot be less than mix weight
+    const inputWeight = parseFloat(rawPackedItemsInput);
+    const mixWeightIn = selectedProductionForPacking.mixWeight ?? 0;
+    if (mixWeightIn > 0 && inputWeight < mixWeightIn) {
+      toast.error(
+        `Raw packed items (${inputWeight} KG) cannot be less than the mix weight (${mixWeightIn} KG).`,
+      );
+      return;
+    }
+
     // Validate packing ingredient stock
     for (const ing of packingIngredients) {
       const qty = parseFloat(ing.quantity || "0");
@@ -2740,15 +2750,18 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <input
                   type="number"
                   step="0.1"
-                  min="0.1"
+                  min={selectedProductionForPacking.mixWeight ?? 0.1}
                   value={rawPackedItemsInput}
                   onChange={(e) => setRawPackedItemsInput(e.target.value)}
                   placeholder="0.0"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Weight of raw packed items in KG — these will be cooked in the
-                  next phase.
+                  Must be at least{" "}
+                  <span className="font-medium text-foreground">
+                    {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)} KG
+                  </span>{" "}
+                  (mix weight). These will be cooked in the next phase.
                 </p>
               </div>
 

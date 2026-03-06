@@ -2657,6 +2657,12 @@ $routes = [
             // Mix inventory weight comes from the original mix_weight recorded during mixing
             $mixWeightForInventory = (float)($production['mix_weight'] ?? 0);
 
+            // Validate: raw packed items cannot be less than mix weight
+            if ($rawPackedItems !== null && $mixWeightForInventory > 0 && $rawPackedItems < $mixWeightForInventory) {
+                http_response_code(422);
+                return ['error' => "Raw packed items ({$rawPackedItems} KG) cannot be less than the mix weight ({$mixWeightForInventory} KG)."];
+            }
+
             // Compute packing discrepancy (mix weight consumed − raw packed items output)
             $packingDiscrepancy = round($mixWeightForInventory - (float)($rawPackedItems ?? 0), 3);
             $mixCategoryId = $production['product_mix_category_id'];
