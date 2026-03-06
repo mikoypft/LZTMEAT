@@ -194,7 +194,9 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
   const [wholesaleDiscount, setWholesaleDiscount] = useState<number>(0);
   const [salesType, setSalesType] = useState<"wholesale" | "retail">("retail");
   const [discounts, setDiscounts] = useState<Discount[]>([]);
-  const [fractionalPriceRules, setFractionalPriceRules] = useState<FractionalPriceRule[]>([]);
+  const [fractionalPriceRules, setFractionalPriceRules] = useState<
+    FractionalPriceRule[]
+  >([]);
   const [weightAdjustmentModal, setWeightAdjustmentModal] = useState<{
     show: boolean;
     product: Product | null;
@@ -1583,7 +1585,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               const fractRule = fractionalPriceRules.find(
                 (r) => r.productId === pid,
               );
-              const usesFractional = !!fractRule && wt < fractRule.thresholdWeight;
+              const usesFractional =
+                !!fractRule && wt < fractRule.thresholdWeight;
               const displayPrice = usesFractional
                 ? fractRule!.fractionalPrice
                 : weightAdjustmentModal.product.price * wt;

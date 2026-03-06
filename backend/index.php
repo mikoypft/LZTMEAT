@@ -5003,7 +5003,8 @@ $routes = [
             $salesStmt->execute($params);
             $sales = $salesStmt->fetchAll();
 
-            $salesByProduct = [];
+            $salesByProduct    = [];
+            $wholesaleByProduct = [];
             $totalSales = 0;
             $paymentBreakdown = [];
             foreach ($sales as $sale) {
@@ -5013,13 +5014,66 @@ $routes = [
                 $paymentBreakdown[$method]['count']++;
                 $paymentBreakdown[$method]['amount'] += (float)$sale['total'];
                 $items = json_decode($sale['items'], true);
-                if (is_array($items)) {
-                    foreach ($items as $item) {
-                        $name = $item['name'] ?? 'Unknown';
-                        if (!isset($salesByProduct[$name])) $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
-                        $salesByProduct[$name]['quantity'] += ($item['quantity'] ?? 0);
-                        $salesByProduct[$name]['total_sales'] += (($item['quantity'] ?? 0) * ($item['price'] ?? 0));
+                if (!is_array($items)) continue;
+                $wdTotal = (float)($sale['wholesale_discount'] ?? 0);
+                $gdTotal = (float)($sale['global_discount']   ?? 0);
+                $saleSubtotal = 0;
+                foreach ($items as $item) {
+                    $saleSubtotal += ((float)($item['quantity'] ?? 0)) * ((float)($item['price'] ?? 0));
+                }
+                foreach ($items as $item) {
+                    $name      = $item['name'] ?? 'Unknown';
+                    $qty       = (float)($item['quantity'] ?? 0);
+                    $price     = (float)($item['price']    ?? 0);
+                    $itemTotal = $qty * $price;
+                    if (!isset($salesByProduct[$name])) $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
+                    $salesByProduct[$name]['quantity']    += $qty;
+                    $salesByProduct[$name]['total_sales'] += $itemTotal;
+                    if (!isset($wholesaleByProduct[$name])) $wholesaleByProduct[$name] = ['kg' => 0, 'disc' => 0, 'global_disc' => 0];
+                    if ($saleSubtotal > 0) {
+                        $proportion = $itemTotal / $saleSubtotal;
+                        if ($wdTotal > 0) {
+                            $wholesaleByProduct[$name]['kg']   += $qty;
+                            $wholesaleByProduct[$name]['disc'] += $proportion * $wdTotal;
+                        }
+                        if ($gdTotal > 0) {
+                            $wholesaleByProduct[$name]['global_disc'] += $proportion * $gdTotal;
+                        }
                     }
+                }
+            }
+
+            // Pre-fetch transfers for this date/store
+            $transfersByProductId = [];
+            if ($storeId && $storeName !== 'All Stores') {
+                try {
+                    $tStmt = $pdo->prepare(
+                        "SELECT product_id, `from`, `to`,
+                                COALESCE(NULLIF(quantity_received, 0), quantity) AS eff_qty,
+                                LOWER(COALESCE(`type`, '')) AS ttype
+                         FROM transfers
+                         WHERE DATE(created_at) = ?
+                           AND (`to` = ? OR `from` = ?)
+                           AND LOWER(status) NOT IN ('cancelled', 'rejected')"
+                    );
+                    $tStmt->execute([$date, $storeName, $storeName]);
+                    foreach ($tStmt->fetchAll() as $tr) {
+                        $pid   = (int)$tr['product_id'];
+                        $qty   = (float)$tr['eff_qty'];
+                        $ttype = $tr['ttype'];
+                        if (!isset($transfersByProductId[$pid])) {
+                            $transfersByProductId[$pid] = ['add' => 0, 'pickup' => 0, 'return' => 0, 'scrap' => 0];
+                        }
+                        if ($tr['to'] === $storeName) {
+                            $transfersByProductId[$pid]['add'] += $qty;
+                        } elseif ($tr['from'] === $storeName) {
+                            if ($ttype === 'return_backorder')     $transfersByProductId[$pid]['return'] += $qty;
+                            elseif ($ttype === 'return_scrap')     $transfersByProductId[$pid]['scrap']  += $qty;
+                            else                                   $transfersByProductId[$pid]['pickup'] += $qty;
+                        }
+                    }
+                } catch (Exception $tErr) {
+                    error_log('Preview transfer pre-fetch error: ' . $tErr->getMessage());
                 }
             }
 
@@ -5041,39 +5095,47 @@ $routes = [
             // Build rows
             $rows = [];
             foreach ($products as $product) {
-                $productId = (int)$product['id'];
+                $productId   = (int)$product['id'];
                 $productName = $product['name'];
-                $unitPrice = (float)$product['price'];
+                $unitPrice   = (float)$product['price'];
 
                 $invStmt = $pdo->prepare('SELECT quantity FROM inventory WHERE product_id = ?' . ($storeId ? ' AND location = ?' : '') . ' LIMIT 1');
                 $invParams = [$productId];
                 if ($storeId) $invParams[] = $storeLocation;
                 $invStmt->execute($invParams);
-                $inv = $invStmt->fetch();
+                $inv   = $invStmt->fetch();
                 $stock = $inv ? max(0, (float)$inv['quantity']) : 0;
 
-                $pickUp = $salesByProduct[$productName]['quantity'] ?? 0;
-                $totalSalesProd = $salesByProduct[$productName]['total_sales'] ?? 0;
-                $saved = $savedEntries[$productId] ?? null;
+                $totalSalesProd = (float)($salesByProduct[$productName]['total_sales'] ?? 0);
+                $saved  = $savedEntries[$productId] ?? null;
+                $tData  = $transfersByProductId[$productId] ?? ['add' => 0, 'pickup' => 0, 'return' => 0, 'scrap' => 0];
+                $wsData = $wholesaleByProduct[$productName]  ?? ['kg' => 0, 'disc' => 0, 'global_disc' => 0];
+
+                $kgSales    = (float)($salesByProduct[$productName]['quantity'] ?? 0);
+                $wsKg       = $wsData['kg'];
+                $wsDisc     = $wsData['disc'];
+                $globalDisc = $wsData['global_disc'];
+                $reseco     = $saved ? (float)($saved['reseco_amount'] ?? 0) : 0;
+                $netAmount  = max(0, $totalSalesProd - $wsDisc - $globalDisc + $reseco);
 
                 $rows[] = [
-                    'productId' => $productId,
-                    'productName' => $productName,
-                    'unitPrice' => $unitPrice,
-                    'wgs' => $saved ? (float)$saved['wgs'] : 0,
-                    'stocks' => $stock,
-                    'addQty' => $saved ? (float)$saved['add_qty'] : 0,
-                    'pickUp' => (float)$pickUp,
-                    'returnQty' => $saved ? (float)$saved['return_qty'] : 0,
-                    'scrapBo' => $saved ? (float)$saved['scrap_bo'] : 0,
-                    'turnOver' => $saved ? (float)$saved['turn_over'] : 0,
-                    'kgSales' => (float)$pickUp,
-                    'totalWeight' => (float)$pickUp,
-                    'totalSales' => $totalSalesProd,
-                    'wholesaleKg' => 0,
-                    'wholesaleDisc' => 0,
-                    'amount' => $totalSalesProd,
-                    'resecoAmount' => $saved ? (float)$saved['reseco_amount'] : 0,
+                    'productId'    => $productId,
+                    'productName'  => $productName,
+                    'unitPrice'    => $unitPrice,
+                    'wgs'          => $saved ? (float)$saved['wgs']       : 0,
+                    'stocks'       => $stock,
+                    'addQty'       => $tData['add'],
+                    'pickUp'       => $tData['pickup'],
+                    'returnQty'    => $tData['return'],
+                    'scrapBo'      => $tData['scrap'],
+                    'turnOver'     => $saved ? (float)($saved['turn_over'] ?? 0) : 0,
+                    'kgSales'      => $kgSales,
+                    'totalWeight'  => $kgSales,
+                    'totalSales'   => $totalSalesProd,
+                    'wholesaleKg'  => $wsKg,
+                    'wholesaleDisc'=> $wsDisc,
+                    'amount'       => $netAmount,
+                    'resecoAmount' => $reseco,
                 ];
             }
 
@@ -5284,14 +5346,15 @@ $routes = [
             $productsStmt = $pdo->query('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name');
             $products = $productsStmt->fetchAll();
 
-            // Group sales by product
-            $salesByProduct = [];
-            $totalSales = 0;
+            // ── Group sales by product + compute per-product discount allocations ──
+            $salesByProduct   = [];   // [name => ['quantity' => 0, 'total_sales' => 0]]
+            $wholesaleByProduct = []; // [name => ['kg' => 0, 'disc' => 0, 'global_disc' => 0]]
+            $totalSales   = 0;
             $totalDiscount = 0;
             $paymentBreakdown = [];
 
             foreach ($sales as $sale) {
-                $totalSales += (float)$sale['total'];
+                $totalSales   += (float)$sale['total'];
                 $totalDiscount += (float)($sale['global_discount'] ?? 0);
 
                 $method = $sale['payment_method'] ?? 'Cash';
@@ -5302,94 +5365,184 @@ $routes = [
                 $paymentBreakdown[$method]['amount'] += (float)$sale['total'];
 
                 $items = json_decode($sale['items'], true);
-                if (is_array($items)) {
-                    foreach ($items as $item) {
-                        $name = $item['name'] ?? 'Unknown';
-                        $qty = $item['quantity'] ?? 0;
-                        $price = $item['price'] ?? 0;
-                        if (!isset($salesByProduct[$name])) {
-                            $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
+                if (!is_array($items)) continue;
+
+                $wdTotal = (float)($sale['wholesale_discount'] ?? 0);
+                $gdTotal = (float)($sale['global_discount']   ?? 0);
+
+                // Sale subtotal (pre-discount) for proportion base
+                $saleSubtotal = 0;
+                foreach ($items as $item) {
+                    $saleSubtotal += ((float)($item['quantity'] ?? 0)) * ((float)($item['price'] ?? 0));
+                }
+
+                foreach ($items as $item) {
+                    $name      = $item['name']     ?? 'Unknown';
+                    $qty       = (float)($item['quantity'] ?? 0);
+                    $price     = (float)($item['price']    ?? 0);
+                    $itemTotal = $qty * $price;
+
+                    if (!isset($salesByProduct[$name])) {
+                        $salesByProduct[$name] = ['quantity' => 0, 'total_sales' => 0];
+                    }
+                    $salesByProduct[$name]['quantity']    += $qty;
+                    $salesByProduct[$name]['total_sales'] += $itemTotal;
+
+                    if (!isset($wholesaleByProduct[$name])) {
+                        $wholesaleByProduct[$name] = ['kg' => 0, 'disc' => 0, 'global_disc' => 0];
+                    }
+                    if ($saleSubtotal > 0) {
+                        $proportion = $itemTotal / $saleSubtotal;
+                        // Wholesale KG = all qty from sales that had a wholesale discount
+                        if ($wdTotal > 0) {
+                            $wholesaleByProduct[$name]['kg']   += $qty;
+                            $wholesaleByProduct[$name]['disc'] += $proportion * $wdTotal;
                         }
-                        $salesByProduct[$name]['quantity'] += $qty;
-                        $salesByProduct[$name]['total_sales'] += ($qty * $price);
+                        // Global discount allocated proportionally
+                        if ($gdTotal > 0) {
+                            $wholesaleByProduct[$name]['global_disc'] += $proportion * $gdTotal;
+                        }
                     }
                 }
             }
 
-            // Build product rows
+            // ── Pre-fetch transfers for this date/store ───────────────────────────
+            // [product_id => ['add' => 0, 'pickup' => 0, 'return' => 0, 'scrap' => 0]]
+            $transfersByProductId = [];
+            if ($storeId && $storeName !== 'All Stores') {
+                try {
+                    $tStmt = $pdo->prepare(
+                        "SELECT product_id,
+                                `from`, `to`,
+                                COALESCE(NULLIF(quantity_received, 0), quantity) AS eff_qty,
+                                LOWER(COALESCE(`type`, '')) AS ttype,
+                                LOWER(status) AS lstatus
+                         FROM transfers
+                         WHERE DATE(created_at) = ?
+                           AND (`to` = ? OR `from` = ?)
+                           AND LOWER(status) NOT IN ('cancelled', 'rejected')"
+                    );
+                    $tStmt->execute([$date, $storeName, $storeName]);
+                    foreach ($tStmt->fetchAll() as $tr) {
+                        $pid   = (int)$tr['product_id'];
+                        $qty   = (float)$tr['eff_qty'];
+                        $ttype = $tr['ttype'];
+                        $to    = $tr['to'];
+                        $from  = $tr['from'];
+                        if (!isset($transfersByProductId[$pid])) {
+                            $transfersByProductId[$pid] = ['add' => 0, 'pickup' => 0, 'return' => 0, 'scrap' => 0];
+                        }
+                        if ($to === $storeName) {
+                            // Stock arriving at this store → ADD
+                            $transfersByProductId[$pid]['add'] += $qty;
+                        } elseif ($from === $storeName) {
+                            if ($ttype === 'return_backorder') {
+                                // Good stock returned to production
+                                $transfersByProductId[$pid]['return'] += $qty;
+                            } elseif ($ttype === 'return_scrap') {
+                                // Defective stock sent to production → SCRAP/B.O.
+                                $transfersByProductId[$pid]['scrap'] += $qty;
+                            } else {
+                                // Outgoing to another store → PICK UP
+                                $transfersByProductId[$pid]['pickup'] += $qty;
+                            }
+                        }
+                    }
+                } catch (Exception $tErr) {
+                    error_log('PDF transfer pre-fetch error: ' . $tErr->getMessage());
+                }
+            }
+
+            // ── Build product rows ────────────────────────────────────────────────
             $productTableRows = '';
-            $totalAmount = 0;
-            $totalKgSales = 0;
-            $totalUnitPrice = 0;
-            $totalWGs = 0;
-            $totalStocks = 0;
-            $totalAdd = 0;
-            $totalPickUp = 0;
-            $totalReturn = 0;
-            $totalScrapBO = 0;
-            $totalTurnOver = 0;
+            $totalAmount     = 0;
+            $totalKgSales    = 0;
+            $totalUnitPrice  = 0;
+            $totalWGs        = 0;
+            $totalStocks     = 0;
+            $totalAdd        = 0;
+            $totalPickUp     = 0;
+            $totalReturn     = 0;
+            $totalScrapBO    = 0;
+            $totalTurnOver   = 0;
             $totalTotalSales = 0;
-            $totalTotalWeight = 0;
-            $totalWholesaleKg = 0;
+            $totalTotalWeight= 0;
+            $totalWholesaleKg   = 0;
             $totalWholesaleDisc = 0;
-            $totalReseco = 0;
+            $totalReseco     = 0;
+            $totalNetAmount  = 0;
 
             foreach ($products as $product) {
                 $productName = $product['name'];
-                $unitPrice = (float)$product['price'];
+                $unitPrice   = (float)$product['price'];
 
-                // Get inventory
+                // Current inventory for this store
                 $invStmt = $pdo->prepare('SELECT quantity FROM inventory WHERE product_id = ?' . ($storeId ? ' AND location = ?' : '') . ' LIMIT 1');
                 $invParams = [$product['id']];
                 if ($storeId) $invParams[] = $storeLocation;
                 $invStmt->execute($invParams);
-                $inv = $invStmt->fetch();
+                $inv   = $invStmt->fetch();
                 $stock = $inv ? max(0, (float)$inv['quantity']) : 0;
 
-                $quantity = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['quantity'] : 0;
-                $productTotalSales = isset($salesByProduct[$productName]) ? $salesByProduct[$productName]['total_sales'] : 0;
+                $quantity         = (float)($salesByProduct[$productName]['quantity']    ?? 0);
+                $productTotalSales = (float)($salesByProduct[$productName]['total_sales'] ?? 0);
 
-                // Use saved editable values if available
-                $savedEntry = $savedEntriesData[(int)$product['id']] ?? null;
-                $wgs        = $savedEntry ? (float)$savedEntry['wgs'] : 0;
-                $addQty     = $savedEntry ? (float)$savedEntry['add_qty'] : 0;
-                $returnQty  = $savedEntry ? (float)$savedEntry['return_qty'] : 0;
-                $scrapBo    = $savedEntry ? (float)$savedEntry['scrap_bo'] : 0;
-                $turnOver   = $savedEntry ? (float)$savedEntry['turn_over'] : 0;
-                $resecoAmount = $savedEntry ? (float)$savedEntry['reseco_amount'] : 0;
+                // WGS, TURN OVER, RESECO: still from saved manual entries
+                $savedEntry   = $savedEntriesData[(int)$product['id']] ?? null;
+                $wgs          = $savedEntry ? (float)($savedEntry['wgs']          ?? 0) : 0;
+                $turnOver     = $savedEntry ? (float)($savedEntry['turn_over']     ?? 0) : 0;
+                $resecoAmount = $savedEntry ? (float)($savedEntry['reseco_amount'] ?? 0) : 0;
 
-                $totalAmount += $productTotalSales;
-                $totalKgSales += $quantity;
-                $totalUnitPrice += $unitPrice;
-                $totalWGs += $wgs;
-                $totalStocks += $stock;
-                $totalAdd += $addQty;
-                $totalPickUp += $quantity;
-                $totalReturn += $returnQty;
-                $totalScrapBO += $scrapBo;
-                $totalTurnOver += $turnOver;
-                $totalTotalSales += $productTotalSales;
-                $totalTotalWeight += $quantity;
+                // ADD, PICK UP, RETURN, SCRAP/B.O.: from actual transfer records
+                $tData    = $transfersByProductId[(int)$product['id']] ?? ['add' => 0, 'pickup' => 0, 'return' => 0, 'scrap' => 0];
+                $addQty   = $tData['add'];
+                $pickupQty= $tData['pickup'];
+                $returnQty= $tData['return'];
+                $scrapBo  = $tData['scrap'];
 
-                $totalReseco += $resecoAmount;
+                // Wholesale KG, DISC from sales data
+                $wsData = $wholesaleByProduct[$productName] ?? ['kg' => 0, 'disc' => 0, 'global_disc' => 0];
+                $wsKg   = $wsData['kg'];
+                $wsDisc = $wsData['disc'];
+
+                // AMOUNT = gross product sales − wholesale discount − global discount share + reseco
+                $globalDiscShare = $wsData['global_disc'];
+                $netAmount = max(0, $productTotalSales - $wsDisc - $globalDiscShare + $resecoAmount);
+
+                $totalKgSales      += $quantity;
+                $totalUnitPrice    += $unitPrice;
+                $totalWGs          += $wgs;
+                $totalStocks       += $stock;
+                $totalAdd          += $addQty;
+                $totalPickUp       += $pickupQty;
+                $totalReturn       += $returnQty;
+                $totalScrapBO      += $scrapBo;
+                $totalTurnOver     += $turnOver;
+                $totalTotalSales   += $productTotalSales;
+                $totalTotalWeight  += $quantity;
+                $totalWholesaleKg  += $wsKg;
+                $totalWholesaleDisc+= $wsDisc;
+                $totalReseco       += $resecoAmount;
+                $totalNetAmount    += $netAmount;
+                $totalAmount       += $productTotalSales;
 
                 $productTableRows .= '<tr>';
                 $productTableRows .= '<td>' . htmlspecialchars($productName) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($unitPrice, 2) . '</td>';
                 $productTableRows .= '<td class="number">' . number_format($wgs, 3) . '</td>';
                 $productTableRows .= '<td class="number">' . $stock . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($addQty, 3) . '</td>';
-                $productTableRows .= '<td class="number">' . $quantity . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($returnQty, 3) . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($scrapBo, 3) . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($turnOver, 3) . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
-                $productTableRows .= '<td class="number">' . number_format($quantity, 2) . '</td>';
-                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
-                $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">0</td>';
-                $productTableRows .= '<td class="number">P ' . number_format($resecoAmount, 2) . '</td>';
-                $productTableRows .= '<td class="number">P ' . number_format($productTotalSales, 2) . '</td>';
+                $productTableRows .= '<td class="number">' . ($addQty   > 0 ? number_format($addQty,   3) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($pickupQty> 0 ? number_format($pickupQty,3) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($returnQty > 0 ? number_format($returnQty,3) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($scrapBo  > 0 ? number_format($scrapBo,  3) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($turnOver > 0 ? number_format($turnOver, 3) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($quantity > 0 ? number_format($quantity, 2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($quantity > 0 ? number_format($quantity, 2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($productTotalSales > 0 ? 'P ' . number_format($productTotalSales, 2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($wsKg  > 0 ? number_format($wsKg,  2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($wsDisc > 0 ? number_format($wsDisc, 2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($resecoAmount > 0 ? 'P ' . number_format($resecoAmount, 2) : '') . '</td>';
+                $productTableRows .= '<td class="number">' . ($netAmount > 0 ? 'P ' . number_format($netAmount, 2) : '') . '</td>';
                 $productTableRows .= '</tr>';
             }
 
@@ -5456,7 +5609,7 @@ $routes = [
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleKg, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>' . number_format($totalWholesaleDisc, 2) . '</strong></td>';
             $html .= '<td class="number"><strong>P ' . number_format($totalReseco, 2) . '</strong></td>';
-            $html .= '<td class="number"><strong>P ' . number_format($totalAmount, 2) . '</strong></td>';
+            $html .= '<td class="number"><strong>P ' . number_format($totalNetAmount, 2) . '</strong></td>';
             $html .= '</tr></tbody></table>';
 
             // Cash out: use saved rows if available, else live transactions

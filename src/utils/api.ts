@@ -1512,7 +1512,10 @@ export async function setFractionalPrice(
 ): Promise<FractionalPriceRule> {
   const data = await apiRequest<{ rule: FractionalPriceRule }>(
     `/fractional-prices/${productId}`,
-    { method: "PUT", body: JSON.stringify({ fractionalPrice, thresholdWeight }) },
+    {
+      method: "PUT",
+      body: JSON.stringify({ fractionalPrice, thresholdWeight }),
+    },
   );
   return data.rule;
 }
