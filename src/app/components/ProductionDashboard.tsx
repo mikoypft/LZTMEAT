@@ -2914,18 +2914,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   {selectedProductionForCooking.batchNumber}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Raw Packed Items Available
+                  Raw Packed Items (KG)
                 </p>
                 <p className="font-semibold text-primary">
-                  {(
-                    rawProductInventory.find(
-                      (inv) =>
-                        String(inv.productMixCategoryId) ===
-                        String(
-                          selectedProductionForCooking.productMixCategoryId,
-                        ),
-                    )?.stock ?? 0
-                  ).toFixed(1)}{" "}
+                  {((selectedProductionForCooking as any).rawPackedItems ?? 0).toFixed(1)}{" "}
                   KG
                 </p>
               </div>
