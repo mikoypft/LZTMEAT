@@ -2746,14 +2746,15 @@ $routes = [
                 }
             }
 
-            // Update production record: packing done → transition to cooking phase
+            // Packing is complete — store the output in raw product inventory (done above) and mark batch as completed.
+            // Do NOT automatically advance to cooking; the user will manually start cooking from raw inventory when ready.
             $packingDiscrepancyReason = $body['discrepancyReason'] ?? null;
             $stmt = $pdo->prepare('
                 UPDATE production_records
                 SET phase = ?, status = ?, raw_packed_items = ?, packing_discrepancy = ?, packing_discrepancy_reason = ?, updated_at = NOW()
                 WHERE id = ?
             ');
-            $stmt->execute(['cooking', 'in-progress', $rawPackedItems, $packingDiscrepancy, $packingDiscrepancyReason, $id]);
+            $stmt->execute(['completed', 'completed', $rawPackedItems, $packingDiscrepancy, $packingDiscrepancyReason, $id]);
 
             // Return updated record
             $stmt = $pdo->prepare('

@@ -1155,7 +1155,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         mixingDiscrepancyReason.trim() || undefined,
       );
 
-      toast.success(`Mixing completed! Output of ${mixWeight} KG saved to mix inventory.`);
+      toast.success(
+        `Mixing completed! Output of ${mixWeight} KG saved to mix inventory.`,
+      );
 
       // Reload data
       await loadProductionRecords();
@@ -1220,7 +1222,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       );
 
       toast.success(
-        `Packing completed! ${rawPackedItemsInput} KG recorded as raw packed items. Batch is now ready for cooking.`,
+        `Packing completed! ${rawPackedItemsInput} KG saved to raw product inventory.`,
       );
       window.dispatchEvent(new CustomEvent("inventory-changed"));
 
