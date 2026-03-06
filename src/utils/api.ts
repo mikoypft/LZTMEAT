@@ -1495,6 +1495,7 @@ export async function updateDiscountProducts(
 export interface FractionalPriceRule {
   productId: number;
   fractionalPrice: number;
+  thresholdWeight: number;
 }
 
 export async function getFractionalPrices(): Promise<FractionalPriceRule[]> {
@@ -1507,10 +1508,11 @@ export async function getFractionalPrices(): Promise<FractionalPriceRule[]> {
 export async function setFractionalPrice(
   productId: number,
   fractionalPrice: number,
+  thresholdWeight: number,
 ): Promise<FractionalPriceRule> {
   const data = await apiRequest<{ rule: FractionalPriceRule }>(
     `/fractional-prices/${productId}`,
-    { method: "PUT", body: JSON.stringify({ fractionalPrice }) },
+    { method: "PUT", body: JSON.stringify({ fractionalPrice, thresholdWeight }) },
   );
   return data.rule;
 }

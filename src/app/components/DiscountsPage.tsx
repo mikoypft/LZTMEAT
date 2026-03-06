@@ -583,16 +583,15 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [fractionalRules, setFractionalRules] = useState<
-    Map<number, number>
+    Map<number, FractionalPriceRule>
   >(new Map());
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [fractSearch, setFractSearch] = useState("");
   // Local pending edits for fractional prices (productId -> string input)
-  const [fractInputs, setFractInputs] = useState<Map<number, string>>(
-    new Map(),
-  );
+  const [fractPriceInputs, setFractPriceInputs] = useState<Map<number, string>>(new Map());
+  const [fractThreshInputs, setFractThreshInputs] = useState<Map<number, string>>(new Map());
   const [fractSaving, setFractSaving] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -600,8 +599,8 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
       getDiscounts().then(setDiscounts),
       getProducts().then(setProducts),
       getFractionalPrices().then((rules) => {
-        const map = new Map<number, number>();
-        rules.forEach((r) => map.set(r.productId, r.fractionalPrice));
+        const map = new Map<number, FractionalPriceRule>();
+        rules.forEach((r) => map.set(r.productId, r));
         setFractionalRules(map);
       }),
     ])
@@ -645,38 +644,47 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
 
   // ── Fractional price handlers ─────────────────────────────────────────────
 
-  const getFractInput = (pid: number) => {
-    if (fractInputs.has(pid)) return fractInputs.get(pid)!;
-    const existing = fractionalRules.get(pid);
-    return existing !== undefined ? String(existing) : "";
+  const getFractPriceInput = (pid: number) => {
+    if (fractPriceInputs.has(pid)) return fractPriceInputs.get(pid)!;
+    const rule = fractionalRules.get(pid);
+    return rule !== undefined ? String(rule.fractionalPrice) : "";
   };
 
-  const setFractInput = (pid: number, val: string) => {
-    setFractInputs((prev) => new Map(prev).set(pid, val));
+  const getFractThreshInput = (pid: number) => {
+    if (fractThreshInputs.has(pid)) return fractThreshInputs.get(pid)!;
+    const rule = fractionalRules.get(pid);
+    return rule !== undefined ? String(rule.thresholdWeight) : "1";
   };
 
   const handleSaveFractional = async (pid: number) => {
-    const raw = getFractInput(pid);
-    const price = parseFloat(raw);
+    const rawPrice = getFractPriceInput(pid);
+    const rawThresh = getFractThreshInput(pid);
+    const price = parseFloat(rawPrice);
+    const threshold = parseFloat(rawThresh);
     if (isNaN(price) || price < 0) {
       toast.error("Enter a valid price (0 or greater)");
+      return;
+    }
+    if (isNaN(threshold) || threshold <= 0) {
+      toast.error("Threshold weight must be greater than 0");
       return;
     }
     setFractSaving((prev) => new Set(prev).add(pid));
     try {
       if (price === 0 && !fractionalRules.has(pid)) {
-        // Nothing to save
-        setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+        setFractPriceInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+        setFractThreshInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
         return;
       }
       if (price === 0) {
         await deleteFractionalPrice(pid);
         setFractionalRules((prev) => { const m = new Map(prev); m.delete(pid); return m; });
       } else {
-        const rule = await setFractionalPrice(pid, price);
-        setFractionalRules((prev) => new Map(prev).set(pid, rule.fractionalPrice));
+        const rule = await setFractionalPrice(pid, price, threshold);
+        setFractionalRules((prev) => new Map(prev).set(pid, rule));
       }
-      setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      setFractPriceInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      setFractThreshInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
       toast.success("Partial unit price saved");
     } catch {
       toast.error("Failed to save partial unit price");
@@ -690,7 +698,8 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
     try {
       await deleteFractionalPrice(pid);
       setFractionalRules((prev) => { const m = new Map(prev); m.delete(pid); return m; });
-      setFractInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      setFractPriceInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
+      setFractThreshInputs((prev) => { const m = new Map(prev); m.delete(pid); return m; });
       toast.success("Partial unit price removed");
     } catch {
       toast.error("Failed to remove partial unit price");
@@ -809,9 +818,9 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
             Partial Unit Pricing
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Set a special flat price for when a product is sold at less than 1
-            unit (e.g., less than 1 kg). Normal proportional pricing applies
-            for quantities ≥ 1.
+            Set a special flat price for when a product is sold below a configurable
+            weight threshold. Normal proportional pricing applies at or above
+            the threshold.
           </p>
         </div>
 
@@ -820,11 +829,11 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
           <div className="text-sm text-blue-700">
             <p className="font-medium">How partial unit pricing works</p>
             <p className="mt-1">
-              If a product is sold at <strong>less than 1 unit/kg</strong>, the
-              configured price below is charged as a flat rate instead of the
-              proportional price. For example: 1 kg costs ₱100, but if you set
-              a partial price of ₱30, then selling 250 g charges ₱30 flat.
-              Leave blank or set to 0 to use normal proportional pricing.
+              If a product is sold <strong>below the configured threshold</strong>,
+              the flat price is charged instead of the proportional price.
+              For example: threshold = 0.5 kg, partial price = ₱30 — selling
+              any weight under 0.5 kg charges ₱30 flat. Leave price at 0 to
+              disable for a product.
             </p>
           </div>
         </div>
@@ -856,18 +865,21 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
             ) : (
               filteredFractProducts.map((product) => {
                 const pid = parseInt(String(product.id));
-                const hasRule = fractionalRules.has(pid);
-                const inputVal = getFractInput(pid);
+                const rule = fractionalRules.get(pid);
+                const hasRule = !!rule;
+                const priceVal = getFractPriceInput(pid);
+                const threshVal = getFractThreshInput(pid);
+                const savedPrice = rule ? String(rule.fractionalPrice) : "";
+                const savedThresh = rule ? String(rule.thresholdWeight) : "1";
                 const isDirty =
-                  fractInputs.has(pid) &&
-                  fractInputs.get(pid) !==
-                    String(fractionalRules.get(pid) ?? "");
+                  (fractPriceInputs.has(pid) && fractPriceInputs.get(pid) !== savedPrice) ||
+                  (fractThreshInputs.has(pid) && fractThreshInputs.get(pid) !== savedThresh);
                 const isSaving = fractSaving.has(pid);
 
                 return (
                   <div
                     key={product.id}
-                    className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
                       hasRule ? "bg-green-50/40" : ""
                     }`}
                   >
@@ -893,28 +905,57 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                       </div>
                     </div>
 
-                    {/* Price input */}
+                    {/* Inputs / read-only */}
                     {isAdmin ? (
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-sm text-gray-500">₱</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={inputVal}
-                          onChange={(e) => setFractInput(pid, e.target.value)}
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && handleSaveFractional(pid)
-                          }
-                          disabled={isSaving}
-                          className="w-28 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
-                        />
+                        {/* Threshold weight */}
+                        <div className="flex flex-col items-start gap-0.5">
+                          <label className="text-[10px] text-gray-400 leading-none">Below (kg)</label>
+                          <input
+                            type="number"
+                            min="0.001"
+                            step="0.1"
+                            placeholder="1"
+                            value={threshVal}
+                            onChange={(e) =>
+                              setFractThreshInputs((prev) => new Map(prev).set(pid, e.target.value))
+                            }
+                            onKeyDown={(e) =>
+                              e.key === "Enter" && handleSaveFractional(pid)
+                            }
+                            disabled={isSaving}
+                            className="w-20 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+                          />
+                        </div>
+
+                        {/* Flat price */}
+                        <div className="flex flex-col items-start gap-0.5">
+                          <label className="text-[10px] text-gray-400 leading-none">Flat price (₱)</label>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm text-gray-500">₱</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={priceVal}
+                              onChange={(e) =>
+                                setFractPriceInputs((prev) => new Map(prev).set(pid, e.target.value))
+                              }
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && handleSaveFractional(pid)
+                              }
+                              disabled={isSaving}
+                              className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+                            />
+                          </div>
+                        </div>
+
                         {isDirty && (
                           <button
                             onClick={() => handleSaveFractional(pid)}
                             disabled={isSaving}
-                            className="flex items-center gap-1 px-2 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 disabled:opacity-50"
+                            className="flex items-center gap-1 px-2 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 disabled:opacity-50 self-end mb-0.5"
                           >
                             <Check className="w-3.5 h-3.5" />
                             Save
@@ -925,7 +966,7 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                             onClick={() => handleClearFractional(pid)}
                             disabled={isSaving}
                             title="Remove partial unit price rule"
-                            className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-50 self-end mb-0.5"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -938,7 +979,7 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
                         }`}
                       >
                         {hasRule
-                          ? `₱${fractionalRules.get(pid)!.toFixed(2)}`
+                          ? `< ${rule.thresholdWeight} kg → ₱${rule.fractionalPrice.toFixed(2)}`
                           : "—"}
                       </span>
                     )}

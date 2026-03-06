@@ -4716,15 +4716,19 @@ $routes = [
             $pdo->exec("CREATE TABLE IF NOT EXISTS product_fractional_prices (
                 product_id INT NOT NULL PRIMARY KEY,
                 fractional_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                threshold_weight DECIMAL(10,4) NOT NULL DEFAULT 1.0000,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
+            // Add threshold_weight column if upgrading from old schema
+            try { $pdo->exec("ALTER TABLE product_fractional_prices ADD COLUMN threshold_weight DECIMAL(10,4) NOT NULL DEFAULT 1.0000"); } catch (Exception $ignored) {}
             $rows = $pdo->query('SELECT * FROM product_fractional_prices')->fetchAll();
             $result = [];
             foreach ($rows as $r) {
                 $result[] = [
                     'productId' => (int)$r['product_id'],
                     'fractionalPrice' => (float)$r['fractional_price'],
+                    'thresholdWeight' => (float)$r['threshold_weight'],
                 ];
             }
             return ['rules' => $result];
@@ -4744,21 +4748,25 @@ $routes = [
             $pdo->exec("CREATE TABLE IF NOT EXISTS product_fractional_prices (
                 product_id INT NOT NULL PRIMARY KEY,
                 fractional_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                threshold_weight DECIMAL(10,4) NOT NULL DEFAULT 1.0000,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )");
+            try { $pdo->exec("ALTER TABLE product_fractional_prices ADD COLUMN threshold_weight DECIMAL(10,4) NOT NULL DEFAULT 1.0000"); } catch (Exception $ignored) {}
 
             $price = max(0, (float)($body['fractionalPrice'] ?? 0));
+            $threshold = max(0.001, (float)($body['thresholdWeight'] ?? 1.0));
 
-            $stmt = $pdo->prepare('INSERT INTO product_fractional_prices (product_id, fractional_price)
-                VALUES (?, ?)
-                ON DUPLICATE KEY UPDATE fractional_price = ?, updated_at = NOW()');
-            $stmt->execute([$productId, $price, $price]);
+            $stmt = $pdo->prepare('INSERT INTO product_fractional_prices (product_id, fractional_price, threshold_weight)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE fractional_price = ?, threshold_weight = ?, updated_at = NOW()');
+            $stmt->execute([$productId, $price, $threshold, $price, $threshold]);
 
             return [
                 'rule' => [
                     'productId' => $productId,
                     'fractionalPrice' => $price,
+                    'thresholdWeight' => $threshold,
                 ]
             ];
         } catch (Exception $e) {

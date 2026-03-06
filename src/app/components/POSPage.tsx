@@ -1583,7 +1583,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               const fractRule = fractionalPriceRules.find(
                 (r) => r.productId === pid,
               );
-              const usesFractional = wt < 1 && !!fractRule;
+              const usesFractional = !!fractRule && wt < fractRule.thresholdWeight;
               const displayPrice = usesFractional
                 ? fractRule!.fractionalPrice
                 : weightAdjustmentModal.product.price * wt;
@@ -1602,7 +1602,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                           Partial unit pricing applied
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          (flat rate for &lt;1 unit)
+                          (flat rate for &lt;{fractRule!.thresholdWeight} kg)
                         </span>
                       </div>
                     ) : (
