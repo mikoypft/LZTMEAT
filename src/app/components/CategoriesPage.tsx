@@ -37,8 +37,8 @@ import {
   type DefaultIngredient,
 } from "@/utils/api";
 
-export function CategoriesPage({ userRole }: { userRole?: string }) {
-  const isAdmin = userRole === "ADMIN";
+export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+  const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
   const [productCategories, setProductCategories] = useState<Category[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>(
     [],

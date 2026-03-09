@@ -190,7 +190,7 @@ interface ProductionDashboardProps {
 
 export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   const context = useContext(IngredientsContext);
-  const isAdmin = currentUser?.role === "ADMIN";
+  const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions");
   const isProduction = currentUser?.role === "PRODUCTION";
 
   // Production action permissions:
