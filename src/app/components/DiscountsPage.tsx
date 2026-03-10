@@ -26,9 +26,12 @@ import {
   getFractionalPrices,
   setFractionalPrice,
   deleteFractionalPrice,
+  getTransactionCategories,
+  updateTransactionCategories,
   type Discount,
   type Product,
   type FractionalPriceRule,
+  type TransactionCategories,
 } from "../../utils/api";
 
 interface DiscountCardProps {
@@ -597,6 +600,13 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
     Map<number, string>
   >(new Map());
   const [fractSaving, setFractSaving] = useState<Set<number>>(new Set());
+  const [txCategories, setTxCategories] = useState<TransactionCategories>({
+    cashIn: ["Sales", "Investment", "Loan", "Refund", "Other Income"],
+    cashOut: ["Supplies", "Utilities", "Salaries", "Rent", "Transportation", "Maintenance", "Other Expenses"],
+  });
+  const [txCatSaving, setTxCatSaving] = useState(false);
+  const [newCashInCat, setNewCashInCat] = useState("");
+  const [newCashOutCat, setNewCashOutCat] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -607,6 +617,7 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
         rules.forEach((r) => map.set(r.productId, r));
         setFractionalRules(map);
       }),
+      getTransactionCategories().then(setTxCategories).catch(() => {}),
     ])
       .catch(() => toast.error("Failed to load settings"))
       .finally(() => setLoading(false));
@@ -1056,6 +1067,137 @@ export function DiscountsPage({ userRole }: { userRole?: string }) {
             )}
           </div>
         </div>
+      </section>
+
+      {/* Cash-in / Cash-out Categories */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Tag className="w-5 h-5 text-red-600" />
+          Cash-in / Cash-out Categories
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Cash In */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Cash In Categories
+            </h3>
+            <ul className="space-y-2 mb-3">
+              {txCategories.cashIn.map((cat, i) => (
+                <li key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-1.5 text-sm">
+                  <span>{cat}</span>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setTxCategories((prev) => ({ ...prev, cashIn: prev.cashIn.filter((_, j) => j !== i) }))}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {isAdmin && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCashInCat}
+                  onChange={(e) => setNewCashInCat(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newCashInCat.trim()) {
+                      setTxCategories((prev) => ({ ...prev, cashIn: [...prev.cashIn, newCashInCat.trim()] }));
+                      setNewCashInCat("");
+                    }
+                  }}
+                  placeholder="Add category..."
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => {
+                    if (newCashInCat.trim()) {
+                      setTxCategories((prev) => ({ ...prev, cashIn: [...prev.cashIn, newCashInCat.trim()] }));
+                      setNewCashInCat("");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Cash Out */}
+          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Cash Out Categories
+            </h3>
+            <ul className="space-y-2 mb-3">
+              {txCategories.cashOut.map((cat, i) => (
+                <li key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-1.5 text-sm">
+                  <span>{cat}</span>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setTxCategories((prev) => ({ ...prev, cashOut: prev.cashOut.filter((_, j) => j !== i) }))}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {isAdmin && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCashOutCat}
+                  onChange={(e) => setNewCashOutCat(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newCashOutCat.trim()) {
+                      setTxCategories((prev) => ({ ...prev, cashOut: [...prev.cashOut, newCashOutCat.trim()] }));
+                      setNewCashOutCat("");
+                    }
+                  }}
+                  placeholder="Add category..."
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => {
+                    if (newCashOutCat.trim()) {
+                      setTxCategories((prev) => ({ ...prev, cashOut: [...prev.cashOut, newCashOutCat.trim()] }));
+                      setNewCashOutCat("");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        {isAdmin && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={async () => {
+                setTxCatSaving(true);
+                try {
+                  await updateTransactionCategories(txCategories);
+                  toast.success("Categories saved");
+                } catch {
+                  toast.error("Failed to save categories");
+                } finally {
+                  setTxCatSaving(false);
+                }
+              }}
+              disabled={txCatSaving}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+            >
+              <Check className="w-4 h-4" />
+              {txCatSaving ? "Saving..." : "Save Categories"}
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
