@@ -614,6 +614,7 @@ export function InventoryPage({
       await updateProduct(updatedItem.id, {
         name: updatedItem.name,
         sku: updatedItem.sku,
+        category: updatedItem.category,
         minStockLevel: updatedItem.minStockLevel,
         reorderPoint: updatedItem.reorderPoint,
         reorderQuantity: updatedItem.reorderQuantity,
@@ -1613,6 +1614,7 @@ function EditItemModal({
   const [formData, setFormData] = useState(item);
   const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([]);
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
+  const [productCategories, setProductCategories] = useState<Category[]>([]);
   const [defaultIngredients, setDefaultIngredients] = useState<
     Array<{ ingredientId: string }>
   >([]);
@@ -1623,6 +1625,7 @@ function EditItemModal({
     loadStoreLocations();
     loadIngredients();
     loadDefaultIngredients();
+    getCategories().then(setProductCategories).catch(() => {});
   }, []);
 
   const loadStoreLocations = async () => {
@@ -1730,6 +1733,24 @@ function EditItemModal({
                 readOnly
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-2">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select a category</option>
+              {productCategories.map((cat) => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+              {/* keep current value selectable even if not in list */}
+              {formData.category && !productCategories.find((c) => c.name === formData.category) && (
+                <option value={formData.category}>{formData.category}</option>
+              )}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

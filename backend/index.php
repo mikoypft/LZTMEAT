@@ -734,6 +734,16 @@ $routes = [
                 $updates[] = 'name = ?';
                 $params[] = $body['name'];
             }
+            if (isset($body['category'])) {
+                // look up category_id by name
+                $catStmt = $pdo->prepare('SELECT id FROM categories WHERE name = ? LIMIT 1');
+                $catStmt->execute([$body['category']]);
+                $catRow = $catStmt->fetch();
+                if ($catRow) {
+                    $updates[] = 'category_id = ?';
+                    $params[] = $catRow['id'];
+                }
+            }
             if (isset($body['min_stock_level'])) {
                 $updates[] = 'min_stock_level = ?';
                 $params[] = $body['min_stock_level'];
