@@ -8,7 +8,7 @@ import {
   User,
   FileText,
 } from "lucide-react";
-import { API_BASE_URL } from "../../utils/api";
+import { API_BASE_URL, getTransactionCategories } from "../../utils/api";
 import { toast } from "sonner";
 
 interface Transaction {
@@ -31,6 +31,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cashInCategories, setCashInCategories] = useState<string[]>(["Sales", "Investment", "Loan", "Refund", "Other Income"]);
+  const [cashOutCategories, setCashOutCategories] = useState<string[]>(["Supplies", "Utilities", "Salaries", "Rent", "Transportation", "Maintenance", "Other Expenses"]);
 
   // Form states
   const [type, setType] = useState<"Cash In" | "Cash Out">("Cash In");
@@ -43,6 +45,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
 
   useEffect(() => {
     fetchTransactions();
+    getTransactionCategories()
+      .then((cats) => {
+        if (cats.cashIn?.length) setCashInCategories(cats.cashIn);
+        if (cats.cashOut?.length) setCashOutCategories(cats.cashOut);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchTransactions = async () => {
@@ -141,7 +149,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             Manage cash in and cash out transactions
           </p>
         </div>
-        {isAdmin && (
+        {(isAdmin || user?.permissions?.includes("admin_permissions")) && (
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -440,25 +448,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   >
                     <option value="">Select a category</option>
-                    {type === "Cash In" ? (
-                      <>
-                        <option value="Sales">Sales</option>
-                        <option value="Investment">Investment</option>
-                        <option value="Loan">Loan</option>
-                        <option value="Refund">Refund</option>
-                        <option value="Other Income">Other Income</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Supplies">Supplies</option>
-                        <option value="Utilities">Utilities</option>
-                        <option value="Salaries">Salaries</option>
-                        <option value="Rent">Rent</option>
-                        <option value="Transportation">Transportation</option>
-                        <option value="Maintenance">Maintenance</option>
-                        <option value="Other Expenses">Other Expenses</option>
-                      </>
-                    )}
+                    {(type === "Cash In" ? cashInCategories : cashOutCategories).map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
 

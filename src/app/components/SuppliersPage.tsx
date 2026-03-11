@@ -19,8 +19,8 @@ import {
   type Supplier,
 } from "@/utils/api";
 
-export function SuppliersPage({ userRole }: { userRole?: string }) {
-  const isAdmin = userRole === "ADMIN";
+export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+  const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);

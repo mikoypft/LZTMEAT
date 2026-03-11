@@ -11,6 +11,7 @@ import {
   updateSale,
   getSales,
   getStores,
+  getAllUsers,
   exportDailyReportCSV,
   type Sale,
   type StoreLocation,
@@ -291,6 +292,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [storesList, setStoresList] = useState<string[]>(["All Stores"]);
+  const [allCashiers, setAllCashiers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStore, setSelectedStore] = useState<string>("All Stores");
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
@@ -316,6 +318,15 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
 
   useEffect(() => {
     loadSalesData();
+    getAllUsers()
+      .then((users) => {
+        const names = users
+          .map((u) => u.fullName || u.name || u.username)
+          .filter(Boolean)
+          .sort() as string[];
+        setAllCashiers(names);
+      })
+      .catch(() => {});
   }, []);
 
   const loadSalesData = async () => {
@@ -814,19 +825,20 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                 className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               >
                 <option value="All Cashiers">All Cashiers</option>
-                {Array.from(
-                  new Set(
-                    sales
-                      .map((s) => s.cashier)
-                      .filter((c) => c && c !== "Unknown"),
-                  ),
-                )
-                  .sort()
-                  .map((cashier) => (
-                    <option key={cashier} value={cashier}>
-                      {cashier}
-                    </option>
-                  ))}
+                {(allCashiers.length > 0
+                  ? allCashiers
+                  : Array.from(
+                      new Set(
+                        sales
+                          .map((s) => s.cashier)
+                          .filter((c) => c && c !== "Unknown"),
+                      ),
+                    ).sort()
+                ).map((cashier) => (
+                  <option key={cashier} value={cashier}>
+                    {cashier}
+                  </option>
+                ))}
               </select>
 
               {/* Date range */}

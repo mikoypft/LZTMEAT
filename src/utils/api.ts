@@ -1496,6 +1496,33 @@ export async function updateDiscountSettings(settings: {
   return data.settings;
 }
 
+// ==================== TRANSACTION CATEGORIES API ====================
+
+export interface TransactionCategories {
+  cashIn: string[];
+  cashOut: string[];
+}
+
+export async function getTransactionCategories(): Promise<TransactionCategories> {
+  const data = await apiRequest<{ categories: TransactionCategories }>(
+    "/transaction-categories",
+  );
+  return data.categories;
+}
+
+export async function updateTransactionCategories(
+  categories: TransactionCategories,
+): Promise<TransactionCategories> {
+  const data = await apiRequest<{ categories: TransactionCategories }>(
+    "/transaction-categories",
+    {
+      method: "PUT",
+      body: JSON.stringify(categories),
+    },
+  );
+  return data.categories;
+}
+
 // ==================== MULTIPLE DISCOUNTS API ====================
 
 export interface Discount {

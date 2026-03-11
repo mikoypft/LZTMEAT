@@ -820,6 +820,40 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                   <p className="text-xs text-gray-500 mt-2">
                     Select which features this employee can access
                   </p>
+                  {/* Admin Permissions toggle */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Admin Permissions</div>
+                        <div className="text-xs text-gray-500">
+                          Allow this employee to add, edit, and delete records across all pages
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const has = formData.permissions?.includes("admin_permissions");
+                          const newPerms = has
+                            ? (formData.permissions || []).filter((p) => p !== "admin_permissions")
+                            : [...(formData.permissions || []), "admin_permissions"];
+                          setFormData({ ...formData, permissions: newPerms });
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          formData.permissions?.includes("admin_permissions")
+                            ? "bg-red-600"
+                            : "bg-gray-200"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            formData.permissions?.includes("admin_permissions")
+                              ? "translate-x-6"
+                              : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 

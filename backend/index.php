@@ -734,6 +734,16 @@ $routes = [
                 $updates[] = 'name = ?';
                 $params[] = $body['name'];
             }
+            if (isset($body['category'])) {
+                // look up category_id by name
+                $catStmt = $pdo->prepare('SELECT id FROM categories WHERE name = ? LIMIT 1');
+                $catStmt->execute([$body['category']]);
+                $catRow = $catStmt->fetch();
+                if ($catRow) {
+                    $updates[] = 'category_id = ?';
+                    $params[] = $catRow['id'];
+                }
+            }
             if (isset($body['min_stock_level'])) {
                 $updates[] = 'min_stock_level = ?';
                 $params[] = $body['min_stock_level'];
@@ -4662,6 +4672,50 @@ $routes = [
         } catch (Exception $e) {
             http_response_code(500);
             return ['error' => 'Failed to update discount settings: ' . $e->getMessage()];
+        }
+    },
+
+    // ==================== TRANSACTION CATEGORIES ====================
+
+    'GET /api/transaction-categories' => function() use ($pdo) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
+                `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+                `setting_value` LONGTEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'transaction_categories'");
+            $stmt->execute();
+            $row = $stmt->fetch();
+            $defaults = [
+                'cashIn' => ['Sales', 'Investment', 'Loan', 'Refund', 'Other Income'],
+                'cashOut' => ['Supplies', 'Utilities', 'Salaries', 'Rent', 'Transportation', 'Maintenance', 'Other Expenses'],
+            ];
+            if ($row && !empty($row['setting_value'])) {
+                $categories = json_decode($row['setting_value'], true);
+                return ['categories' => $categories ?: $defaults];
+            }
+            return ['categories' => $defaults];
+        } catch (Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    },
+
+    'PUT /api/transaction-categories' => function() use ($pdo, $body) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
+                `setting_key` VARCHAR(100) NOT NULL PRIMARY KEY,
+                `setting_value` LONGTEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+            $cashIn = array_values(array_filter(array_map('trim', $body['cashIn'] ?? [])));
+            $cashOut = array_values(array_filter(array_map('trim', $body['cashOut'] ?? [])));
+            $value = json_encode(['cashIn' => $cashIn, 'cashOut' => $cashOut]);
+            $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('transaction_categories', ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()");
+            $stmt->execute([$value, $value]);
+            return ['categories' => ['cashIn' => $cashIn, 'cashOut' => $cashOut]];
+        } catch (Exception $e) {
+            return ['error' => $e->getMessage()];
         }
     },
 

@@ -839,7 +839,10 @@ export default function App() {
               <ReportsPage currentUser={currentUser} />
             )}
             {currentPage === "categories" && (
-              <CategoriesPage userRole={currentUser.role} />
+              <CategoriesPage
+                userRole={currentUser.role}
+                isAdminPermissions={currentUser.permissions?.includes("admin_permissions")}
+              />
             )}
             {currentPage === "stores" && (
               <StoresManagementPage userRole={currentUser.role} />
@@ -848,7 +851,10 @@ export default function App() {
               <EmployeesPage userRole={currentUser.role} />
             )}
             {currentPage === "suppliers" && (
-              <SuppliersPage userRole={currentUser.role} />
+              <SuppliersPage
+                userRole={currentUser.role}
+                isAdminPermissions={currentUser.permissions?.includes("admin_permissions")}
+              />
             )}
             {currentPage === "supplier-invoices" && (
               <SupplierInvoicePage userRole={currentUser.role} />
