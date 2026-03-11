@@ -1313,6 +1313,66 @@ export async function deleteSupplier(id: string): Promise<void> {
   });
 }
 
+// ==================== SUPPLIER INVOICES API ====================
+
+export interface SupplierInvoice {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  receiptNumber: string;
+  invoiceDate: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  remarks: string;
+  createdAt: string;
+}
+
+export async function getSupplierInvoices(supplierId?: string): Promise<SupplierInvoice[]> {
+  const query = supplierId ? `?supplierId=${supplierId}` : "";
+  const data = await apiRequest<{ invoices: SupplierInvoice[] }>(`/supplier-invoices${query}`);
+  return data.invoices;
+}
+
+export async function createSupplierInvoice(invoice: {
+  supplierId: string;
+  receiptNumber: string;
+  invoiceDate: string;
+  amount: number;
+  paid: number;
+  remarks?: string;
+}): Promise<SupplierInvoice> {
+  const data = await apiRequest<{ invoice: SupplierInvoice }>("/supplier-invoices", {
+    method: "POST",
+    body: JSON.stringify(invoice),
+  });
+  return data.invoice;
+}
+
+export async function updateSupplierInvoice(
+  id: string,
+  updates: Partial<{
+    supplierId: string;
+    receiptNumber: string;
+    invoiceDate: string;
+    amount: number;
+    paid: number;
+    remarks: string;
+  }>,
+): Promise<SupplierInvoice> {
+  const data = await apiRequest<{ invoice: SupplierInvoice }>(`/supplier-invoices/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+  return data.invoice;
+}
+
+export async function deleteSupplierInvoice(id: string): Promise<void> {
+  await apiRequest<{ success: boolean }>(`/supplier-invoices/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // ==================== HISTORY API ====================
 
 export interface HistoryRecord {

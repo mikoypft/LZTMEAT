@@ -2759,7 +2759,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                 <p className="text-xs text-muted-foreground mt-1">
                   Must be at least{" "}
                   <span className="font-medium text-foreground">
-                    {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)} KG
+                    {(selectedProductionForPacking.mixWeight ?? 0).toFixed(1)}{" "}
+                    KG
                   </span>{" "}
                   (mix weight). These will be cooked in the next phase.
                 </p>
@@ -2917,7 +2918,9 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
                   Raw Packed Items (KG)
                 </p>
                 <p className="font-semibold text-primary">
-                  {((selectedProductionForCooking as any).rawPackedItems ?? 0).toFixed(1)}{" "}
+                  {(
+                    (selectedProductionForCooking as any).rawPackedItems ?? 0
+                  ).toFixed(1)}{" "}
                   KG
                 </p>
               </div>

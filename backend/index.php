@@ -3655,6 +3655,164 @@ $routes = [
         }
     },
 
+    // ==================== SUPPLIER INVOICES ====================
+
+    'GET /api/supplier-invoices' => function() use ($pdo) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS supplier_invoices (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                supplier_id BIGINT UNSIGNED NOT NULL,
+                receipt_number VARCHAR(100) NOT NULL,
+                invoice_date DATE NOT NULL,
+                amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                paid DECIMAL(12,2) NOT NULL DEFAULT 0,
+                remarks TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_supplier (supplier_id),
+                INDEX idx_date (invoice_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+            $supplierId = $_GET['supplierId'] ?? null;
+            if ($supplierId) {
+                $stmt = $pdo->prepare('SELECT si.*, s.name as supplier_name FROM supplier_invoices si LEFT JOIN suppliers s ON si.supplier_id = s.id WHERE si.supplier_id = ? ORDER BY si.invoice_date DESC, si.id DESC');
+                $stmt->execute([$supplierId]);
+            } else {
+                $stmt = $pdo->query('SELECT si.*, s.name as supplier_name FROM supplier_invoices si LEFT JOIN suppliers s ON si.supplier_id = s.id ORDER BY si.invoice_date DESC, si.id DESC');
+            }
+            $rows = $stmt->fetchAll();
+            return ['invoices' => array_map(function($r) {
+                return [
+                    'id'             => (string)$r['id'],
+                    'supplierId'     => (string)$r['supplier_id'],
+                    'supplierName'   => $r['supplier_name'] ?? '',
+                    'receiptNumber'  => $r['receipt_number'],
+                    'invoiceDate'    => $r['invoice_date'],
+                    'amount'         => (float)$r['amount'],
+                    'paid'           => (float)$r['paid'],
+                    'balance'        => round((float)$r['amount'] - (float)$r['paid'], 2),
+                    'remarks'        => $r['remarks'] ?? '',
+                    'createdAt'      => $r['created_at'],
+                ];
+            }, $rows)];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to fetch invoices: ' . $e->getMessage()];
+        }
+    },
+
+    'POST /api/supplier-invoices' => function() use ($pdo, $body) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS supplier_invoices (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                supplier_id BIGINT UNSIGNED NOT NULL,
+                receipt_number VARCHAR(100) NOT NULL,
+                invoice_date DATE NOT NULL,
+                amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                paid DECIMAL(12,2) NOT NULL DEFAULT 0,
+                remarks TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_supplier (supplier_id),
+                INDEX idx_date (invoice_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+            $supplierId    = $body['supplierId'] ?? null;
+            $receiptNumber = trim($body['receiptNumber'] ?? '');
+            $invoiceDate   = $body['invoiceDate'] ?? date('Y-m-d');
+            $amount        = isset($body['amount']) ? (float)$body['amount'] : 0;
+            $paid          = isset($body['paid']) ? (float)$body['paid'] : 0;
+            $remarks       = $body['remarks'] ?? null;
+
+            if (!$supplierId || $amount <= 0) {
+                http_response_code(422);
+                return ['error' => 'Supplier and amount are required'];
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO supplier_invoices (supplier_id, receipt_number, invoice_date, amount, paid, remarks, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            $stmt->execute([$supplierId, $receiptNumber, $invoiceDate, $amount, $paid, $remarks]);
+            $id = $pdo->lastInsertId();
+
+            $row = $pdo->prepare('SELECT si.*, s.name as supplier_name FROM supplier_invoices si LEFT JOIN suppliers s ON si.supplier_id = s.id WHERE si.id = ?');
+            $row->execute([$id]);
+            $r = $row->fetch();
+
+            http_response_code(201);
+            return ['invoice' => [
+                'id'            => (string)$r['id'],
+                'supplierId'    => (string)$r['supplier_id'],
+                'supplierName'  => $r['supplier_name'] ?? '',
+                'receiptNumber' => $r['receipt_number'],
+                'invoiceDate'   => $r['invoice_date'],
+                'amount'        => (float)$r['amount'],
+                'paid'          => (float)$r['paid'],
+                'balance'       => round((float)$r['amount'] - (float)$r['paid'], 2),
+                'remarks'       => $r['remarks'] ?? '',
+                'createdAt'     => $r['created_at'],
+            ]];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to create invoice: ' . $e->getMessage()];
+        }
+    },
+
+    'PUT /api/supplier-invoices/{id}' => function() use ($pdo, $body) {
+        try {
+            $uri = $_SERVER['REQUEST_URI'];
+            preg_match('#/api/supplier-invoices/(\d+)#', $uri, $matches);
+            $id = $matches[1] ?? null;
+            if (!$id) { http_response_code(400); return ['error' => 'Invoice ID required']; }
+
+            $stmt = $pdo->prepare('SELECT * FROM supplier_invoices WHERE id = ?');
+            $stmt->execute([$id]);
+            $existing = $stmt->fetch();
+            if (!$existing) { http_response_code(404); return ['error' => 'Invoice not found']; }
+
+            $supplierId    = $body['supplierId']    ?? $existing['supplier_id'];
+            $receiptNumber = $body['receiptNumber'] ?? $existing['receipt_number'];
+            $invoiceDate   = $body['invoiceDate']   ?? $existing['invoice_date'];
+            $amount        = isset($body['amount']) ? (float)$body['amount'] : (float)$existing['amount'];
+            $paid          = isset($body['paid'])   ? (float)$body['paid']   : (float)$existing['paid'];
+            $remarks       = array_key_exists('remarks', $body) ? $body['remarks'] : $existing['remarks'];
+
+            $pdo->prepare('UPDATE supplier_invoices SET supplier_id=?, receipt_number=?, invoice_date=?, amount=?, paid=?, remarks=?, updated_at=NOW() WHERE id=?')
+                ->execute([$supplierId, $receiptNumber, $invoiceDate, $amount, $paid, $remarks, $id]);
+
+            $row = $pdo->prepare('SELECT si.*, s.name as supplier_name FROM supplier_invoices si LEFT JOIN suppliers s ON si.supplier_id = s.id WHERE si.id = ?');
+            $row->execute([$id]);
+            $r = $row->fetch();
+            return ['invoice' => [
+                'id'            => (string)$r['id'],
+                'supplierId'    => (string)$r['supplier_id'],
+                'supplierName'  => $r['supplier_name'] ?? '',
+                'receiptNumber' => $r['receipt_number'],
+                'invoiceDate'   => $r['invoice_date'],
+                'amount'        => (float)$r['amount'],
+                'paid'          => (float)$r['paid'],
+                'balance'       => round((float)$r['amount'] - (float)$r['paid'], 2),
+                'remarks'       => $r['remarks'] ?? '',
+                'createdAt'     => $r['created_at'],
+            ]];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update invoice: ' . $e->getMessage()];
+        }
+    },
+
+    'DELETE /api/supplier-invoices/{id}' => function() use ($pdo) {
+        try {
+            $uri = $_SERVER['REQUEST_URI'];
+            preg_match('#/api/supplier-invoices/(\d+)#', $uri, $matches);
+            $id = $matches[1] ?? null;
+            if (!$id) { http_response_code(400); return ['error' => 'Invoice ID required']; }
+            $pdo->prepare('DELETE FROM supplier_invoices WHERE id = ?')->execute([$id]);
+            return ['success' => true];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to delete invoice: ' . $e->getMessage()];
+        }
+    },
+
     // Stock Adjustments endpoints
     'GET /api/stock-adjustments' => function() use ($pdo) {
         try {

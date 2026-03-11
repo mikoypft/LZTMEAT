@@ -17,6 +17,7 @@ import {
   History,
   DollarSign,
   Percent,
+  FileText,
 } from "lucide-react";
 import { POSPage } from "@/app/components/POSPage";
 import { ProductionDashboard } from "@/app/components/ProductionDashboard";
@@ -32,6 +33,7 @@ import { CategoriesPage } from "@/app/components/CategoriesPage";
 import { StoresManagementPage } from "@/app/components/StoresManagementPage";
 import { EmployeesPage } from "@/app/components/EmployeesPage";
 import { SuppliersPage } from "@/app/components/SuppliersPage";
+import { SupplierInvoicePage } from "@/app/components/SupplierInvoicePage";
 import { HistoryPage } from "@/app/components/HistoryPage";
 import { DiscountsPage } from "@/app/components/DiscountsPage";
 import { ReportsPage } from "@/app/components/ReportsPage";
@@ -51,6 +53,7 @@ type Page =
   | "stores"
   | "employees"
   | "suppliers"
+  | "supplier-invoices"
   | "history"
   | "transactions"
   | "discounts";
@@ -345,6 +348,12 @@ export default function App() {
           permission: "suppliers",
         },
         {
+          id: "supplier-invoices" as Page,
+          icon: FileText,
+          label: "Supplier Invoices",
+          permission: "suppliers",
+        },
+        {
           id: "discounts" as Page,
           icon: Percent,
           label: "Settings",
@@ -533,6 +542,12 @@ export default function App() {
         id: "suppliers" as Page,
         icon: Tag,
         label: "Suppliers",
+        roles: ["ADMIN"],
+      },
+      {
+        id: "supplier-invoices" as Page,
+        icon: FileText,
+        label: "Supplier Invoices",
         roles: ["ADMIN"],
       },
       {
@@ -834,6 +849,9 @@ export default function App() {
             )}
             {currentPage === "suppliers" && (
               <SuppliersPage userRole={currentUser.role} />
+            )}
+            {currentPage === "supplier-invoices" && (
+              <SupplierInvoicePage userRole={currentUser.role} />
             )}
             {currentPage === "discounts" && (
               <DiscountsPage userRole={currentUser.role} />
