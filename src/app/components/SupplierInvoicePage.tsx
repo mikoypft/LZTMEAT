@@ -242,23 +242,25 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
             Track supplier receipts, payments, and outstanding balances
           </p>
         </div>
-        {isAdmin && (
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Invoice
+            </button>
+          )}
           <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={openPdfModal}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="w-4 h-4" />
-            Add Invoice
+            <Download className="w-4 h-4" />
+            Export PDF
           </button>
-        )}
-        <button
-          onClick={openPdfModal}
-          disabled={filtered.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="w-4 h-4" />
-          Export PDF
-        </button>
+        </div>
       </div>
 
       {/* Filters */}
