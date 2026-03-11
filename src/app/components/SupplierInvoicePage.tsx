@@ -155,7 +155,7 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
 
   const openPdfModal = () => {
     const supplier = suppliers.find((s) => s.id === selectedSupplierId);
-    const defaultTitle = supplier ? `Supplier Invoices — ${supplier.name}` : "Supplier Invoices";
+    const defaultTitle = supplier ? supplier.name : "Supplier Invoices";
     const parts: string[] = [];
     if (dateFrom) parts.push(`From: ${new Date(dateFrom + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`);
     if (dateTo)   parts.push(`To: ${new Date(dateTo + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`);

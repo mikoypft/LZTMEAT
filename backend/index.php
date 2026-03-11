@@ -3840,40 +3840,43 @@ $routes = [
             $totalPaid    = array_sum(array_column($invoices, 'paid'));
             $totalBalance = array_sum(array_column($invoices, 'balance'));
 
-            // Build rows HTML
+            // When a single supplier is selected, hide the SUPPLIER column (it's in the header)
+            $isSingleSupplier = !empty($suppName);
+            $supplierColHdr   = $isSingleSupplier ? '' : '<th>SUPPLIER</th>';
+            $totalColSpan     = $isSingleSupplier ? 2 : 3;
+
+            // Build rows
             $rowsHtml = '';
             foreach ($invoices as $inv) {
-                $date    = htmlspecialchars(date('m/d/Y', strtotime($inv['invoiceDate'] . 'T00:00:00')));
-                $receipt = htmlspecialchars($inv['receiptNumber'] ?? '—');
-                $supplier = htmlspecialchars($inv['supplierName'] ?? '');
-                $amount  = $fmt($inv['amount']);
-                $paid    = (float)$inv['paid'] > 0 ? '₱' . $fmt($inv['paid']) : '—';
-                $balance = (float)$inv['balance'];
-                $balClass = $balance > 0 ? 'balance-positive' : 'balance-zero';
-                $balFmt   = '₱' . $fmt($balance);
-                $remarks  = htmlspecialchars($inv['remarks'] ?? '');
-                $rowsHtml .= "<tr>
-                    <td>{$date}</td>
-                    <td>{$receipt}</td>
-                    <td>{$supplier}</td>
-                    <td class=\"right\">&#8369;{$amount}</td>
+                $date       = htmlspecialchars(date('m/d/Y', strtotime($inv['invoiceDate'] . 'T00:00:00')));
+                $receipt    = htmlspecialchars($inv['receiptNumber'] ?? '');
+                $suppTd     = $isSingleSupplier ? '' : '<td>' . htmlspecialchars($inv['supplierName'] ?? '') . '</td>';
+                $amount     = $fmt($inv['amount']);
+                $paid       = (float)$inv['paid'] > 0 ? $fmt($inv['paid']) : '-';
+                $balance    = (float)$inv['balance'];
+                $balFmt     = $balance > 0 ? $fmt($balance) : '-';
+                $balClass   = $balance > 0 ? 'red' : '';
+                $remarks    = htmlspecialchars($inv['remarks'] ?? '');
+                $rowsHtml  .= "<tr>
+                    <td class=\"center\">{$date}</td>
+                    <td class=\"center\">{$receipt}</td>
+                    {$suppTd}
+                    <td class=\"right\">{$amount}</td>
                     <td class=\"right\">{$paid}</td>
                     <td class=\"right {$balClass}\">{$balFmt}</td>
-                    <td class=\"remarks\">{$remarks}</td>
+                    <td>{$remarks}</td>
                 </tr>";
             }
 
-            // Supplier header block
-            $supplierHtml = '';
-            if ($suppName) {
-                $supplierHtml .= '<p class="supp-name">' . htmlspecialchars($suppName) . '</p>';
-            }
-            if ($suppAddr) {
-                $supplierHtml .= '<p class="supp-addr">' . htmlspecialchars($suppAddr) . '</p>';
-            }
+            $totalPaidFmt = $totalPaid > 0 ? $fmt($totalPaid) : '-';
+            $totalBalFmt  = $totalBalance > 0 ? $fmt($totalBalance) : '-';
+
+            $addrHtml = $suppAddr
+                ? '<div class="addr">' . htmlspecialchars($suppAddr) . '</div>'
+                : '';
 
             $dateRangeHtml = $dateRange
-                ? '<p class="date-range">' . htmlspecialchars($dateRange) . '</p>'
+                ? '<div class="daterange">' . htmlspecialchars($dateRange) . '</div>'
                 : '';
 
             $notesHtml = $notes
@@ -3882,48 +3885,62 @@ $routes = [
 
             $generatedOn = date('m/d/Y h:i A');
 
-            $totalBalClass = $totalBalance > 0 ? 'balance-positive' : 'balance-zero';
-
             $html = '<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>' . htmlspecialchars($title) . '</title>
+<html><head><meta charset="utf-8">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; padding: 18px 22px; }
-  .header { text-align: center; margin-bottom: 14px; border-bottom: 2px solid #111; padding-bottom: 8px; }
-  .header h1 { font-size: 14pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-  .supp-name { font-size: 10pt; font-weight: bold; margin-top: 4px; text-transform: uppercase; }
-  .supp-addr { font-size: 8pt; color: #555; margin-top: 2px; }
-  .date-range { font-size: 8.5pt; color: #333; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  thead th { background: #1c1c1c; color: #fff; padding: 5px 7px; text-align: left; font-size: 8pt; text-transform: uppercase; white-space: nowrap; }
-  thead th.right { text-align: right; }
-  tbody tr:nth-child(even) { background: #f7f7f7; }
-  tbody td { padding: 4px 7px; border-bottom: 1px solid #e0e0e0; font-size: 8.5pt; vertical-align: top; }
-  tbody td.right { text-align: right; white-space: nowrap; }
-  .remarks { max-width: 160px; }
-  tfoot td { padding: 5px 7px; font-weight: bold; font-size: 8.5pt; border-top: 2px solid #111; }
-  tfoot td.right { text-align: right; white-space: nowrap; }
-  .balance-positive { color: #b00; font-weight: bold; }
-  .balance-zero { color: #090; font-weight: bold; }
-  .notes { margin-top: 14px; padding: 8px 10px; border: 1px solid #ccc; font-size: 8.5pt; background: #fafafa; border-radius: 3px; }
-  .footer { margin-top: 16px; font-size: 7.5pt; text-align: center; color: #888; border-top: 1px solid #ddd; padding-top: 6px; }
-</style></head>
-<body>
-  <div class="header">
-    <h1>' . htmlspecialchars($title) . '</h1>
-    ' . $supplierHtml . '
-    ' . $dateRangeHtml . '
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #000; padding: 20px 24px; }
+
+  .title-box { border: 2px solid #000; padding: 10px 16px; margin-bottom: 10px; text-align: center; }
+  .title-box .company { font-size: 15pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.4px; }
+  .title-box .addr { font-size: 9pt; color: #444; margin-top: 3px; }
+  .daterange { text-align: center; font-size: 9pt; color: #333; margin-bottom: 10px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    border: 1.5px solid #000;
+    padding: 6px 9px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 10pt;
+    background: #fff;
+  }
+  td {
+    border: 1px solid #000;
+    padding: 5px 9px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+  .right { text-align: right; }
+  .center { text-align: center; }
+  .red { color: #c00000; }
+
+  tfoot td {
+    border-top: 2px solid #000;
+    font-weight: bold;
+    font-size: 10.5pt;
+    padding: 6px 9px;
+  }
+  .total-label { font-size: 11pt; }
+  .notes { margin-top: 14px; padding: 8px 10px; border: 1px solid #bbb; font-size: 9pt; }
+  .footer { margin-top: 18px; text-align: center; font-size: 8pt; color: #888; border-top: 1px solid #ddd; padding-top: 6px; }
+</style>
+</head><body>
+  <div class="title-box">
+    <div class="company">' . htmlspecialchars($title) . '</div>
+    ' . $addrHtml . '
   </div>
+  ' . $dateRangeHtml . '
   <table>
     <thead>
       <tr>
-        <th>Date</th>
-        <th>Receipt #</th>
-        <th>Supplier</th>
-        <th class="right">Amount</th>
-        <th class="right">Paid</th>
-        <th class="right">Balance</th>
-        <th>Remarks</th>
+        <th>DATE</th>
+        <th>RECEIPT#</th>
+        ' . $supplierColHdr . '
+        <th>AMOUNT</th>
+        <th>PAID</th>
+        <th>BALANCE</th>
+        <th>REMARKS</th>
       </tr>
     </thead>
     <tbody>
@@ -3931,10 +3948,10 @@ $routes = [
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="3">TOTAL (' . count($invoices) . ' invoice' . (count($invoices) !== 1 ? 's' : '') . ')</td>
-        <td class="right">&#8369;' . $fmt($totalAmount) . '</td>
-        <td class="right">&#8369;' . $fmt($totalPaid) . '</td>
-        <td class="right ' . $totalBalClass . '">&#8369;' . $fmt($totalBalance) . '</td>
+        <td colspan="' . $totalColSpan . '" class="total-label">TOTAL :</td>
+        <td class="right red">' . $fmt($totalAmount) . '</td>
+        <td class="right red">' . $totalPaidFmt . '</td>
+        <td class="right red">' . $totalBalFmt . '</td>
         <td></td>
       </tr>
     </tfoot>
@@ -3955,7 +3972,7 @@ $routes = [
             $options->set('isHtml5ParserEnabled', true);
             $dompdf = new \Dompdf\Dompdf($options);
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('letter', 'landscape');
+            $dompdf->setPaper('letter', $isSingleSupplier ? 'portrait' : 'landscape');
             $dompdf->render();
 
             $filename = 'Supplier-Invoices-' . date('Ymd') . '.pdf';
