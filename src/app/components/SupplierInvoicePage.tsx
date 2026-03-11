@@ -7,6 +7,7 @@ import {
   FileText,
   Search,
   ChevronDown,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -15,6 +16,7 @@ import {
   createSupplierInvoice,
   updateSupplierInvoice,
   deleteSupplierInvoice,
+  exportSupplierInvoicesPDF,
   type Supplier,
   type SupplierInvoice,
 } from "@/utils/api";
@@ -45,6 +47,14 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
   const [formPaid, setFormPaid] = useState("");
   const [formRemarks, setFormRemarks] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // PDF export modal
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfTitle, setPdfTitle] = useState("Supplier Invoices");
+  const [pdfDateRange, setPdfDateRange] = useState("");
+  const [pdfNotes, setPdfNotes] = useState("");
+  const [pdfRows, setPdfRows] = useState<SupplierInvoice[]>([]);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -143,6 +153,66 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
     }
   };
 
+  const openPdfModal = () => {
+    const supplier = suppliers.find((s) => s.id === selectedSupplierId);
+    const defaultTitle = supplier ? `Supplier Invoices — ${supplier.name}` : "Supplier Invoices";
+    const parts: string[] = [];
+    if (dateFrom) parts.push(`From: ${new Date(dateFrom + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`);
+    if (dateTo)   parts.push(`To: ${new Date(dateTo + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`);
+    setPdfTitle(defaultTitle);
+    setPdfDateRange(parts.join("  |  "));
+    setPdfNotes("");
+    setPdfRows(filtered.map((inv) => ({ ...inv })));
+    setShowPdfModal(true);
+  };
+
+  const handlePdfRowChange = (
+    index: number,
+    field: "amount" | "paid" | "remarks",
+    value: string,
+  ) => {
+    setPdfRows((prev) =>
+      prev.map((row, i) => {
+        if (i !== index) return row;
+        if (field === "remarks") return { ...row, remarks: value };
+        const num = parseFloat(value) || 0;
+        const updated = { ...row, [field]: num };
+        updated.balance = Math.max(0, updated.amount - updated.paid);
+        return updated;
+      }),
+    );
+  };
+
+  const handleExportPDF = async () => {
+    if (pdfRows.length === 0) { toast.error("No invoices to export"); return; }
+    setPdfExporting(true);
+    try {
+      const supplier = suppliers.find((s) => s.id === selectedSupplierId);
+      await exportSupplierInvoicesPDF({
+        title: pdfTitle || "Supplier Invoices",
+        supplierName: supplier?.name,
+        supplierAddress: supplier?.address,
+        dateRange: pdfDateRange || undefined,
+        notes: pdfNotes || undefined,
+        invoices: pdfRows.map((inv) => ({
+          invoiceDate: inv.invoiceDate,
+          receiptNumber: inv.receiptNumber,
+          supplierName: inv.supplierName,
+          amount: inv.amount,
+          paid: inv.paid,
+          balance: inv.balance,
+          remarks: inv.remarks,
+        })),
+      });
+      toast.success("PDF downloaded successfully!");
+      setShowPdfModal(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to generate PDF");
+    } finally {
+      setPdfExporting(false);
+    }
+  };
+
   // Filtered list
   const filtered = invoices.filter((inv) => {
     if (selectedSupplierId && inv.supplierId !== selectedSupplierId) return false;
@@ -162,6 +232,7 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
   const selectedSupplier = suppliers.find((s) => s.id === selectedSupplierId);
 
   return (
+    <>
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -180,6 +251,14 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
             Add Invoice
           </button>
         )}
+        <button
+          onClick={openPdfModal}
+          disabled={filtered.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download className="w-4 h-4" />
+          Export PDF
+        </button>
       </div>
 
       {/* Filters */}
@@ -524,5 +603,170 @@ export function SupplierInvoicePage({ userRole }: { userRole?: string }) {
         </div>
       )}
     </div>
+
+    {/* ── PDF Export Modal ──────────────────────────────────── */}
+    {showPdfModal && (
+      <div className="fixed inset-0 bg-black/60 z-50 flex flex-col">
+        <div className="flex-1 bg-white flex flex-col overflow-hidden">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Review &amp; Export — Supplier Invoices</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Edit any values below before exporting. Changes here do not affect the database.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPdfModal(false)}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-auto p-6 space-y-5">
+            {/* Header fields */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Document Header</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={pdfTitle}
+                    onChange={(e) => setPdfTitle(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g. Supplier Invoices — January 2026"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Date Range / Period</label>
+                  <input
+                    type="text"
+                    value={pdfDateRange}
+                    onChange={(e) => setPdfDateRange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g. January 1 – January 31, 2026"
+                  />
+                </div>
+              </div>
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notes / Remarks (printed at bottom)</label>
+                <textarea
+                  value={pdfNotes}
+                  onChange={(e) => setPdfNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                  placeholder="Optional notes…"
+                />
+              </div>
+            </div>
+
+            {/* Invoices table */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">Invoices ({pdfRows.length})</h3>
+                <p className="text-xs text-gray-400">Columns with blue headers are editable</p>
+              </div>
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="text-xs min-w-full">
+                  <thead>
+                    <tr>
+                      <th className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-left font-semibold text-gray-700 min-w-[95px]">Date</th>
+                      <th className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-left font-semibold text-gray-700 min-w-[100px]">Receipt #</th>
+                      <th className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-left font-semibold text-gray-700 min-w-[130px]">Supplier</th>
+                      <th className="bg-blue-100 border-b border-gray-200 px-3 py-2 text-right font-semibold text-blue-700 min-w-[110px]">Amount (₱) ✏</th>
+                      <th className="bg-blue-100 border-b border-gray-200 px-3 py-2 text-right font-semibold text-blue-700 min-w-[110px]">Paid (₱) ✏</th>
+                      <th className="bg-gray-100 border-b border-gray-200 px-3 py-2 text-right font-semibold text-gray-700 min-w-[100px]">Balance</th>
+                      <th className="bg-blue-100 border-b border-gray-200 px-3 py-2 text-left font-semibold text-blue-700 min-w-[160px]">Remarks ✏</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pdfRows.map((inv, i) => (
+                      <tr key={inv.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="px-3 py-1.5 text-gray-700">
+                          {new Date(inv.invoiceDate + "T00:00:00").toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                        </td>
+                        <td className="px-3 py-1.5 text-gray-700">{inv.receiptNumber || "—"}</td>
+                        <td className="px-3 py-1.5 font-medium text-gray-800">{inv.supplierName}</td>
+                        <td className="px-1.5 py-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={inv.amount}
+                            onChange={(e) => handlePdfRowChange(i, "amount", e.target.value)}
+                            className="w-full text-right px-2 py-1 border border-blue-200 rounded bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:outline-none text-xs"
+                          />
+                        </td>
+                        <td className="px-1.5 py-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={inv.paid}
+                            onChange={(e) => handlePdfRowChange(i, "paid", e.target.value)}
+                            className="w-full text-right px-2 py-1 border border-blue-200 rounded bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:outline-none text-xs"
+                          />
+                        </td>
+                        <td className={`px-3 py-1.5 text-right font-semibold ${inv.balance > 0 ? "text-red-600" : "text-green-700"}`}>
+                          ₱{inv.balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-1.5 py-1">
+                          <input
+                            type="text"
+                            value={inv.remarks ?? ""}
+                            onChange={(e) => handlePdfRowChange(i, "remarks", e.target.value)}
+                            placeholder="—"
+                            className="w-full px-2 py-1 border border-blue-200 rounded bg-blue-50 focus:ring-1 focus:ring-blue-400 focus:outline-none text-xs"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-100 border-t-2 border-gray-300">
+                      <td colSpan={3} className="px-3 py-2 font-bold text-gray-800 text-xs uppercase">
+                        Total ({pdfRows.length} invoice{pdfRows.length !== 1 ? "s" : ""})
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-gray-800 text-xs">
+                        ₱{pdfRows.reduce((s, r) => s + r.amount, 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-green-700 text-xs">
+                        ₱{pdfRows.reduce((s, r) => s + r.paid, 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-bold text-xs ${pdfRows.reduce((s, r) => s + r.balance, 0) > 0 ? "text-red-600" : "text-green-700"}`}>
+                        ₱{pdfRows.reduce((s, r) => s + r.balance, 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer actions */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <button
+              onClick={() => setShowPdfModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={pdfExporting || pdfRows.length === 0}
+              className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4" />
+              {pdfExporting ? "Generating PDF…" : "Export as PDF"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

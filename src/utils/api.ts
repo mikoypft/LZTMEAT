@@ -1373,6 +1373,42 @@ export async function deleteSupplierInvoice(id: string): Promise<void> {
   });
 }
 
+export async function exportSupplierInvoicesPDF(payload: {
+  title: string;
+  supplierName?: string;
+  supplierAddress?: string;
+  dateRange?: string;
+  notes?: string;
+  invoices: {
+    invoiceDate: string;
+    receiptNumber: string;
+    supplierName: string;
+    amount: number;
+    paid: number;
+    balance: number;
+    remarks?: string;
+  }[];
+}): Promise<void> {
+  const response = await fetch(`${API_BASE}/supplier-invoices/export-pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to generate PDF (${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Supplier-Invoices-${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
 // ==================== HISTORY API ====================
 
 export interface HistoryRecord {

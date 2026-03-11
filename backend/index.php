@@ -3823,6 +3823,155 @@ $routes = [
         }
     },
 
+    'POST /api/supplier-invoices/export-pdf' => function() use ($pdo, $body) {
+        try {
+            date_default_timezone_set('Asia/Manila');
+
+            $title      = $body['title']           ?? 'Supplier Invoices';
+            $suppName   = $body['supplierName']     ?? '';
+            $suppAddr   = $body['supplierAddress']  ?? '';
+            $dateRange  = $body['dateRange']        ?? '';
+            $notes      = $body['notes']            ?? '';
+            $invoices   = $body['invoices']         ?? [];
+
+            $fmt = function($n) { return number_format((float)$n, 2); };
+
+            $totalAmount  = array_sum(array_column($invoices, 'amount'));
+            $totalPaid    = array_sum(array_column($invoices, 'paid'));
+            $totalBalance = array_sum(array_column($invoices, 'balance'));
+
+            // Build rows HTML
+            $rowsHtml = '';
+            foreach ($invoices as $inv) {
+                $date    = htmlspecialchars(date('m/d/Y', strtotime($inv['invoiceDate'] . 'T00:00:00')));
+                $receipt = htmlspecialchars($inv['receiptNumber'] ?? '—');
+                $supplier = htmlspecialchars($inv['supplierName'] ?? '');
+                $amount  = $fmt($inv['amount']);
+                $paid    = (float)$inv['paid'] > 0 ? '₱' . $fmt($inv['paid']) : '—';
+                $balance = (float)$inv['balance'];
+                $balClass = $balance > 0 ? 'balance-positive' : 'balance-zero';
+                $balFmt   = '₱' . $fmt($balance);
+                $remarks  = htmlspecialchars($inv['remarks'] ?? '');
+                $rowsHtml .= "<tr>
+                    <td>{$date}</td>
+                    <td>{$receipt}</td>
+                    <td>{$supplier}</td>
+                    <td class=\"right\">&#8369;{$amount}</td>
+                    <td class=\"right\">{$paid}</td>
+                    <td class=\"right {$balClass}\">{$balFmt}</td>
+                    <td class=\"remarks\">{$remarks}</td>
+                </tr>";
+            }
+
+            // Supplier header block
+            $supplierHtml = '';
+            if ($suppName) {
+                $supplierHtml .= '<p class="supp-name">' . htmlspecialchars($suppName) . '</p>';
+            }
+            if ($suppAddr) {
+                $supplierHtml .= '<p class="supp-addr">' . htmlspecialchars($suppAddr) . '</p>';
+            }
+
+            $dateRangeHtml = $dateRange
+                ? '<p class="date-range">' . htmlspecialchars($dateRange) . '</p>'
+                : '';
+
+            $notesHtml = $notes
+                ? '<div class="notes"><strong>Notes:</strong> ' . nl2br(htmlspecialchars($notes)) . '</div>'
+                : '';
+
+            $generatedOn = date('m/d/Y h:i A');
+
+            $totalBalClass = $totalBalance > 0 ? 'balance-positive' : 'balance-zero';
+
+            $html = '<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>' . htmlspecialchars($title) . '</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; padding: 18px 22px; }
+  .header { text-align: center; margin-bottom: 14px; border-bottom: 2px solid #111; padding-bottom: 8px; }
+  .header h1 { font-size: 14pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+  .supp-name { font-size: 10pt; font-weight: bold; margin-top: 4px; text-transform: uppercase; }
+  .supp-addr { font-size: 8pt; color: #555; margin-top: 2px; }
+  .date-range { font-size: 8.5pt; color: #333; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  thead th { background: #1c1c1c; color: #fff; padding: 5px 7px; text-align: left; font-size: 8pt; text-transform: uppercase; white-space: nowrap; }
+  thead th.right { text-align: right; }
+  tbody tr:nth-child(even) { background: #f7f7f7; }
+  tbody td { padding: 4px 7px; border-bottom: 1px solid #e0e0e0; font-size: 8.5pt; vertical-align: top; }
+  tbody td.right { text-align: right; white-space: nowrap; }
+  .remarks { max-width: 160px; }
+  tfoot td { padding: 5px 7px; font-weight: bold; font-size: 8.5pt; border-top: 2px solid #111; }
+  tfoot td.right { text-align: right; white-space: nowrap; }
+  .balance-positive { color: #b00; font-weight: bold; }
+  .balance-zero { color: #090; font-weight: bold; }
+  .notes { margin-top: 14px; padding: 8px 10px; border: 1px solid #ccc; font-size: 8.5pt; background: #fafafa; border-radius: 3px; }
+  .footer { margin-top: 16px; font-size: 7.5pt; text-align: center; color: #888; border-top: 1px solid #ddd; padding-top: 6px; }
+</style></head>
+<body>
+  <div class="header">
+    <h1>' . htmlspecialchars($title) . '</h1>
+    ' . $supplierHtml . '
+    ' . $dateRangeHtml . '
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Receipt #</th>
+        <th>Supplier</th>
+        <th class="right">Amount</th>
+        <th class="right">Paid</th>
+        <th class="right">Balance</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ' . $rowsHtml . '
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">TOTAL (' . count($invoices) . ' invoice' . (count($invoices) !== 1 ? 's' : '') . ')</td>
+        <td class="right">&#8369;' . $fmt($totalAmount) . '</td>
+        <td class="right">&#8369;' . $fmt($totalPaid) . '</td>
+        <td class="right ' . $totalBalClass . '">&#8369;' . $fmt($totalBalance) . '</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  ' . $notesHtml . '
+  <div class="footer">Generated on ' . $generatedOn . '</div>
+</body></html>';
+
+            $autoloadPath = __DIR__ . '/vendor/autoload.php';
+            if (!file_exists($autoloadPath)) {
+                http_response_code(500);
+                return ['error' => 'PDF library not available.'];
+            }
+            require_once $autoloadPath;
+
+            $options = new \Dompdf\Options();
+            $options->set('isRemoteEnabled', false);
+            $options->set('isHtml5ParserEnabled', true);
+            $dompdf = new \Dompdf\Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('letter', 'landscape');
+            $dompdf->render();
+
+            $filename = 'Supplier-Invoices-' . date('Ymd') . '.pdf';
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            echo $dompdf->output();
+            exit;
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            error_log('Supplier Invoice PDF Error: ' . $e->getMessage());
+            return ['error' => 'Failed to generate PDF: ' . $e->getMessage()];
+        }
+    },
+
     // Stock Adjustments endpoints
     'GET /api/stock-adjustments' => function() use ($pdo) {
         try {
