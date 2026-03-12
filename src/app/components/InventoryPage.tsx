@@ -464,6 +464,22 @@ export function InventoryPage({
         (store) =>
           store.name !== "Production Facility" && store.name !== "Production",
       );
+      // Sort stores in the desired column order
+      const STORE_ORDER = [
+        "Commissary",
+        "AB Market",
+        "Susano Market",
+        "Amparo Store",
+        "BO for Recycle",
+        "BO for Disposal",
+      ];
+      filteredStores.sort((a, b) => {
+        const ai = STORE_ORDER.findIndex((n) => a.name.toLowerCase().includes(n.toLowerCase()));
+        const bi = STORE_ORDER.findIndex((n) => b.name.toLowerCase().includes(n.toLowerCase()));
+        const aIdx = ai === -1 ? 999 : ai;
+        const bIdx = bi === -1 ? 999 : bi;
+        return aIdx - bIdx;
+      });
       setStoreLocations(filteredStores);
     } catch (error) {
       console.error("Error loading store locations:", error);
