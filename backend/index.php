@@ -608,11 +608,15 @@ $routes = [
                 return [
                     'id' => (string)$p['id'],
                     'name' => $p['name'],
+                    'sku' => $p['sku'] ?? '',
                     'category' => $p['category'] ?? 'Uncategorized',
                     'price' => (float)$p['price'],
                     'unit' => $p['unit'],
                     'image' => $p['image'],
                     'discountable' => isset($p['discountable']) ? (bool)$p['discountable'] : true,
+                    'min_stock_level' => (float)($p['min_stock_level'] ?? 0),
+                    'reorder_point' => (float)($p['reorder_point'] ?? 0),
+                    'reorder_quantity' => (float)($p['reorder_quantity'] ?? 0),
                 ];
             }, $products),
         ];
@@ -755,6 +759,10 @@ $routes = [
             if (isset($body['reorder_quantity'])) {
                 $updates[] = 'reorder_quantity = ?';
                 $params[] = $body['reorder_quantity'];
+            }
+            if (isset($body['price'])) {
+                $updates[] = 'price = ?';
+                $params[] = (float)$body['price'];
             }
             
             if (empty($updates)) {

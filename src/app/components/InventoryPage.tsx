@@ -357,9 +357,9 @@ export function InventoryPage({
           stockProduction,
           storeStocks,
           totalStock,
-          minStockLevel: 50,
-          reorderPoint: 100,
-          reorderQuantity: 200,
+          minStockLevel: (product as any).min_stock_level ?? 50,
+          reorderPoint: (product as any).reorder_point ?? 100,
+          reorderQuantity: (product as any).reorder_quantity ?? 200,
           unit: product.unit || "kg",
           lastUpdated: productionInv?.lastUpdated || new Date().toISOString(),
           price: product.price,
@@ -616,10 +616,10 @@ export function InventoryPage({
         sku: updatedItem.sku,
         category: updatedItem.category,
         price: updatedItem.price,
-        minStockLevel: updatedItem.minStockLevel,
-        reorderPoint: updatedItem.reorderPoint,
-        reorderQuantity: updatedItem.reorderQuantity,
-      });
+        min_stock_level: updatedItem.minStockLevel,
+        reorder_point: updatedItem.reorderPoint,
+        reorder_quantity: updatedItem.reorderQuantity,
+      } as any);
 
       // Calculate total stock dynamically from all stores
       let totalStoreStock = 0;
