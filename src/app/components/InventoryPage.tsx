@@ -615,6 +615,7 @@ export function InventoryPage({
         name: updatedItem.name,
         sku: updatedItem.sku,
         category: updatedItem.category,
+        price: updatedItem.price,
         minStockLevel: updatedItem.minStockLevel,
         reorderPoint: updatedItem.reorderPoint,
         reorderQuantity: updatedItem.reorderQuantity,
@@ -1751,6 +1752,23 @@ function EditItemModal({
                 <option value={formData.category}>{formData.category}</option>
               )}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-2">Price (&#8369;)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  price: parseFloat(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
