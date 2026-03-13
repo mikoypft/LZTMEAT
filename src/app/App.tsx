@@ -841,7 +841,9 @@ export default function App() {
             {currentPage === "categories" && (
               <CategoriesPage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes("admin_permissions")}
+                isAdminPermissions={currentUser.permissions?.includes(
+                  "admin_permissions",
+                )}
               />
             )}
             {currentPage === "stores" && (
@@ -853,11 +855,18 @@ export default function App() {
             {currentPage === "suppliers" && (
               <SuppliersPage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes("admin_permissions")}
+                isAdminPermissions={currentUser.permissions?.includes(
+                  "admin_permissions",
+                )}
               />
             )}
             {currentPage === "supplier-invoices" && (
-              <SupplierInvoicePage userRole={currentUser.role} />
+              <SupplierInvoicePage
+                userRole={currentUser.role}
+                isAdminPermissions={currentUser.permissions?.includes(
+                  "admin_permissions",
+                )}
+              />
             )}
             {currentPage === "discounts" && (
               <DiscountsPage userRole={currentUser.role} />
