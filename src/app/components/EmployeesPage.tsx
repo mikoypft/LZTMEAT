@@ -114,8 +114,9 @@ const AVAILABLE_PERMISSIONS = [
   },
 ];
 
-export function EmployeesPage({ userRole }: { userRole?: string }) {
+export function EmployeesPage({ userRole, userPermissions }: { userRole?: string; userPermissions?: string[] }) {
   const isAdmin = userRole === "ADMIN";
+  const canManageShift = isAdmin || (userPermissions?.includes("admin_permissions") ?? false);
   const [employees, setEmployees] = useState<AllUser[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<AllUser | null>(null);
@@ -843,34 +844,6 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                   </p>
                   {/* Admin Permissions toggle */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          Shift Assignment
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Set this employee's work shift
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {(['AM', 'PM'] as const).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, shift: formData.shift === s ? null : s })}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                              formData.shift === s
-                                ? s === 'AM'
-                                  ? 'bg-blue-500 text-white'
-                                  : 'bg-orange-500 text-white'
-                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
@@ -1578,7 +1551,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {isAdmin ? (
+                        {canManageShift ? (
                           <button
                             onClick={() => handleToggleShift(employee)}
                             className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${

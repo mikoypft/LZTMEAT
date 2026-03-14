@@ -884,7 +884,7 @@ export default function App() {
               <StoresManagementPage userRole={currentUser.role} />
             )}
             {currentPage === "employees" && (
-              <EmployeesPage userRole={currentUser.role} />
+              <EmployeesPage userRole={currentUser.role} userPermissions={currentUser.permissions} />
             )}
             {currentPage === "suppliers" && (
               <SuppliersPage
