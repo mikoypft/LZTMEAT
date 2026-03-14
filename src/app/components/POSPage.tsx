@@ -207,7 +207,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     weight: "1",
   });
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
-  const [toolbarHidden, setToolbarHidden] = useState(false);
+  const [toolbarHidden, setToolbarHidden] = useState(true);
 
   // All users can switch stores in POS
   const canSwitchStores = true;
