@@ -683,7 +683,7 @@ export default function App() {
           </div>
         )}
 
-        <Toaster />
+        <Toaster position="top-center" />
       </IngredientsProvider>
     );
   }
@@ -937,7 +937,7 @@ export default function App() {
         </div>
       )}
 
-      <Toaster />
+      <Toaster position="top-center" />
     </IngredientsProvider>
   );
 }
