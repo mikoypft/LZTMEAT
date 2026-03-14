@@ -207,6 +207,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     weight: "1",
   });
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
+  const [toolbarHidden, setToolbarHidden] = useState(false);
 
   // All users can switch stores in POS
   const canSwitchStores = true;
@@ -880,15 +881,26 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
           } lg:flex`}
         >
           {/* Store Selector + Action Bar */}
-          <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+          <div className="flex-shrink-0">
+            {/* Toggle strip - always visible */}
+            <div
+              className="bg-white border-b border-gray-200 flex items-center px-2 py-1 cursor-pointer select-none hover:bg-gray-50 transition-colors"
+              onClick={() => setToolbarHidden(!toolbarHidden)}
+              title={toolbarHidden ? "Show toolbar" : "Hide toolbar"}
+            >
+              <span className="text-xs text-gray-400 flex-1 text-center">
+                {toolbarHidden ? "▼ Show toolbar" : "▲ Hide toolbar"}
+              </span>
+            </div>
+            {!toolbarHidden && (
+            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
             <Store className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <select
               value={selectedStore?.id?.toString() || ""}
               onChange={(e) => {
                 const store = stores.find(
                   (s) =>
-                    s.id === Number(e.target.value) ||
-                    s.id === e.target.value,
+                    s.id === Number(e.target.value) || s.id === e.target.value,
                 );
                 if (store) {
                   setSelectedStore(store);
@@ -948,6 +960,8 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                 </button>
               )}
             </div>
+            </div>
+            )}
           </div>
 
           {/* Customer Form */}
@@ -1178,7 +1192,10 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                             </span>
                             <span
                               className="text-xs px-1.5 py-0.5 rounded"
-                              style={{ background: "#374151", color: "#9ca3af" }}
+                              style={{
+                                background: "#374151",
+                                color: "#9ca3af",
+                              }}
                             >
                               {categoryTotal} units
                             </span>
@@ -1341,10 +1358,7 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
                 className="px-4 py-3 flex items-center gap-2 border-b"
                 style={{ borderColor: "#1e293b" }}
               >
-                <Percent
-                  className="w-4 h-4"
-                  style={{ color: "#4b5563" }}
-                />
+                <Percent className="w-4 h-4" style={{ color: "#4b5563" }} />
                 <span className="text-sm" style={{ color: "#6b7280" }}>
                   Global Discount:
                 </span>
