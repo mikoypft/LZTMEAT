@@ -289,6 +289,7 @@ interface SalesDataTableProps {
 
 export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const isAdmin = userRole === "ADMIN";
+  const currentUserName = currentUser?.fullName || (currentUser as any)?.name || currentUser?.username || "";
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [storesList, setStoresList] = useState<string[]>(["All Stores"]);
@@ -299,7 +300,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
   const [selectedStatus, setSelectedStatus] = useState<string>("All Status");
   const [selectedCashier, setSelectedCashier] =
-    useState<string>("All Cashiers");
+    useState<string>(isAdmin ? "All Cashiers" : currentUserName);
   const [selectedShift, setSelectedShift] = useState<"" | "AM" | "PM">("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -831,27 +832,33 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                   </option>
                 ))}
               </select>
-              <select
-                value={selectedCashier}
-                onChange={(e) => setSelectedCashier(e.target.value)}
-                className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-              >
-                <option value="All Cashiers">All Cashiers</option>
-                {(allCashiers.length > 0
-                  ? allCashiers
-                  : Array.from(
-                      new Set(
-                        sales
-                          .map((s) => s.cashier)
-                          .filter((c) => c && c !== "Unknown"),
-                      ),
-                    ).sort()
-                ).map((cashier) => (
-                  <option key={cashier} value={cashier}>
-                    {cashier}
-                  </option>
-                ))}
-              </select>
+              {isAdmin ? (
+                <select
+                  value={selectedCashier}
+                  onChange={(e) => setSelectedCashier(e.target.value)}
+                  className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                >
+                  <option value="All Cashiers">All Cashiers</option>
+                  {(allCashiers.length > 0
+                    ? allCashiers
+                    : Array.from(
+                        new Set(
+                          sales
+                            .map((s) => s.cashier)
+                            .filter((c) => c && c !== "Unknown"),
+                        ),
+                      ).sort()
+                  ).map((cashier) => (
+                    <option key={cashier} value={cashier}>
+                      {cashier}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-muted-foreground">
+                  {currentUserName || "My Sales"}
+                </span>
+              )}
               <select
                 value={selectedShift}
                 onChange={(e) => setSelectedShift(e.target.value as "" | "AM" | "PM")}
