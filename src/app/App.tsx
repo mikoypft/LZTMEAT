@@ -377,6 +377,12 @@ export default function App() {
           label: "Cash-in / Cash-out",
           permission: "transactions",
         },
+        {
+          id: "discrepancies" as Page,
+          icon: AlertTriangle,
+          label: "Discrepancies",
+          permission: "discrepancies",
+        },
       ];
 
       allMenuItems.forEach((item) => {
