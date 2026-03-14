@@ -7,6 +7,7 @@ import {
   Calendar,
   User,
   FileText,
+  ArrowDownCircle,
 } from "lucide-react";
 import { API_BASE_URL, getTransactionCategories } from "../../utils/api";
 import { toast } from "sonner";
@@ -42,6 +43,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [reference, setReference] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(null);
+  const [cashOutLoading, setCashOutLoading] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -116,6 +119,36 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     } catch (error) {
       console.error("Error adding transaction:", error);
       toast.error("Error adding transaction");
+    }
+  };
+
+  const handleQuickCashOut = async (source: Transaction) => {
+    setCashOutLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "Cash Out",
+          amount: source.amount,
+          description: source.description,
+          category: source.category,
+          reference: source.reference || undefined,
+          createdBy: user?.fullName || "Admin",
+        }),
+      });
+      if (response.ok) {
+        await fetchTransactions();
+        setCashOutConfirm(null);
+        toast.success("Cash out transaction recorded successfully");
+      } else {
+        toast.error("Failed to record cash out");
+      }
+    } catch (error) {
+      console.error("Error recording quick cash out:", error);
+      toast.error("Error recording cash out");
+    } finally {
+      setCashOutLoading(false);
     }
   };
 
@@ -288,13 +321,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created By
                 </th>
+                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading transactions...
@@ -303,7 +339,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
               ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     No transactions found. Click "Add Transaction" to create
@@ -364,6 +400,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {transaction.createdBy}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {transaction.type === "Cash In" && (isAdmin || user?.permissions?.includes("admin_permissions")) && (
+                        <button
+                          onClick={() => setCashOutConfirm(transaction)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <ArrowDownCircle className="w-3.5 h-3.5" />
+                          Cash Out
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -371,6 +418,56 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
           </table>
         </div>
       </div>
+
+      {/* Quick Cash Out Confirmation Modal */}
+      {cashOutConfirm && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => setCashOutConfirm(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Confirm Cash Out</h2>
+            <p className="text-sm text-gray-500 mb-5">A new Cash Out transaction will be recorded with the following details:</p>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm mb-6">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Category</span>
+                <span className="font-medium text-gray-900">{cashOutConfirm.category}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Description</span>
+                <span className="font-medium text-gray-900 text-right max-w-[60%]">{cashOutConfirm.description}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Reference</span>
+                <span className="font-medium text-gray-900">{cashOutConfirm.reference || "-"}</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
+                <span className="text-gray-500 font-medium">Amount</span>
+                <span className="font-bold text-red-600">-₱{cashOutConfirm.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCashOutConfirm(null)}
+                disabled={cashOutLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleQuickCashOut(cashOutConfirm)}
+                disabled={cashOutLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+              >
+                {cashOutLoading ? "Recording..." : "Confirm Cash Out"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Transaction Modal */}
       {isAddModalOpen && (
