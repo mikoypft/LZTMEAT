@@ -19,6 +19,7 @@ import {
   Percent,
   FileText,
   Search,
+  AlertTriangle,
 } from "lucide-react";
 import { POSPage } from "@/app/components/POSPage";
 import { ProductionDashboard } from "@/app/components/ProductionDashboard";
@@ -38,6 +39,7 @@ import { SupplierInvoicePage } from "@/app/components/SupplierInvoicePage";
 import { HistoryPage } from "@/app/components/HistoryPage";
 import { DiscountsPage } from "@/app/components/DiscountsPage";
 import { ReportsPage } from "@/app/components/ReportsPage";
+import { DiscrepanciesPage } from "@/app/components/DiscrepanciesPage";
 import TransactionsPage from "@/app/components/TransactionsPage";
 import { refreshSession } from "@/utils/api";
 
@@ -57,7 +59,8 @@ type Page =
   | "supplier-invoices"
   | "history"
   | "transactions"
-  | "discounts";
+  | "discounts"
+  | "discrepancies";
 
 const SESSION_KEY = "lzt_user_session";
 const SESSION_EXPIRY_KEY = "lzt_session_expiry";
@@ -363,6 +366,12 @@ export default function App() {
           permission: "discounts",
         },
         {
+          id: "discrepancies" as Page,
+          icon: AlertTriangle,
+          label: "Discrepancies",
+          permission: "production",
+        },
+        {
           id: "history" as Page,
           icon: History,
           label: "History",
@@ -472,6 +481,12 @@ export default function App() {
           label: "History",
           roles: ["PRODUCTION"],
         },
+        {
+          id: "discrepancies" as Page,
+          icon: AlertTriangle,
+          label: "Discrepancies",
+          roles: ["PRODUCTION"],
+        },
       ];
     }
 
@@ -570,6 +585,12 @@ export default function App() {
         icon: DollarSign,
         label: "Cash-in / Cash-out",
         roles: ["ADMIN", "STORE", "PRODUCTION"],
+      },
+      {
+        id: "discrepancies" as Page,
+        icon: AlertTriangle,
+        label: "Discrepancies",
+        roles: ["ADMIN", "PRODUCTION"],
       },
     ];
 
@@ -905,6 +926,7 @@ export default function App() {
             {currentPage === "discounts" && (
               <DiscountsPage userRole={currentUser.role} />
             )}
+            {currentPage === "discrepancies" && <DiscrepanciesPage />}
             {currentPage === "history" && (
               <HistoryPage currentUser={currentUser} />
             )}

@@ -2114,6 +2114,9 @@ $routes = [
                     'mixingDiscrepancy' => $r['mixing_discrepancy'] !== null ? (float)$r['mixing_discrepancy'] : null,
                     'packingDiscrepancy' => $r['packing_discrepancy'] !== null ? (float)$r['packing_discrepancy'] : null,
                     'cookingDiscrepancy' => $r['cooking_discrepancy'] !== null ? (float)$r['cooking_discrepancy'] : null,
+                    'mixingDiscrepancyReason' => $r['mixing_discrepancy_reason'] ?? null,
+                    'packingDiscrepancyReason' => $r['packing_discrepancy_reason'] ?? null,
+                    'cookingDiscrepancyReason' => $r['cooking_discrepancy_reason'] ?? null,
                     'initialIngredients' => $enrichedIngredients,
                     'timestamp' => $r['created_at'],
                 ];

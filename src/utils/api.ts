@@ -805,6 +805,12 @@ export interface ProductionRecord {
   outputs?: ProductionOutput[];
   notes?: string;
   timestamp: string;
+  mixingDiscrepancy?: number | null;
+  packingDiscrepancy?: number | null;
+  cookingDiscrepancy?: number | null;
+  mixingDiscrepancyReason?: string | null;
+  packingDiscrepancyReason?: string | null;
+  cookingDiscrepancyReason?: string | null;
 }
 
 export interface ProductionOutput {
