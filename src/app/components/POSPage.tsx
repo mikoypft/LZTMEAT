@@ -209,6 +209,7 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
   });
   const [mobileView, setMobileView] = useState<"products" | "cart">("products");
   const [toolbarHidden, setToolbarHidden] = useState(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // All users can switch stores in POS
   const canSwitchStores = true;
@@ -1336,7 +1337,7 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                       Charge ₱{total.toFixed(2)}
                     </button>
                     <button
-                      onClick={clearCart}
+                      onClick={() => setShowClearConfirm(true)}
                       className="w-full py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       Clear Order
@@ -1397,6 +1398,30 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
           }}
         />
       )}
+      {/* Clear Order Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-base font-bold text-gray-800 mb-2">Clear Order?</h3>
+            <p className="text-sm text-gray-500 mb-6">All items in the current order will be removed. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { clearCart(); setShowClearConfirm(false); }}
+                className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-colors"
+              >
+                Clear Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Receipt Modal */}
       {showReceiptModal && receiptData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
