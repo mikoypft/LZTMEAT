@@ -1,13 +1,22 @@
-import { useState, useEffect } from "react";
-import { ClipboardList, X, AlertTriangle, CheckCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import {
-  getInventory,
-  getProducts,
+  ClipboardList,
+  X,
+  AlertTriangle,
+  CheckCircle,
+  Lock,
+  Eye,
+  EyeOff,
+  TrendingDown,
+  ArrowDownToLine,
+  Info,
+} from "lucide-react";
+import {
+  getEODPreflight,
+  EODPreflightItem,
   submitEODCount,
   verifyPassword,
   EODStockCountItem,
-  InventoryRecord,
-  Product,
 } from "@/utils/api";
 import { UserData } from "@/app/components/LoginPage";
 
@@ -51,11 +60,7 @@ export function getPendingEODSession(userId: string): {
 }
 
 // ─── Row in the stock count table ────────────────────────────────────────────
-interface CountRow {
-  productId: string;
-  productName: string;
-  unit: string;
-  expectedQty: number;
+interface CountRow extends EODPreflightItem {
   actualQty: string; // string so input field is controlled
 }
 
@@ -85,54 +90,63 @@ export function EODStockCountModal({
 }: EODStockCountModalProps) {
   const [rows, setRows] = useState<CountRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noSales, setNoSales] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [notes, setNotes] = useState("");
+  const autoLoggedOut = useRef(false);
 
-  // Use recovery session data or current user
+  // Resolved context — recovery session overrides current user
   const targetStoreName = recoverySession?.storeName ?? currentUser.storeName ?? "";
   const targetStoreId   = recoverySession?.storeId   ?? currentUser.storeId   ?? null;
   const targetShift     = recoverySession?.shift      ?? currentUser.shift     ?? null;
   const targetUserId    = recoverySession?.userId     ?? currentUser.id        ?? null;
-  const targetUserName  = recoverySession?.userName   ?? (currentUser.fullName || currentUser.username);
+  const targetUserName  = recoverySession?.userName   ?? currentUser.fullName  ?? currentUser.username;
 
-  const shiftDate = new Date().toISOString().slice(0, 10);
+  // For a recovery session use that session's date; otherwise use today
+  const shiftDate = recoverySession
+    ? new Date(recoverySession.loginTime).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
 
-  // Fetch inventory for the store and build rows
+  // ── Load preflight data ──────────────────────────────────────────────────
   useEffect(() => {
+    if (!targetStoreId || !targetStoreName) { setLoading(false); return; }
+
     const load = async () => {
       setLoading(true);
       try {
-        const [inv, products]: [InventoryRecord[], Product[]] = await Promise.all([
-          getInventory(targetStoreName),
-          getProducts(),
-        ]);
+        const preflight = await getEODPreflight({
+          storeId:   String(targetStoreId),
+          storeName: targetStoreName,
+          shiftDate,
+        });
 
-        const productMap: Record<string, Product> = {};
-        products.forEach((p) => { productMap[String(p.id)] = p; });
+        if (!preflight.hasSales) {
+          // No sales for this store on this date → skip the modal
+          setNoSales(true);
+          if (!autoLoggedOut.current) {
+            autoLoggedOut.current = true;
+            setTimeout(() => onConfirmLogout(), 400);
+          }
+          return;
+        }
 
-        const builtRows: CountRow[] = inv
-          .filter((i) => i.quantity >= 0)
-          .map((i) => {
-            const p = productMap[i.productId];
-            return {
-              productId:   i.productId,
-              productName: i.productName || p?.name || `Product ${i.productId}`,
-              unit:        i.unit        || p?.unit  || "kg",
-              expectedQty: i.quantity,
-              actualQty:   "",
-            };
-          });
-
-        setRows(builtRows);
+        setRows(
+          preflight.items
+            .filter((item) => item.expectedQty >= 0)
+            .map((item) => ({ ...item, actualQty: "" })),
+        );
+      } catch (e: any) {
+        setError(e?.message || "Failed to load stock data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [targetStoreName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetStoreId, targetStoreName, shiftDate]);
 
   const updateActual = (idx: number, value: string) => {
     setRows((prev) => {
@@ -149,6 +163,20 @@ export function EODStockCountModal({
   });
 
   const allFilled = rows.length > 0 && rows.every((r) => r.actualQty !== "");
+
+  // ── Loading / no-sales skeleton ──────────────────────────────────────────
+  if (loading || noSales) {
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div className="bg-background rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">
+            {noSales ? "No sales today — logging out…" : "Checking today's sales…"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async () => {
     if (!allFilled) { setError("Please fill in the actual quantity for all products."); return; }
@@ -243,19 +271,31 @@ export function EODStockCountModal({
                     day: "numeric",
                   })}
                 </strong>{" "}
-                ended without an end-of-shift count. Please complete it now.
+                ended without a stock count. Please complete it now.
               </span>
             </div>
           )}
+
+          {/* Legend */}
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <TrendingDown className="w-3.5 h-3.5 text-blue-500" />
+              Sold Today — all cashiers in this store
+            </span>
+            <span className="flex items-center gap-1">
+              <ArrowDownToLine className="w-3.5 h-3.5 text-green-500" />
+              Deliveries included in Expected
+            </span>
+            <span className="flex items-center gap-1">
+              <Info className="w-3.5 h-3.5" />
+              Expected = current system quantity
+            </span>
+          </div>
         </div>
 
         {/* Table body — scrollable */}
         <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="py-16 text-center text-muted-foreground text-sm">
-              Loading inventory…
-            </div>
-          ) : rows.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground text-sm">
               No inventory records found for {targetStoreName}.
             </div>
@@ -264,6 +304,12 @@ export function EODStockCountModal({
               <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                 <tr>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Product</th>
+                  <th className="text-right px-4 py-3 font-medium text-blue-600">
+                    <span className="flex items-center justify-end gap-1">
+                      <TrendingDown className="w-3.5 h-3.5" />
+                      Sold Today
+                    </span>
+                  </th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Expected</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actual</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Discrepancy</th>
@@ -288,6 +334,18 @@ export function EODStockCountModal({
                       <td className="px-5 py-3 font-medium">
                         {row.productName}
                         <span className="ml-1 text-xs text-muted-foreground">({row.unit})</span>
+                        {(row.transfersIn > 0 || row.transfersOut > 0) && (
+                          <span className="ml-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
+                            {row.transfersIn > 0 ? `+${row.transfersIn} delivered` : ""}
+                            {row.transfersIn > 0 && row.transfersOut > 0 ? " / " : ""}
+                            {row.transfersOut > 0 ? `−${row.transfersOut} sent out` : ""}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-blue-600">
+                        {row.totalSoldToday > 0
+                          ? row.totalSoldToday.toFixed(3)
+                          : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
                         {row.expectedQty.toFixed(3)}
@@ -386,7 +444,7 @@ export function EODStockCountModal({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={submitting || loading}
+              disabled={submitting}
               className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 flex items-center gap-2"
             >
               {submitting ? "Submitting…" : "Submit & Logout"}

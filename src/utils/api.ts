@@ -938,6 +938,38 @@ export interface EODStockCountItem {
   actualQty: number;
 }
 
+export interface EODPreflightItem {
+  productId: string;
+  productName: string;
+  unit: string;
+  /** Current inventory quantity — already reflects all sales (all cashiers) + completed transfers */
+  expectedQty: number;
+  /** Total units sold today across ALL cashiers in this store */
+  totalSoldToday: number;
+  /** Stock received into this store today via completed transfers */
+  transfersIn: number;
+  /** Stock sent out of this store today via completed transfers */
+  transfersOut: number;
+}
+
+export async function getEODPreflight(params: {
+  storeId: string;
+  storeName: string;
+  shiftDate: string;
+}): Promise<{ hasSales: boolean; salesCount: number; items: EODPreflightItem[] }> {
+  const qs = new URLSearchParams({
+    storeId: params.storeId,
+    storeName: params.storeName,
+    shiftDate: params.shiftDate,
+  }).toString();
+  const data = await apiRequest<{
+    hasSales: boolean;
+    salesCount: number;
+    items: EODPreflightItem[];
+  }>(`/eod-counts/preflight?${qs}`);
+  return data;
+}
+
 export async function verifyPassword(
   userId: string,
   password: string,

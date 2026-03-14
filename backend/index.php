@@ -6537,6 +6537,97 @@ $routes = [
 
     // ==================== EOD STOCK COUNTS ====================
 
+    // Preflight: check if a store had any sales on a given date and return per-product breakdown
+    'GET /api/eod-counts/preflight' => function() use ($pdo) {
+        $storeId   = $_GET['storeId']   ?? null;
+        $storeName = $_GET['storeName'] ?? '';
+        $shiftDate = $_GET['shiftDate'] ?? date('Y-m-d');
+
+        // 1. Count sales for this store on this date (all cashiers)
+        if ($storeId) {
+            $cStmt = $pdo->prepare('SELECT COUNT(*) FROM sales WHERE store_id = ? AND DATE(created_at) = ?');
+            $cStmt->execute([$storeId, $shiftDate]);
+        } else {
+            // Fallback: no store_id provided → no sales check possible
+            return ['hasSales' => false, 'salesCount' => 0, 'items' => []];
+        }
+        $salesCount = (int)$cStmt->fetchColumn();
+
+        // 2. Current inventory for this store (already reflects all sales + received transfers)
+        $invStmt = $pdo->prepare(
+            'SELECT i.product_id, COALESCE(p.name, CONCAT("Product ", i.product_id)) as product_name,
+                    COALESCE(p.unit, "kg") as unit, i.quantity
+             FROM inventory i
+             LEFT JOIN products p ON i.product_id = p.id
+             WHERE i.location = ?
+             ORDER BY p.name'
+        );
+        $invStmt->execute([$storeName]);
+        $inventory = $invStmt->fetchAll();
+
+        // 3. Total sold today per product, ALL cashiers in this store (weight-based deduction may differ
+        //    from qty, but this gives a useful reference for the cashier's UI)
+        $soldStmt = $pdo->prepare(
+            'SELECT si.product_id, SUM(si.quantity) as qty_sold
+             FROM sale_items si
+             JOIN sales s ON s.id = si.sale_id
+             WHERE s.store_id = ? AND DATE(s.created_at) = ?
+             GROUP BY si.product_id'
+        );
+        $soldStmt->execute([$storeId, $shiftDate]);
+        $soldMap = [];
+        foreach ($soldStmt->fetchAll() as $r) {
+            $soldMap[(string)$r['product_id']] = (float)$r['qty_sold'];
+        }
+
+        // 4. Transfers received INTO this store today (completed)
+        $tInStmt = $pdo->prepare(
+            'SELECT product_id, SUM(COALESCE(quantity_received, quantity)) as qty
+             FROM transfers
+             WHERE `to` = ? AND status = "Completed"
+               AND DATE(COALESCE(received_at, updated_at, created_at)) = ?
+             GROUP BY product_id'
+        );
+        $tInStmt->execute([$storeName, $shiftDate]);
+        $tInMap = [];
+        foreach ($tInStmt->fetchAll() as $r) {
+            $tInMap[(string)$r['product_id']] = (float)$r['qty'];
+        }
+
+        // 5. Transfers sent OUT of this store today (completed)
+        $tOutStmt = $pdo->prepare(
+            'SELECT product_id, SUM(COALESCE(quantity_received, quantity)) as qty
+             FROM transfers
+             WHERE `from` = ? AND status = "Completed"
+               AND DATE(COALESCE(received_at, updated_at, created_at)) = ?
+             GROUP BY product_id'
+        );
+        $tOutStmt->execute([$storeName, $shiftDate]);
+        $tOutMap = [];
+        foreach ($tOutStmt->fetchAll() as $r) {
+            $tOutMap[(string)$r['product_id']] = (float)$r['qty'];
+        }
+
+        $items = array_map(function($inv) use ($soldMap, $tInMap, $tOutMap) {
+            $pid = (string)$inv['product_id'];
+            return [
+                'productId'      => $pid,
+                'productName'    => $inv['product_name'],
+                'unit'           => $inv['unit'],
+                'expectedQty'    => (float)$inv['quantity'],  // current inventory = ground truth
+                'totalSoldToday' => $soldMap[$pid]  ?? 0.0,
+                'transfersIn'    => $tInMap[$pid]   ?? 0.0,
+                'transfersOut'   => $tOutMap[$pid]  ?? 0.0,
+            ];
+        }, $inventory);
+
+        return [
+            'hasSales'   => $salesCount > 0,
+            'salesCount' => $salesCount,
+            'items'      => $items,
+        ];
+    },
+
     'GET /api/eod-counts' => function() use ($pdo) {
         $userId    = $_GET['userId']    ?? null;
         $startDate = $_GET['startDate'] ?? null;
