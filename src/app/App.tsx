@@ -41,6 +41,11 @@ import { DiscountsPage } from "@/app/components/DiscountsPage";
 import { ReportsPage } from "@/app/components/ReportsPage";
 import { DiscrepanciesPage } from "@/app/components/DiscrepanciesPage";
 import TransactionsPage from "@/app/components/TransactionsPage";
+import {
+  EODStockCountModal,
+  setEODSessionMarker,
+  getPendingEODSession,
+} from "@/app/components/EODStockCountModal";
 import { refreshSession } from "@/utils/api";
 
 type Page =
@@ -76,6 +81,11 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showEODModal, setShowEODModal] = useState(false);
+  const [eodIsRecovery, setEodIsRecovery] = useState(false);
+  const [pendingEODSession, setPendingEODSession] = useState<ReturnType<
+    typeof getPendingEODSession
+  >>(null);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -166,6 +176,16 @@ export default function App() {
     setCurrentUser(userData);
     saveSession(userData);
 
+    // EOD session tracking: check for an unfinished session from a previous day
+    if (userData.storeId) {
+      const prev = getPendingEODSession(String(userData.id));
+      if (prev && new Date(prev.loginTime).toDateString() !== new Date().toDateString()) {
+        setPendingEODSession(prev);
+      }
+      // Record this login so accidental logouts can be detected on the next login
+      setEODSessionMarker(userData);
+    }
+
     // Determine the initial page based on user role and type
     let initialPage: Page = "dashboard";
 
@@ -242,7 +262,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setShowLogoutConfirm(true);
+    if (currentUser?.storeId) {
+      // Store employees must complete EOD stock count before logging out
+      setEodIsRecovery(false);
+      setShowEODModal(true);
+    } else {
+      setShowLogoutConfirm(true);
+    }
   };
 
   const confirmLogout = () => {
@@ -251,6 +277,18 @@ export default function App() {
     setSidebarOpen(false);
     setShowLogoutConfirm(false);
     clearSession();
+  };
+
+  /** Called when EOD count is submitted before logout */
+  const handleEODComplete = () => {
+    setShowEODModal(false);
+    confirmLogout();
+  };
+
+  /** Called when a recovery EOD count is submitted (user is NOT logging out) */
+  const handleEODRecoveryComplete = () => {
+    setShowEODModal(false);
+    setPendingEODSession(null);
   };
 
   // Define menu items based on user role and permissions
@@ -668,9 +706,56 @@ export default function App() {
 
           {/* POS Content */}
           <main className="flex-1 overflow-auto">
+            {/* Recovery banner — shown when previous session had no EOD count */}
+            {pendingEODSession && !showEODModal && (
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between gap-4 text-sm">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    Your last session on{" "}
+                    <strong>
+                      {new Date(pendingEODSession.loginTime).toLocaleDateString(
+                        "en-US",
+                        { weekday: "short", month: "short", day: "numeric" },
+                      )}
+                    </strong>{" "}
+                    didn't complete an end-of-shift count.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      setEodIsRecovery(true);
+                      setShowEODModal(true);
+                    }}
+                    className="px-3 py-1 bg-amber-600 text-white text-xs font-semibold rounded-md hover:bg-amber-700"
+                  >
+                    Complete Now
+                  </button>
+                  <button
+                    onClick={() => setPendingEODSession(null)}
+                    className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-md hover:bg-amber-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             <POSPage currentUser={currentUser} />
           </main>
         </div>
+
+        {/* EOD Stock Count Modal - POS View */}
+        {showEODModal && currentUser && (
+          <EODStockCountModal
+            currentUser={currentUser}
+            onCancel={() => setShowEODModal(false)}
+            onConfirmLogout={
+              eodIsRecovery ? handleEODRecoveryComplete : handleEODComplete
+            }
+            recoverySession={eodIsRecovery ? pendingEODSession : null}
+          />
+        )}
 
         {/* Logout Confirmation Modal - POS View */}
         {showLogoutConfirm && (
@@ -856,6 +941,41 @@ export default function App() {
 
           {/* Page Content */}
           <main className="flex-1 overflow-auto">
+            {/* Recovery banner — shown when previous session had no EOD count */}
+            {pendingEODSession && !showEODModal && (
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between gap-4 text-sm sticky top-0 z-20">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    Your last session on{" "}
+                    <strong>
+                      {new Date(pendingEODSession.loginTime).toLocaleDateString(
+                        "en-US",
+                        { weekday: "short", month: "short", day: "numeric" },
+                      )}
+                    </strong>{" "}
+                    didn't complete an end-of-shift count.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      setEodIsRecovery(true);
+                      setShowEODModal(true);
+                    }}
+                    className="px-3 py-1 bg-amber-600 text-white text-xs font-semibold rounded-md hover:bg-amber-700"
+                  >
+                    Complete Now
+                  </button>
+                  <button
+                    onClick={() => setPendingEODSession(null)}
+                    className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-md hover:bg-amber-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             {currentPage === "dashboard" && (
               <EnhancedDashboardPage
                 userRole={currentUser.role}
@@ -930,6 +1050,18 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {/* EOD Stock Count Modal - Main View */}
+      {showEODModal && currentUser && (
+        <EODStockCountModal
+          currentUser={currentUser}
+          onCancel={() => setShowEODModal(false)}
+          onConfirmLogout={
+            eodIsRecovery ? handleEODRecoveryComplete : handleEODComplete
+          }
+          recoverySession={eodIsRecovery ? pendingEODSession : null}
+        />
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (

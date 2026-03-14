@@ -460,6 +460,8 @@ export async function saveProductMixCategoryDefaultIngredients(
 export interface InventoryRecord {
   id: string;
   productId: string;
+  productName?: string;
+  unit?: string;
   location: string;
   quantity: number;
   lastUpdated: string;
@@ -922,6 +924,48 @@ export async function adjustSalesDiscrepancy(
   const data = await apiRequest<{ success: boolean; adjustment: { id: string; unitCost: number; totalCost: number; createdAt: string } }>(
     `/sales-discrepancies/${id}/adjust`,
     { method: "POST", body: JSON.stringify({ unitCost, notes, cashier, userId }) },
+  );
+  return data;
+}
+
+// ==================== EOD STOCK COUNT ====================
+
+export interface EODStockCountItem {
+  productId: string;
+  productName: string;
+  unit: string;
+  expectedQty: number;
+  actualQty: number;
+}
+
+export async function verifyPassword(
+  userId: string,
+  password: string,
+): Promise<boolean> {
+  try {
+    const data = await apiRequest<{ valid: boolean }>("/auth/verify-password", {
+      method: "POST",
+      body: JSON.stringify({ userId, password }),
+    });
+    return data.valid;
+  } catch {
+    return false;
+  }
+}
+
+export async function submitEODCount(payload: {
+  userId?: string | null;
+  userName: string;
+  storeId?: string | null;
+  storeName: string;
+  shiftDate: string;
+  shift?: "AM" | "PM" | null;
+  notes?: string | null;
+  items: EODStockCountItem[];
+}): Promise<{ success: boolean; countId: string }> {
+  const data = await apiRequest<{ success: boolean; countId: string }>(
+    "/eod-counts",
+    { method: "POST", body: JSON.stringify(payload) },
   );
   return data;
 }

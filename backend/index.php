@@ -342,6 +342,41 @@ try {
         )");
     } catch(Exception $e) { error_log('discrepancy_adjustments table: ' . $e->getMessage()); }
 
+    // Auto-create eod_stock_counts table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS eod_stock_counts (
+            id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NULL,
+            user_name VARCHAR(255) NOT NULL DEFAULT '',
+            store_id BIGINT UNSIGNED NULL,
+            store_name VARCHAR(255) NOT NULL DEFAULT '',
+            shift_date DATE NOT NULL,
+            shift ENUM('AM','PM') NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_eod_user (user_id),
+            INDEX idx_eod_store (store_id),
+            INDEX idx_eod_date (shift_date)
+        )");
+    } catch(Exception $e) { error_log('eod_stock_counts table: ' . $e->getMessage()); }
+
+    // Auto-create eod_stock_count_items table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS eod_stock_count_items (
+            id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+            eod_count_id BIGINT UNSIGNED NOT NULL,
+            product_id VARCHAR(255) NOT NULL DEFAULT '',
+            product_name VARCHAR(255) NOT NULL DEFAULT '',
+            unit VARCHAR(50) NOT NULL DEFAULT 'kg',
+            expected_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+            actual_qty DECIMAL(10,3) NOT NULL DEFAULT 0,
+            discrepancy DECIMAL(10,3) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_eod_items_count (eod_count_id)
+        )");
+    } catch(Exception $e) { error_log('eod_stock_count_items table: ' . $e->getMessage()); }
+
     // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
     try {
         $pdo->exec("UPDATE stores SET name = 'Amparo Store' WHERE name = 'Main Store'");
@@ -4525,7 +4560,7 @@ $routes = [
     'GET /api/inventory' => function() use ($pdo) {
         $location = $_GET['location'] ?? null;
         
-        $query = 'SELECT i.*, p.name as product_name FROM inventory i LEFT JOIN products p ON i.product_id = p.id';
+        $query = 'SELECT i.*, p.name as product_name, p.unit as unit FROM inventory i LEFT JOIN products p ON i.product_id = p.id';
         $params = [];
         
         if ($location) {
@@ -4543,6 +4578,8 @@ $routes = [
                 return [
                     'id' => (string)$i['id'],
                     'productId' => (string)$i['product_id'],
+                    'productName' => $i['product_name'] ?? '',
+                    'unit' => $i['unit'] ?? 'kg',
                     'location' => $i['location'],
                     'quantity' => (float)$i['quantity'],
                     'lastUpdated' => $i['updated_at'],
@@ -6417,8 +6454,7 @@ $routes = [
         ];
     },
 
-    'POST /api/sales-discrepancies/{id}/adjust' => function() use ($pdo, $body) {
-        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    'POST /api/sales-discrepancies/{id}/adjust' => function() use ($pdo, $body) {        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         preg_match('/\/api\/sales-discrepancies\/(\d+)\/adjust/', $uri, $matches);
         $id = $matches[1] ?? null;
 
@@ -6474,6 +6510,152 @@ $routes = [
                 'createdAt' => date('Y-m-d H:i:s'),
             ],
         ];
+    },
+
+    // ==================== PASSWORD VERIFY ====================
+
+    'POST /api/auth/verify-password' => function() use ($pdo, $body) {
+        $userId   = $body['userId']   ?? null;
+        $password = $body['password'] ?? '';
+
+        if (!$userId || !$password) {
+            http_response_code(400);
+            return ['valid' => false, 'error' => 'userId and password are required'];
+        }
+
+        $stmt = $pdo->prepare('SELECT password FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['password'])) {
+            http_response_code(401);
+            return ['valid' => false, 'error' => 'Incorrect password'];
+        }
+
+        return ['valid' => true];
+    },
+
+    // ==================== EOD STOCK COUNTS ====================
+
+    'GET /api/eod-counts' => function() use ($pdo) {
+        $userId    = $_GET['userId']    ?? null;
+        $startDate = $_GET['startDate'] ?? null;
+        $endDate   = $_GET['endDate']   ?? null;
+
+        $where  = [];
+        $params = [];
+        if ($userId)    { $where[] = 'e.user_id = ?';            $params[] = $userId; }
+        if ($startDate) { $where[] = 'e.shift_date >= ?';        $params[] = $startDate; }
+        if ($endDate)   { $where[] = 'e.shift_date <= ?';        $params[] = $endDate; }
+
+        $query = 'SELECT e.* FROM eod_stock_counts e'
+                 . (!empty($where) ? ' WHERE ' . implode(' AND ', $where) : '')
+                 . ' ORDER BY e.shift_date DESC, e.created_at DESC';
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $counts = $stmt->fetchAll();
+
+        $result = [];
+        foreach ($counts as $c) {
+            $iStmt = $pdo->prepare('SELECT * FROM eod_stock_count_items WHERE eod_count_id = ? ORDER BY product_name');
+            $iStmt->execute([$c['id']]);
+            $items = $iStmt->fetchAll();
+            $result[] = [
+                'id'         => (string)$c['id'],
+                'userId'     => $c['user_id'] ? (string)$c['user_id'] : null,
+                'userName'   => $c['user_name'],
+                'storeId'    => $c['store_id'] ? (string)$c['store_id'] : null,
+                'storeName'  => $c['store_name'],
+                'shiftDate'  => $c['shift_date'],
+                'shift'      => $c['shift'],
+                'notes'      => $c['notes'],
+                'createdAt'  => $c['created_at'],
+                'items'      => array_map(fn($i) => [
+                    'id'           => (string)$i['id'],
+                    'productId'    => $i['product_id'],
+                    'productName'  => $i['product_name'],
+                    'unit'         => $i['unit'],
+                    'expectedQty'  => (float)$i['expected_qty'],
+                    'actualQty'    => (float)$i['actual_qty'],
+                    'discrepancy'  => (float)$i['discrepancy'],
+                ], $items),
+            ];
+        }
+
+        return ['counts' => $result];
+    },
+
+    'POST /api/eod-counts' => function() use ($pdo, $body) {
+        $userId    = $body['userId']    ?? null;
+        $userName  = $body['userName']  ?? '';
+        $storeId   = $body['storeId']   ?? null;
+        $storeName = $body['storeName'] ?? '';
+        $shiftDate = $body['shiftDate'] ?? date('Y-m-d');
+        $shift     = $body['shift']     ?? null;
+        $notes     = $body['notes']     ?? null;
+        $items     = $body['items']     ?? [];
+
+        if (!$userName || !$storeName || empty($items)) {
+            http_response_code(400);
+            return ['error' => 'userName, storeName, and items are required'];
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $ins = $pdo->prepare(
+                'INSERT INTO eod_stock_counts (user_id, user_name, store_id, store_name, shift_date, shift, notes, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,NOW(),NOW())'
+            );
+            $ins->execute([$userId, $userName, $storeId, $storeName, $shiftDate, $shift, $notes]);
+            $countId = $pdo->lastInsertId();
+
+            $iIns = $pdo->prepare(
+                'INSERT INTO eod_stock_count_items (eod_count_id, product_id, product_name, unit, expected_qty, actual_qty, discrepancy, created_at)
+                 VALUES (?,?,?,?,?,?,?,NOW())'
+            );
+
+            foreach ($items as $item) {
+                $expected    = (float)($item['expectedQty']  ?? 0);
+                $actual      = (float)($item['actualQty']    ?? 0);
+                $discrepancy = $expected - $actual;
+                $iIns->execute([
+                    $countId,
+                    $item['productId']   ?? '',
+                    $item['productName'] ?? '',
+                    $item['unit']        ?? 'kg',
+                    $expected,
+                    $actual,
+                    $discrepancy,
+                ]);
+
+                // Auto-create a sales_discrepancy record if there is a shortage
+                if ($discrepancy > 0) {
+                    $dIns = $pdo->prepare(
+                        'INSERT INTO sales_discrepancies
+                         (store_id, store_name, product_id, product_name, unit, shift_date, shift,
+                          starting_stock, sales_quantity, expected_remaining, reported_remaining,
+                          discrepancy_amount, cashier, user_id, status, notes, created_at, updated_at)
+                         VALUES (?,?,?,?,?,?,?, 0, 0, ?,?,?,?,?,\'pending\',?,NOW(),NOW())'
+                    );
+                    $note = 'Auto-created from EOD count';
+                    $dIns->execute([
+                        $storeId, $storeName,
+                        $item['productId'] ?? '', $item['productName'] ?? '', $item['unit'] ?? 'kg',
+                        $shiftDate, $shift,
+                        $expected, $actual, $discrepancy,
+                        $userName, $userId, $note,
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+
+            return ['success' => true, 'countId' => (string)$countId];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            return ['error' => 'Failed to save EOD count: ' . $e->getMessage()];
+        }
     },
 
 ];
