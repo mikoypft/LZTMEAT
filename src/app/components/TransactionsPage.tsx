@@ -21,6 +21,7 @@ interface Transaction {
   reference?: string;
   createdBy: string;
   timestamp: string;
+  sourceTransactionId?: string | null;
 }
 
 interface TransactionsPageProps {
@@ -135,6 +136,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
           category: source.category,
           reference: source.reference || undefined,
           createdBy: user?.fullName || "Admin",
+          sourceTransactionId: source.id,
         }),
       });
       if (response.ok) {
@@ -401,15 +403,25 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                       {transaction.createdBy}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {transaction.type === "Cash In" && (isAdmin || user?.permissions?.includes("admin_permissions")) && (
-                        <button
-                          onClick={() => setCashOutConfirm(transaction)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          <ArrowDownCircle className="w-3.5 h-3.5" />
-                          Cash Out
-                        </button>
-                      )}
+                      {transaction.type === "Cash In" && (isAdmin || user?.permissions?.includes("admin_permissions")) && (() => {
+                        const alreadyCashedOut = transactions.some(
+                          (t) => t.type === "Cash Out" && t.sourceTransactionId === transaction.id
+                        );
+                        return alreadyCashedOut ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                            <ArrowDownCircle className="w-3.5 h-3.5" />
+                            Cashed Out
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setCashOutConfirm(transaction)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <ArrowDownCircle className="w-3.5 h-3.5" />
+                            Cash Out
+                          </button>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))

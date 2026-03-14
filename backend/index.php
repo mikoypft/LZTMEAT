@@ -181,6 +181,11 @@ try {
                 INDEX idx_created_at (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        // Add source_transaction_id column if it doesn't exist yet
+        $pdo->exec("
+            ALTER TABLE transactions
+            ADD COLUMN IF NOT EXISTS source_transaction_id BIGINT UNSIGNED NULL DEFAULT NULL
+        ");
     } catch (Exception $tableErr) {
         error_log('transactions table creation: ' . $tableErr->getMessage());
     }
@@ -5260,6 +5265,7 @@ $routes = [
                         'reference' => $t['reference'],
                         'createdBy' => $t['created_by'],
                         'timestamp' => $t['created_at'],
+                        'sourceTransactionId' => isset($t['source_transaction_id']) && $t['source_transaction_id'] ? (string)$t['source_transaction_id'] : null,
                     ];
                 }, $transactions),
             ];
@@ -5277,6 +5283,7 @@ $routes = [
             $category = $body['category'] ?? '';
             $reference = $body['reference'] ?? null;
             $createdBy = $body['createdBy'] ?? 'Admin';
+            $sourceTransactionId = isset($body['sourceTransactionId']) ? (int)$body['sourceTransactionId'] : null;
 
             if ($amount <= 0) {
                 http_response_code(400);
@@ -5284,10 +5291,10 @@ $routes = [
             }
 
             $stmt = $pdo->prepare('
-                INSERT INTO transactions (type, amount, description, category, reference, created_by, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                INSERT INTO transactions (type, amount, description, category, reference, created_by, source_transaction_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
-            $stmt->execute([$type, $amount, $description, $category, $reference, $createdBy]);
+            $stmt->execute([$type, $amount, $description, $category, $reference, $createdBy, $sourceTransactionId]);
 
             $id = (string)$pdo->lastInsertId();
 
@@ -5310,6 +5317,7 @@ $routes = [
                     'reference' => $reference,
                     'createdBy' => $createdBy,
                     'timestamp' => date('Y-m-d H:i:s'),
+                    'sourceTransactionId' => $sourceTransactionId ? (string)$sourceTransactionId : null,
                 ],
             ];
         } catch (Exception $e) {
