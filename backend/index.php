@@ -291,6 +291,57 @@ try {
     try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS packing_discrepancy_reason TEXT DEFAULT NULL"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS cooking_discrepancy_reason TEXT DEFAULT NULL"); } catch(Exception $e) {}
 
+    // Auto-create sales_discrepancies table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS sales_discrepancies (
+            id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+            store_id BIGINT UNSIGNED NULL,
+            store_name VARCHAR(255) NOT NULL DEFAULT '',
+            product_id VARCHAR(255) NOT NULL DEFAULT '',
+            product_name VARCHAR(255) NOT NULL DEFAULT '',
+            unit VARCHAR(50) NOT NULL DEFAULT 'kg',
+            shift_date DATE NOT NULL,
+            shift ENUM('AM','PM') NULL,
+            starting_stock DECIMAL(10,3) NOT NULL DEFAULT 0,
+            sales_quantity DECIMAL(10,3) NOT NULL DEFAULT 0,
+            expected_remaining DECIMAL(10,3) NOT NULL DEFAULT 0,
+            reported_remaining DECIMAL(10,3) NOT NULL DEFAULT 0,
+            discrepancy_amount DECIMAL(10,3) NOT NULL DEFAULT 0,
+            cashier VARCHAR(255) NULL,
+            user_id BIGINT UNSIGNED NULL,
+            status ENUM('pending','adjusted') NOT NULL DEFAULT 'pending',
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_sd_store (store_id),
+            INDEX idx_sd_date (shift_date),
+            INDEX idx_sd_status (status)
+        )");
+    } catch(Exception $e) { error_log('sales_discrepancies table: ' . $e->getMessage()); }
+
+    // Auto-create discrepancy_adjustments table
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS discrepancy_adjustments (
+            id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+            sales_discrepancy_id BIGINT UNSIGNED NOT NULL,
+            store_name VARCHAR(255) NOT NULL DEFAULT '',
+            product_id VARCHAR(255) NULL,
+            product_name VARCHAR(255) NOT NULL DEFAULT '',
+            quantity DECIMAL(10,3) NOT NULL DEFAULT 0,
+            unit VARCHAR(50) NOT NULL DEFAULT 'kg',
+            unit_cost DECIMAL(10,2) NOT NULL DEFAULT 0,
+            total_cost DECIMAL(10,2) NOT NULL DEFAULT 0,
+            cashier VARCHAR(255) NULL,
+            user_id BIGINT UNSIGNED NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_da_discrepancy (sales_discrepancy_id),
+            INDEX idx_da_cashier (cashier),
+            INDEX idx_da_created (created_at)
+        )");
+    } catch(Exception $e) { error_log('discrepancy_adjustments table: ' . $e->getMessage()); }
+
     // Rename 'Main Store' to 'Amparo Store' if it hasn't been renamed yet
     try {
         $pdo->exec("UPDATE stores SET name = 'Amparo Store' WHERE name = 'Main Store'");
@@ -6242,6 +6293,189 @@ $routes = [
             return ['error' => 'Failed to generate CSV: ' . $e->getMessage()];
         }
     },
+
+    // ==================== SALES DISCREPANCIES ====================
+
+    'GET /api/sales-discrepancies' => function() use ($pdo) {
+        $startDate = $_GET['startDate'] ?? null;
+        $endDate   = $_GET['endDate']   ?? null;
+        $status    = $_GET['status']    ?? null;
+
+        $where = [];
+        $params = [];
+
+        if ($startDate) { $where[] = 'sd.shift_date >= ?'; $params[] = $startDate; }
+        if ($endDate)   { $where[] = 'sd.shift_date <= ?'; $params[] = $endDate; }
+        if ($status)    { $where[] = 'sd.status = ?';      $params[] = $status; }
+
+        $query = 'SELECT sd.*, da.id as adj_id, da.unit_cost, da.total_cost as adj_total_cost, da.created_at as adj_created_at
+                  FROM sales_discrepancies sd
+                  LEFT JOIN discrepancy_adjustments da ON da.sales_discrepancy_id = sd.id'
+                 . (!empty($where) ? ' WHERE ' . implode(' AND ', $where) : '')
+                 . ' ORDER BY sd.shift_date DESC, sd.created_at DESC';
+
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        return [
+            'discrepancies' => array_map(function($r) {
+                return [
+                    'id'                => (string)$r['id'],
+                    'storeId'           => $r['store_id'] ? (string)$r['store_id'] : null,
+                    'storeName'         => $r['store_name'],
+                    'productId'         => $r['product_id'],
+                    'productName'       => $r['product_name'],
+                    'unit'              => $r['unit'],
+                    'shiftDate'         => $r['shift_date'],
+                    'shift'             => $r['shift'],
+                    'startingStock'     => (float)$r['starting_stock'],
+                    'salesQuantity'     => (float)$r['sales_quantity'],
+                    'expectedRemaining' => (float)$r['expected_remaining'],
+                    'reportedRemaining' => (float)$r['reported_remaining'],
+                    'discrepancyAmount' => (float)$r['discrepancy_amount'],
+                    'cashier'           => $r['cashier'],
+                    'userId'            => $r['user_id'] ? (string)$r['user_id'] : null,
+                    'status'            => $r['status'],
+                    'notes'             => $r['notes'],
+                    'createdAt'         => $r['created_at'],
+                    'adjustment'        => $r['adj_id'] ? [
+                        'id'        => (string)$r['adj_id'],
+                        'unitCost'  => (float)$r['unit_cost'],
+                        'totalCost' => (float)$r['adj_total_cost'],
+                        'createdAt' => $r['adj_created_at'],
+                    ] : null,
+                ];
+            }, $rows),
+        ];
+    },
+
+    'POST /api/sales-discrepancies' => function() use ($pdo, $body) {
+        $storeName         = $body['storeName']         ?? '';
+        $storeId           = $body['storeId']           ?? null;
+        $productId         = $body['productId']         ?? '';
+        $productName       = $body['productName']       ?? '';
+        $unit              = $body['unit']              ?? 'kg';
+        $shiftDate         = $body['shiftDate']         ?? date('Y-m-d');
+        $shift             = $body['shift']             ?? null;
+        $startingStock     = (float)($body['startingStock']     ?? 0);
+        $salesQuantity     = (float)($body['salesQuantity']     ?? 0);
+        $reportedRemaining = (float)($body['reportedRemaining'] ?? 0);
+        $cashier           = $body['cashier']           ?? null;
+        $userId            = $body['userId']            ?? null;
+        $notes             = $body['notes']             ?? null;
+
+        if (!$storeName || !$productId || !$productName) {
+            http_response_code(400);
+            return ['error' => 'storeName, productId, and productName are required'];
+        }
+
+        $expectedRemaining  = $startingStock  - $salesQuantity;
+        $discrepancyAmount  = $expectedRemaining - $reportedRemaining;
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO sales_discrepancies
+             (store_id, store_name, product_id, product_name, unit, shift_date, shift,
+              starting_stock, sales_quantity, expected_remaining, reported_remaining,
+              discrepancy_amount, cashier, user_id, status, notes, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,\'pending\',?,NOW(),NOW())'
+        );
+        $stmt->execute([
+            $storeId, $storeName, $productId, $productName, $unit,
+            $shiftDate, $shift,
+            $startingStock, $salesQuantity, $expectedRemaining, $reportedRemaining,
+            $discrepancyAmount, $cashier, $userId, $notes,
+        ]);
+
+        $newId = $pdo->lastInsertId();
+        $row = $pdo->prepare('SELECT * FROM sales_discrepancies WHERE id = ?');
+        $row->execute([$newId]);
+        $r = $row->fetch();
+
+        return [
+            'discrepancy' => [
+                'id'                => (string)$r['id'],
+                'storeId'           => $r['store_id'] ? (string)$r['store_id'] : null,
+                'storeName'         => $r['store_name'],
+                'productId'         => $r['product_id'],
+                'productName'       => $r['product_name'],
+                'unit'              => $r['unit'],
+                'shiftDate'         => $r['shift_date'],
+                'shift'             => $r['shift'],
+                'startingStock'     => (float)$r['starting_stock'],
+                'salesQuantity'     => (float)$r['sales_quantity'],
+                'expectedRemaining' => (float)$r['expected_remaining'],
+                'reportedRemaining' => (float)$r['reported_remaining'],
+                'discrepancyAmount' => (float)$r['discrepancy_amount'],
+                'cashier'           => $r['cashier'],
+                'userId'            => $r['user_id'] ? (string)$r['user_id'] : null,
+                'status'            => $r['status'],
+                'notes'             => $r['notes'],
+                'createdAt'         => $r['created_at'],
+                'adjustment'        => null,
+            ],
+        ];
+    },
+
+    'POST /api/sales-discrepancies/{id}/adjust' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        preg_match('/\/api\/sales-discrepancies\/(\d+)\/adjust/', $uri, $matches);
+        $id = $matches[1] ?? null;
+
+        if (!$id) {
+            http_response_code(400);
+            return ['error' => 'Discrepancy ID is required'];
+        }
+
+        // Fetch the discrepancy
+        $stmt = $pdo->prepare('SELECT * FROM sales_discrepancies WHERE id = ?');
+        $stmt->execute([$id]);
+        $disc = $stmt->fetch();
+
+        if (!$disc) {
+            http_response_code(404);
+            return ['error' => 'Discrepancy not found'];
+        }
+
+        if ($disc['status'] === 'adjusted') {
+            http_response_code(409);
+            return ['error' => 'Discrepancy has already been adjusted'];
+        }
+
+        $unitCost  = (float)($body['unitCost']  ?? 0);
+        $notes     = $body['notes']    ?? null;
+        $cashier   = $body['cashier']  ?? $disc['cashier'];
+        $userId    = $body['userId']   ?? $disc['user_id'];
+        $quantity  = (float)$disc['discrepancy_amount'];
+        $totalCost = round($quantity * $unitCost, 2);
+
+        // Insert adjustment record
+        $ins = $pdo->prepare(
+            'INSERT INTO discrepancy_adjustments
+             (sales_discrepancy_id, store_name, product_id, product_name, quantity, unit, unit_cost, total_cost, cashier, user_id, notes, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())'
+        );
+        $ins->execute([
+            $id, $disc['store_name'], $disc['product_id'], $disc['product_name'],
+            $quantity, $disc['unit'], $unitCost, $totalCost, $cashier, $userId, $notes,
+        ]);
+        $adjId = $pdo->lastInsertId();
+
+        // Mark discrepancy as adjusted
+        $upd = $pdo->prepare('UPDATE sales_discrepancies SET status = \'adjusted\', updated_at = NOW() WHERE id = ?');
+        $upd->execute([$id]);
+
+        return [
+            'success'    => true,
+            'adjustment' => [
+                'id'        => (string)$adjId,
+                'unitCost'  => $unitCost,
+                'totalCost' => $totalCost,
+                'createdAt' => date('Y-m-d H:i:s'),
+            ],
+        ];
+    },
+
 ];
 
 // Find and execute route

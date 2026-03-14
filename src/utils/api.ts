@@ -845,6 +845,87 @@ export interface RawProductInventory {
   createdAt: string;
 }
 
+// ==================== SALES DISCREPANCIES ====================
+
+export interface SalesDiscrepancy {
+  id: string;
+  storeId?: string | null;
+  storeName: string;
+  productId: string;
+  productName: string;
+  unit: string;
+  shiftDate: string;
+  shift?: "AM" | "PM" | null;
+  startingStock: number;
+  salesQuantity: number;
+  expectedRemaining: number;
+  reportedRemaining: number;
+  discrepancyAmount: number;
+  cashier?: string | null;
+  userId?: string | null;
+  status: "pending" | "adjusted";
+  notes?: string | null;
+  createdAt: string;
+  adjustment?: {
+    id: string;
+    unitCost: number;
+    totalCost: number;
+    createdAt: string;
+  } | null;
+}
+
+export async function getSalesDiscrepancies(
+  startDate?: string,
+  endDate?: string,
+  status?: string,
+): Promise<SalesDiscrepancy[]> {
+  const params = new URLSearchParams();
+  if (startDate) params.set("startDate", startDate);
+  if (endDate) params.set("endDate", endDate);
+  if (status) params.set("status", status);
+  const query = params.toString() ? `?${params}` : "";
+  const data = await apiRequest<{ discrepancies: SalesDiscrepancy[] }>(
+    `/sales-discrepancies${query}`,
+  );
+  return data.discrepancies;
+}
+
+export async function createSalesDiscrepancy(payload: {
+  storeName: string;
+  storeId?: string | null;
+  productId: string;
+  productName: string;
+  unit: string;
+  shiftDate: string;
+  shift?: "AM" | "PM" | null;
+  startingStock: number;
+  salesQuantity: number;
+  reportedRemaining: number;
+  cashier?: string | null;
+  userId?: string | null;
+  notes?: string | null;
+}): Promise<SalesDiscrepancy> {
+  const data = await apiRequest<{ discrepancy: SalesDiscrepancy }>(
+    "/sales-discrepancies",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+  return data.discrepancy;
+}
+
+export async function adjustSalesDiscrepancy(
+  id: string,
+  unitCost: number,
+  notes?: string,
+  cashier?: string,
+  userId?: string,
+): Promise<{ success: boolean; adjustment: { id: string; unitCost: number; totalCost: number; createdAt: string } }> {
+  const data = await apiRequest<{ success: boolean; adjustment: { id: string; unitCost: number; totalCost: number; createdAt: string } }>(
+    `/sales-discrepancies/${id}/adjust`,
+    { method: "POST", body: JSON.stringify({ unitCost, notes, cashier, userId }) },
+  );
+  return data;
+}
+
 export async function getProductionRecords(
   startDate?: string,
   endDate?: string,

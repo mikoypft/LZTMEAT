@@ -920,7 +920,7 @@ export default function App() {
             {currentPage === "discounts" && (
               <DiscountsPage userRole={currentUser.role} />
             )}
-            {currentPage === "discrepancies" && <DiscrepanciesPage />}
+            {currentPage === "discrepancies" && <DiscrepanciesPage currentUser={currentUser} />}
             {currentPage === "history" && (
               <HistoryPage currentUser={currentUser} />
             )}
