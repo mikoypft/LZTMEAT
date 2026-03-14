@@ -366,12 +366,6 @@ export default function App() {
           permission: "discounts",
         },
         {
-          id: "discrepancies" as Page,
-          icon: AlertTriangle,
-          label: "Discrepancies",
-          permission: "production",
-        },
-        {
           id: "history" as Page,
           icon: History,
           label: "History",
@@ -481,12 +475,6 @@ export default function App() {
           label: "History",
           roles: ["PRODUCTION"],
         },
-        {
-          id: "discrepancies" as Page,
-          icon: AlertTriangle,
-          label: "Discrepancies",
-          roles: ["PRODUCTION"],
-        },
       ];
     }
 
@@ -590,7 +578,7 @@ export default function App() {
         id: "discrepancies" as Page,
         icon: AlertTriangle,
         label: "Discrepancies",
-        roles: ["ADMIN", "PRODUCTION"],
+        roles: ["ADMIN"],
       },
     ];
 
