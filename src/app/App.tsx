@@ -67,6 +67,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -598,6 +599,7 @@ export default function App() {
 
     setCurrentPage(page);
     setSidebarOpen(false);
+    setNavHidden(page === "pos");
   };
 
   // Show login page if not authenticated
@@ -693,7 +695,7 @@ export default function App() {
         <aside
           className={`fixed lg:sticky inset-y-0 left-0 z-50 w-64 h-screen bg-primary text-primary-foreground transform transition-transform duration-300 ease-in-out flex flex-col ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+          } ${navHidden ? "lg:hidden" : "lg:translate-x-0"}`}
         >
           {/* Sidebar Header */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-primary-foreground/20">
@@ -781,9 +783,18 @@ export default function App() {
           {/* Top Bar */}
           <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-4">
+              {/* Mobile hamburger */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 hover:bg-accent rounded"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              {/* Desktop nav toggle */}
+              <button
+                onClick={() => setNavHidden(!navHidden)}
+                className="hidden lg:flex p-2 hover:bg-accent rounded transition-colors"
+                title={navHidden ? "Show navigation" : "Hide navigation"}
               >
                 <Menu className="w-6 h-6" />
               </button>
