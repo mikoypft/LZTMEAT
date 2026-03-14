@@ -18,6 +18,7 @@ import {
   DollarSign,
   Percent,
   FileText,
+  Search,
 } from "lucide-react";
 import { POSPage } from "@/app/components/POSPage";
 import { ProductionDashboard } from "@/app/components/ProductionDashboard";
@@ -68,6 +69,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
+  const [posSearch, setPosSearch] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -798,9 +800,26 @@ export default function App() {
               >
                 <Menu className="w-6 h-6" />
               </button>
-              <h2 className="text-lg md:text-xl">
-                {menuItems.find((item) => item.id === currentPage)?.label}
-              </h2>
+              {currentPage !== "pos" && (
+                <h2 className="text-lg md:text-xl">
+                  {menuItems.find((item) => item.id === currentPage)?.label}
+                </h2>
+              )}
+              {currentPage === "pos" && (
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg md:text-xl whitespace-nowrap">Point of Sale</h2>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={posSearch}
+                      onChange={(e) => setPosSearch(e.target.value)}
+                      className="pl-9 pr-4 py-2 bg-accent border border-border rounded-xl text-sm w-56 lg:w-72 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3 relative">
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg">
@@ -827,7 +846,7 @@ export default function App() {
                 onNavigate={handlePageChange}
               />
             )}
-            {currentPage === "pos" && <POSPage currentUser={currentUser} />}
+            {currentPage === "pos" && <POSPage currentUser={currentUser} externalSearch={posSearch} />}
             {currentPage === "production" && (
               <ProductionDashboard currentUser={currentUser} />
             )}

@@ -60,6 +60,7 @@ interface Customer {
 
 interface POSPageProps {
   currentUser?: UserData;
+  externalSearch?: string;
 }
 
 const MOCK_PRODUCTS: Product[] = [
@@ -161,7 +162,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
 ];
 
-export function POSPage({ currentUser }: POSPageProps = {}) {
+export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -419,10 +420,11 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
     }
   }, [selectedStore]);
 
+  const activeSearch = externalSearch !== undefined ? externalSearch : searchTerm;
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+      product.name.toLowerCase().includes(activeSearch.toLowerCase()) ||
+      product.sku.toLowerCase().includes(activeSearch.toLowerCase());
     const matchesCategory =
       selectedCategory === "All" || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -996,20 +998,6 @@ export function POSPage({ currentUser }: POSPageProps = {}) {
               </button>
             </div>
           )}
-
-          {/* Search Bar */}
-          <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products by name or SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors"
-              />
-            </div>
-          </div>
 
           {/* Category Filter */}
           <div className="bg-white border-b border-gray-200 px-4 py-2 flex gap-2 overflow-x-auto flex-shrink-0">
