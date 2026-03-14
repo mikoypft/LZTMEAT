@@ -127,6 +127,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
     role?: "STORE" | "PRODUCTION" | "POS" | "EMPLOYEE";
     storeId?: string;
     permissions?: string[];
+    shift?: 'AM' | 'PM' | null;
     dateOfBirth: string;
     gender: string;
     civilStatus: string;
@@ -152,6 +153,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
     role: undefined,
     storeId: "",
     permissions: [],
+    shift: null,
     dateOfBirth: "",
     gender: "",
     civilStatus: "",
@@ -272,6 +274,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
       address: formData.address,
       role: formData.role,
       permissions: formData.permissions || [],
+      shift: formData.shift ?? null,
       employeeProfile: {
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
@@ -380,6 +383,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
       role: employee.role,
       storeId: employee.storeId || "",
       permissions: employee.permissions || [],
+      shift: employee.shift ?? null,
       dateOfBirth: p.dateOfBirth || "",
       gender: p.gender || "",
       civilStatus: p.civilStatus || "",
@@ -453,6 +457,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
       role: undefined,
       storeId: "",
       permissions: [],
+      shift: null,
       dateOfBirth: "",
       gender: "",
       civilStatus: "",
@@ -838,6 +843,34 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                   </p>
                   {/* Admin Permissions toggle */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Shift Assignment
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Set this employee's work shift
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {(['AM', 'PM'] as const).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, shift: formData.shift === s ? null : s })}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                              formData.shift === s
+                                ? s === 'AM'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-orange-500 text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
