@@ -186,6 +186,8 @@ try {
             ALTER TABLE transactions
             ADD COLUMN IF NOT EXISTS source_transaction_id BIGINT UNSIGNED NULL DEFAULT NULL
         ");
+        // Add shift column if it doesn't exist yet
+        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
     } catch (Exception $tableErr) {
         error_log('transactions table creation: ' . $tableErr->getMessage());
     }
@@ -553,6 +555,7 @@ $routes = [
                 'storeId' => $user['store_id'] ? (string)$user['store_id'] : null,
                 'storeName' => $user['store_name'],
                 'canLogin' => (bool)$user['can_login'],
+                'shift' => $user['shift'] ?? null,
             ],
         ];
     },
@@ -592,6 +595,7 @@ $routes = [
                 'storeId' => $user['store_id'] ? (string)$user['store_id'] : null,
                 'storeName' => $user['store_name'],
                 'canLogin' => (bool)$user['can_login'],
+                'shift' => $user['shift'] ?? null,
             ],
         ];
     },
@@ -1747,6 +1751,7 @@ $routes = [
                     'storeId' => $s['store_id'] ? (string)$s['store_id'] : null,
                     'userId' => $s['user_id'] ? (string)$s['user_id'] : null,
                     'cashierName' => $s['cashier_name'] ?? $s['cashier_username'] ?? null,
+                    'shift' => $s['shift'] ?? null,
                     'items' => array_map(function($item) {
                         return [
                             'id' => (string)$item['id'],
@@ -1786,9 +1791,10 @@ $routes = [
                     $pdo->exec("ALTER TABLE sales ADD COLUMN wholesale_discount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER global_discount");
                 }
             } catch (Exception $e) {
-                // Log but continue
                 error_log('Could not add wholesale_discount column: ' . $e->getMessage());
             }
+            // Ensure shift column exists
+            try { $pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
             
             // Create sales record with wholesale discount column
             $stmt = $pdo->prepare('
@@ -1805,9 +1811,10 @@ $routes = [
                     total, 
                     payment_method,
                     sales_type,
+                    shift,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
             
             // Build customer data as valid JSON for the JSON column
@@ -1849,6 +1856,7 @@ $routes = [
                 $body['total'] ?? 0,
                 $body['paymentMethod'] ?? 'Cash',
                 $body['salesType'] ?? 'retail',
+                isset($body['shift']) && in_array($body['shift'], ['AM', 'PM']) ? $body['shift'] : null,
             ]);
             
             $saleId = (string)$pdo->lastInsertId();
@@ -2120,6 +2128,9 @@ $routes = [
         }
         
         try {
+            // Ensure shift column exists on production_records
+            try { $pdo->exec("ALTER TABLE production_records ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+
             // For product mix production - determine phase and status
             $isProductMix = !empty($body['productMixCategoryId']);
             
@@ -2144,9 +2155,10 @@ $routes = [
                     operator, 
                     status, 
                     phase,
-                    initial_ingredients, 
+                    initial_ingredients,
+                    shift,
                     created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ');
             $stmt->execute([
                 $body['productId'] ?? null,
@@ -2159,6 +2171,7 @@ $routes = [
                 $status,
                 $phase,
                 $initialIngredientsJson,
+                isset($body['shift']) && in_array($body['shift'], ['AM', 'PM']) ? $body['shift'] : null,
             ]);
             
             $id = $pdo->lastInsertId();
@@ -4181,6 +4194,7 @@ $routes = [
                     'role' => $u['role'],
                     'storeId' => $u['store_id'] ? (string)$u['store_id'] : null,
                     'storeName' => $u['store_name'],
+                    'shift' => $u['shift'] ?? null,
                 ];
             }, $users),
         ];
@@ -4189,6 +4203,7 @@ $routes = [
     'GET /api/users/all' => function() use ($pdo) {
         // Ensure employee_profile column exists
         try { $pdo->exec("ALTER TABLE users ADD COLUMN employee_profile JSON NULL"); } catch(Exception $e) { /* already exists */ }
+        try { $pdo->exec("ALTER TABLE users ADD COLUMN shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* already exists */ }
 
         $stmt = $pdo->query('SELECT u.*, s.name as store_name FROM users u LEFT JOIN stores s ON u.store_id = s.id ORDER BY u.full_name');
         $users = $stmt->fetchAll();
@@ -4209,6 +4224,7 @@ $routes = [
                     'createdAt' => $u['created_at'] ?? date('Y-m-d H:i:s'),
                     'permissions' => !empty($u['permissions']) ? json_decode($u['permissions'], true) : [],
                     'employeeProfile' => !empty($u['employee_profile']) ? json_decode($u['employee_profile'], true) : null,
+                    'shift' => $u['shift'] ?? null,
                 ];
             }, $users),
         ];
@@ -4239,7 +4255,9 @@ $routes = [
             // Ensure employee_profile column exists
             try { $pdo->exec("ALTER TABLE users ADD COLUMN employee_profile JSON NULL"); } catch(Exception $e) { /* already exists */ }
 
-            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, permissions, employee_profile, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
+            $shift = isset($body['shift']) && in_array($body['shift'], ['AM', 'PM']) ? $body['shift'] : null;
+
+            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, mobile, address, role, store_id, can_login, permissions, employee_profile, shift, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
             $bindParams = [
                 $username,
                 $passwordHash,
@@ -4251,6 +4269,7 @@ $routes = [
                 1,
                 isset($body['permissions']) ? json_encode($body['permissions']) : null,
                 !empty($body['employeeProfile']) ? json_encode($body['employeeProfile']) : null,
+                $shift,
             ];
             
             $result = $stmt->execute($bindParams);
@@ -4301,6 +4320,7 @@ $routes = [
                     'password' => $password,
                     'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : [],
                     'employeeProfile' => !empty($user['employee_profile']) ? json_decode($user['employee_profile'], true) : null,
+                    'shift' => $user['shift'] ?? null,
                 ]
             ];
         } catch (Exception $e) {
@@ -4357,6 +4377,10 @@ $routes = [
                 $updates[] = 'employee_profile = ?';
                 $params[] = json_encode($body['employeeProfile']);
             }
+            if (isset($body['shift'])) {
+                $updates[] = 'shift = ?';
+                $params[] = in_array($body['shift'], ['AM', 'PM']) ? $body['shift'] : null;
+            }
             
             if (empty($updates)) {
                 return ['error' => 'No fields to update'];
@@ -4398,6 +4422,7 @@ $routes = [
                     'createdAt' => $user['created_at'] ?? date('Y-m-d H:i:s'),
                     'employeeProfile' => !empty($user['employee_profile']) ? json_decode($user['employee_profile'], true) : null,
                     'permissions' => !empty($user['permissions']) ? json_decode($user['permissions'], true) : [],
+                    'shift' => $user['shift'] ?? null,
                 ]
             ];
         } catch (Exception $e) {
@@ -5266,6 +5291,7 @@ $routes = [
                         'createdBy' => $t['created_by'],
                         'timestamp' => $t['created_at'],
                         'sourceTransactionId' => isset($t['source_transaction_id']) && $t['source_transaction_id'] ? (string)$t['source_transaction_id'] : null,
+                        'shift' => $t['shift'] ?? null,
                     ];
                 }, $transactions),
             ];
@@ -5284,6 +5310,7 @@ $routes = [
             $reference = $body['reference'] ?? null;
             $createdBy = $body['createdBy'] ?? 'Admin';
             $sourceTransactionId = isset($body['sourceTransactionId']) ? (int)$body['sourceTransactionId'] : null;
+            $shift = isset($body['shift']) && in_array($body['shift'], ['AM', 'PM']) ? $body['shift'] : null;
 
             if ($amount <= 0) {
                 http_response_code(400);
@@ -5291,10 +5318,10 @@ $routes = [
             }
 
             $stmt = $pdo->prepare('
-                INSERT INTO transactions (type, amount, description, category, reference, created_by, source_transaction_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                INSERT INTO transactions (type, amount, description, category, reference, created_by, source_transaction_id, shift, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             ');
-            $stmt->execute([$type, $amount, $description, $category, $reference, $createdBy, $sourceTransactionId]);
+            $stmt->execute([$type, $amount, $description, $category, $reference, $createdBy, $sourceTransactionId, $shift]);
 
             $id = (string)$pdo->lastInsertId();
 
@@ -5318,6 +5345,7 @@ $routes = [
                     'createdBy' => $createdBy,
                     'timestamp' => date('Y-m-d H:i:s'),
                     'sourceTransactionId' => $sourceTransactionId ? (string)$sourceTransactionId : null,
+                    'shift' => $shift,
                 ],
             ];
         } catch (Exception $e) {

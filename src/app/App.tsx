@@ -807,7 +807,9 @@ export default function App() {
               )}
               {currentPage === "pos" && (
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg md:text-xl whitespace-nowrap">Point of Sale</h2>
+                  <h2 className="text-lg md:text-xl whitespace-nowrap">
+                    Point of Sale
+                  </h2>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
@@ -846,7 +848,9 @@ export default function App() {
                 onNavigate={handlePageChange}
               />
             )}
-            {currentPage === "pos" && <POSPage currentUser={currentUser} externalSearch={posSearch} />}
+            {currentPage === "pos" && (
+              <POSPage currentUser={currentUser} externalSearch={posSearch} />
+            )}
             {currentPage === "production" && (
               <ProductionDashboard currentUser={currentUser} />
             )}

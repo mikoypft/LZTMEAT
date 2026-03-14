@@ -879,6 +879,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         batchNumber: newProduction.batchNumber,
         operator: "Current User",
         initialIngredients: ingredientsUsedAPI,
+        shift: currentUser?.shift || null,
       };
 
       console.log("Creating production with payload:", productionPayload);
@@ -1109,6 +1110,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         operator: mixOperator,
         quantity: 0,
         initialIngredients: ingredientsData,
+        shift: currentUser?.shift || null,
       };
 
       await createProductionRecord(productionData);
@@ -1442,6 +1444,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         mixWeight: plannedWeight,
         phase: "cooking" as const,
         status: "cooking" as const,
+        shift: currentUser?.shift || null,
       };
 
       await createProductionRecord(productionData);

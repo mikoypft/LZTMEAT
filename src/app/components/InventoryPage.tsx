@@ -265,7 +265,9 @@ export function InventoryPage({
 }: {
   currentUser: UserData | null;
 }) {
-  const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions");
+  const isAdmin =
+    currentUser?.role === "ADMIN" ||
+    !!currentUser?.permissions?.includes("admin_permissions");
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -474,8 +476,12 @@ export function InventoryPage({
         "BO for Disposal",
       ];
       filteredStores.sort((a, b) => {
-        const ai = STORE_ORDER.findIndex((n) => a.name.toLowerCase().includes(n.toLowerCase()));
-        const bi = STORE_ORDER.findIndex((n) => b.name.toLowerCase().includes(n.toLowerCase()));
+        const ai = STORE_ORDER.findIndex((n) =>
+          a.name.toLowerCase().includes(n.toLowerCase()),
+        );
+        const bi = STORE_ORDER.findIndex((n) =>
+          b.name.toLowerCase().includes(n.toLowerCase()),
+        );
         const aIdx = ai === -1 ? 999 : ai;
         const bIdx = bi === -1 ? 999 : bi;
         return aIdx - bIdx;
@@ -1642,7 +1648,9 @@ function EditItemModal({
     loadStoreLocations();
     loadIngredients();
     loadDefaultIngredients();
-    getCategories().then(setProductCategories).catch(() => {});
+    getCategories()
+      .then(setProductCategories)
+      .catch(() => {});
   }, []);
 
   const loadStoreLocations = async () => {
@@ -1756,17 +1764,24 @@ function EditItemModal({
             <label className="block text-sm mb-2">Category</label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select a category</option>
               {productCategories.map((cat) => (
-                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
               ))}
               {/* keep current value selectable even if not in list */}
-              {formData.category && !productCategories.find((c) => c.name === formData.category) && (
-                <option value={formData.category}>{formData.category}</option>
-              )}
+              {formData.category &&
+                !productCategories.find(
+                  (c) => c.name === formData.category,
+                ) && (
+                  <option value={formData.category}>{formData.category}</option>
+                )}
             </select>
           </div>
 

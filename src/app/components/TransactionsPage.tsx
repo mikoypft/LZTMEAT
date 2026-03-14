@@ -22,6 +22,7 @@ interface Transaction {
   createdBy: string;
   timestamp: string;
   sourceTransactionId?: string | null;
+  shift?: 'AM' | 'PM' | null;
 }
 
 interface TransactionsPageProps {
@@ -33,8 +34,22 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [cashInCategories, setCashInCategories] = useState<string[]>(["Sales", "Investment", "Loan", "Refund", "Other Income"]);
-  const [cashOutCategories, setCashOutCategories] = useState<string[]>(["Supplies", "Utilities", "Salaries", "Rent", "Transportation", "Maintenance", "Other Expenses"]);
+  const [cashInCategories, setCashInCategories] = useState<string[]>([
+    "Sales",
+    "Investment",
+    "Loan",
+    "Refund",
+    "Other Income",
+  ]);
+  const [cashOutCategories, setCashOutCategories] = useState<string[]>([
+    "Supplies",
+    "Utilities",
+    "Salaries",
+    "Rent",
+    "Transportation",
+    "Maintenance",
+    "Other Expenses",
+  ]);
 
   // Form states
   const [type, setType] = useState<"Cash In" | "Cash Out">("Cash In");
@@ -44,7 +59,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [reference, setReference] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(null);
+  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(
+    null,
+  );
   const [cashOutLoading, setCashOutLoading] = useState(false);
 
   useEffect(() => {
@@ -101,6 +118,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
           category,
           reference: reference || undefined,
           createdBy: user?.fullName || "Admin",
+          shift: user?.shift || null,
         }),
       });
 
@@ -137,6 +155,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
           reference: source.reference || undefined,
           createdBy: user?.fullName || "Admin",
           sourceTransactionId: source.id,
+          shift: source.shift || null,
         }),
       });
       if (response.ok) {
@@ -349,7 +368,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((transaction) => (
+                (() => {
+                  const amTx = filteredTransactions.filter(t => t.shift === 'AM');
+                  const pmTx = filteredTransactions.filter(t => t.shift === 'PM');
+                  const untagged = filteredTransactions.filter(t => !t.shift);
+
+                  const renderRows = (items: Transaction[]) => items.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(transaction.timestamp).toLocaleString("en-US", {
@@ -403,28 +427,53 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                       {transaction.createdBy}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {transaction.type === "Cash In" && (isAdmin || user?.permissions?.includes("admin_permissions")) && (() => {
-                        const alreadyCashedOut = transactions.some(
-                          (t) => t.type === "Cash Out" && t.sourceTransactionId === transaction.id
-                        );
-                        return alreadyCashedOut ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
-                            <ArrowDownCircle className="w-3.5 h-3.5" />
-                            Cashed Out
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => setCashOutConfirm(transaction)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                          >
-                            <ArrowDownCircle className="w-3.5 h-3.5" />
-                            Cash Out
-                          </button>
-                        );
-                      })()}
+                      {transaction.type === "Cash In" &&
+                        (isAdmin ||
+                          user?.permissions?.includes("admin_permissions")) &&
+                        (() => {
+                          const alreadyCashedOut = transactions.some(
+                            (t) =>
+                              t.type === "Cash Out" &&
+                              t.sourceTransactionId === transaction.id,
+                          );
+                          return alreadyCashedOut ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                              <ArrowDownCircle className="w-3.5 h-3.5" />
+                              Cashed Out
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setCashOutConfirm(transaction)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <ArrowDownCircle className="w-3.5 h-3.5" />
+                              Cash Out
+                            </button>
+                          );
+                        })()}
                     </td>
                   </tr>
-                ))
+                  ));
+
+                  const renderGroupHeader = (label: string, count: number, colorClass: string) => (
+                    <tr key={`hdr-${label}`} className={colorClass}>
+                      <td colSpan={8} className="px-6 py-2 text-xs font-semibold uppercase tracking-wider">
+                        {label} <span className="font-normal opacity-70">({count})</span>
+                      </td>
+                    </tr>
+                  );
+
+                  return (
+                    <>
+                      {amTx.length > 0 && renderGroupHeader('AM Shift', amTx.length, 'bg-blue-50 text-blue-700 border-b border-blue-100')}
+                      {renderRows(amTx)}
+                      {pmTx.length > 0 && renderGroupHeader('PM Shift', pmTx.length, 'bg-orange-50 text-orange-700 border-b border-orange-100')}
+                      {renderRows(pmTx)}
+                      {untagged.length > 0 && (amTx.length > 0 || pmTx.length > 0) && renderGroupHeader('Unassigned', untagged.length, 'bg-gray-50 text-gray-500 border-b border-gray-100')}
+                      {renderRows(untagged)}
+                    </>
+                  );
+                })()
               )}
             </tbody>
           </table>
@@ -441,24 +490,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Confirm Cash Out</h2>
-            <p className="text-sm text-gray-500 mb-5">A new Cash Out transaction will be recorded with the following details:</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">
+              Confirm Cash Out
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              A new Cash Out transaction will be recorded with the following
+              details:
+            </p>
             <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-500">Category</span>
-                <span className="font-medium text-gray-900">{cashOutConfirm.category}</span>
+                <span className="font-medium text-gray-900">
+                  {cashOutConfirm.category}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Description</span>
-                <span className="font-medium text-gray-900 text-right max-w-[60%]">{cashOutConfirm.description}</span>
+                <span className="font-medium text-gray-900 text-right max-w-[60%]">
+                  {cashOutConfirm.description}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Reference</span>
-                <span className="font-medium text-gray-900">{cashOutConfirm.reference || "-"}</span>
+                <span className="font-medium text-gray-900">
+                  {cashOutConfirm.reference || "-"}
+                </span>
               </div>
               <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                 <span className="text-gray-500 font-medium">Amount</span>
-                <span className="font-bold text-red-600">-₱{cashOutConfirm.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-red-600">
+                  -₱
+                  {cashOutConfirm.amount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
               </div>
             </div>
             <div className="flex gap-3">
@@ -557,8 +622,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   >
                     <option value="">Select a category</option>
-                    {(type === "Cash In" ? cashInCategories : cashOutCategories).map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {(type === "Cash In"
+                      ? cashInCategories
+                      : cashOutCategories
+                    ).map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
                     ))}
                   </select>
                 </div>

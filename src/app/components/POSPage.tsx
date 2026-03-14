@@ -421,7 +421,8 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
     }
   }, [selectedStore]);
 
-  const activeSearch = externalSearch !== undefined ? externalSearch : searchTerm;
+  const activeSearch =
+    externalSearch !== undefined ? externalSearch : searchTerm;
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(activeSearch.toLowerCase()) ||
@@ -735,6 +736,7 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
         total: total,
         paymentMethod: method,
         salesType: salesType,
+        shift: currentUser?.shift || null,
       };
 
       console.log("=== PAYLOAD VERIFICATION ===");
@@ -896,74 +898,75 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
               </span>
             </div>
             {!toolbarHidden && (
-            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-            <Store className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            <select
-              value={selectedStore?.id?.toString() || ""}
-              onChange={(e) => {
-                const store = stores.find(
-                  (s) =>
-                    s.id === Number(e.target.value) || s.id === e.target.value,
-                );
-                if (store) {
-                  setSelectedStore(store);
-                  setCart([]);
-                  loadProductsAndInventory(store.name);
-                }
-              }}
-              className="flex-1 max-w-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={!canSwitchStores}
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-            {selectedStore && (
-              <p className="text-xs text-gray-400 hidden md:block truncate">
-                Transactions at {selectedStore.name}
-              </p>
-            )}
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                onClick={() => setShowCustomerForm(!showCustomerForm)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  customer
-                    ? "bg-primary/10 text-primary border border-primary/20"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <UserPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {customer ? customer.name : "Customer"}
-                </span>
-              </button>
-              <button
-                onClick={() => loadProductsAndInventory()}
-                disabled={loading}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
-                title="Sync inventory"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                />
-                <span className="hidden sm:inline">Sync</span>
-              </button>
-              {currentUser?.role === "ADMIN" && (
-                <button
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setShowProductManager(true);
+              <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+                <Store className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <select
+                  value={selectedStore?.id?.toString() || ""}
+                  onChange={(e) => {
+                    const store = stores.find(
+                      (s) =>
+                        s.id === Number(e.target.value) ||
+                        s.id === e.target.value,
+                    );
+                    if (store) {
+                      setSelectedStore(store);
+                      setCart([]);
+                      loadProductsAndInventory(store.name);
+                    }
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors"
+                  className="flex-1 max-w-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={!canSwitchStores}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add Product</span>
-                </button>
-              )}
-            </div>
-            </div>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedStore && (
+                  <p className="text-xs text-gray-400 hidden md:block truncate">
+                    Transactions at {selectedStore.name}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => setShowCustomerForm(!showCustomerForm)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      customer
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {customer ? customer.name : "Customer"}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => loadProductsAndInventory()}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    title="Sync inventory"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    />
+                    <span className="hidden sm:inline">Sync</span>
+                  </button>
+                  {currentUser?.role === "ADMIN" && (
+                    <button
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setShowProductManager(true);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Add Product</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -1123,7 +1126,9 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
               <div className="flex flex-col items-center justify-center h-full text-gray-300">
                 <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
                 <p className="text-xs text-gray-400">No items in cart</p>
-                <p className="text-xs text-gray-300 mt-0.5">Add products to get started</p>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  Add products to get started
+                </p>
               </div>
             ) : (
               <div className="p-2 space-y-1.5">
@@ -1183,9 +1188,11 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                             </span>
                             {isWholesale && applicableDiscount && (
                               <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold">
-                                {applicableDiscount.discountType === "percentage"
+                                {applicableDiscount.discountType ===
+                                "percentage"
                                   ? `${applicableDiscount.discountValue}%`
-                                  : `₱${applicableDiscount.discountValue.toFixed(0)}`} OFF
+                                  : `₱${applicableDiscount.discountValue.toFixed(0)}`}{" "}
+                                OFF
                               </span>
                             )}
                           </div>
@@ -1255,17 +1262,27 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                                     }
                                     className="w-10 py-0.5 rounded text-xs text-gray-700 text-center focus:outline-none focus:ring-1 focus:ring-primary border border-gray-200 bg-gray-50"
                                   />
-                                  <span className="text-xs text-gray-300">%</span>
+                                  <span className="text-xs text-gray-300">
+                                    %
+                                  </span>
                                 </div>
                                 <span className="text-xs font-bold text-primary">
                                   ₱
                                   {(
                                     item.price * item.quantity -
-                                    (item.price * item.quantity * item.discount) / 100 -
+                                    (item.price *
+                                      item.quantity *
+                                      item.discount) /
+                                      100 -
                                     (isWholesale && applicableDiscount
-                                      ? applicableDiscount.discountType === "percentage"
-                                        ? (item.price * item.quantity * applicableDiscount.discountValue) / 100
-                                        : applicableDiscount.discountValue * item.quantity
+                                      ? applicableDiscount.discountType ===
+                                        "percentage"
+                                        ? (item.price *
+                                            item.quantity *
+                                            applicableDiscount.discountValue) /
+                                          100
+                                        : applicableDiscount.discountValue *
+                                          item.quantity
                                       : 0)
                                   ).toFixed(2)}
                                 </span>
@@ -1320,8 +1337,12 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
-                  <span className="text-sm font-semibold text-gray-800">TOTAL</span>
-                  <span className="text-2xl font-bold text-primary">₱{total.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-gray-800">
+                    TOTAL
+                  </span>
+                  <span className="text-2xl font-bold text-primary">
+                    ₱{total.toFixed(2)}
+                  </span>
                 </div>
               </div>
 
@@ -1355,7 +1376,9 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                     >
                       <Banknote className="w-4 h-4" />
                       Cash
-                      {checkingOut && <RefreshCw className="w-3 h-3 animate-spin ml-1" />}
+                      {checkingOut && (
+                        <RefreshCw className="w-3 h-3 animate-spin ml-1" />
+                      )}
                     </button>
                     <button
                       onClick={() => handleCheckout("Card")}
@@ -1402,8 +1425,13 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-base font-bold text-gray-800 mb-2">Clear Order?</h3>
-            <p className="text-sm text-gray-500 mb-6">All items in the current order will be removed. This cannot be undone.</p>
+            <h3 className="text-base font-bold text-gray-800 mb-2">
+              Clear Order?
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              All items in the current order will be removed. This cannot be
+              undone.
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearConfirm(false)}
@@ -1412,7 +1440,10 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
                 Cancel
               </button>
               <button
-                onClick={() => { clearCart(); setShowClearConfirm(false); }}
+                onClick={() => {
+                  clearCart();
+                  setShowClearConfirm(false);
+                }}
                 className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-colors"
               >
                 Clear Order
@@ -1421,7 +1452,6 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
           </div>
         </div>
       )}
-
       {/* Receipt Modal */}
       {showReceiptModal && receiptData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

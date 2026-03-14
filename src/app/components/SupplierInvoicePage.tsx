@@ -21,7 +21,13 @@ import {
   type SupplierInvoice,
 } from "@/utils/api";
 
-export function SupplierInvoicePage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+export function SupplierInvoicePage({
+  userRole,
+  isAdminPermissions,
+}: {
+  userRole?: string;
+  isAdminPermissions?: boolean;
+}) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);

@@ -109,6 +109,7 @@ export interface User {
   storeId?: string; // Store assignment
   storeName?: string; // Store name
   canLogin?: boolean; // Whether user can login
+  shift?: 'AM' | 'PM'; // Employee shift assignment
 }
 
 export async function login(username: string, password: string): Promise<User> {
@@ -1205,7 +1206,7 @@ export interface Employee {
   storeId?: string;
   storeName?: string;
   canLogin?: boolean;
-  createdAt?: string;
+  shift?: 'AM' | 'PM';
   employeeProfile?: EmployeeProfile;
   permissions?: string[];
 }
@@ -1328,9 +1329,13 @@ export interface SupplierInvoice {
   createdAt: string;
 }
 
-export async function getSupplierInvoices(supplierId?: string): Promise<SupplierInvoice[]> {
+export async function getSupplierInvoices(
+  supplierId?: string,
+): Promise<SupplierInvoice[]> {
   const query = supplierId ? `?supplierId=${supplierId}` : "";
-  const data = await apiRequest<{ invoices: SupplierInvoice[] }>(`/supplier-invoices${query}`);
+  const data = await apiRequest<{ invoices: SupplierInvoice[] }>(
+    `/supplier-invoices${query}`,
+  );
   return data.invoices;
 }
 
@@ -1342,10 +1347,13 @@ export async function createSupplierInvoice(invoice: {
   paid: number;
   remarks?: string;
 }): Promise<SupplierInvoice> {
-  const data = await apiRequest<{ invoice: SupplierInvoice }>("/supplier-invoices", {
-    method: "POST",
-    body: JSON.stringify(invoice),
-  });
+  const data = await apiRequest<{ invoice: SupplierInvoice }>(
+    "/supplier-invoices",
+    {
+      method: "POST",
+      body: JSON.stringify(invoice),
+    },
+  );
   return data.invoice;
 }
 
@@ -1360,10 +1368,13 @@ export async function updateSupplierInvoice(
     remarks: string;
   }>,
 ): Promise<SupplierInvoice> {
-  const data = await apiRequest<{ invoice: SupplierInvoice }>(`/supplier-invoices/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(updates),
-  });
+  const data = await apiRequest<{ invoice: SupplierInvoice }>(
+    `/supplier-invoices/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    },
+  );
   return data.invoice;
 }
 
@@ -1396,7 +1407,9 @@ export async function exportSupplierInvoicesPDF(payload: {
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Failed to generate PDF (${response.status})`);
+    throw new Error(
+      errorData.error || `Failed to generate PDF (${response.status})`,
+    );
   }
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);

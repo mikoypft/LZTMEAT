@@ -100,7 +100,11 @@ const AVAILABLE_PERMISSIONS = [
     description: "Manage users and employees",
   },
   { id: "suppliers", label: "Suppliers", description: "Manage suppliers" },
-  { id: "supplier-invoices", label: "Supplier Invoices", description: "Track supplier invoices and payments" },
+  {
+    id: "supplier-invoices",
+    label: "Supplier Invoices",
+    description: "Track supplier invoices and payments",
+  },
   { id: "discounts", label: "Settings", description: "Manage price settings" },
   { id: "history", label: "History", description: "View history logs" },
   {
@@ -426,6 +430,18 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
     } catch (error) {
       console.error("Error toggling canLogin:", error);
       toast.error("Failed to update login permission");
+    }
+  };
+
+  const handleToggleShift = async (employee: AllUser) => {
+    try {
+      const newShift = employee.shift === 'AM' ? 'PM' : 'AM';
+      await updateEmployee(employee.id, { shift: newShift });
+      toast.success(`${employee.name} assigned to ${newShift} shift`);
+      await loadEmployees();
+    } catch (error) {
+      console.error('Error toggling shift:', error);
+      toast.error('Failed to update shift');
     }
   };
 
@@ -824,18 +840,27 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">Admin Permissions</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Admin Permissions
+                        </div>
                         <div className="text-xs text-gray-500">
-                          Allow this employee to add, edit, and delete records across all pages
+                          Allow this employee to add, edit, and delete records
+                          across all pages
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
-                          const has = formData.permissions?.includes("admin_permissions");
+                          const has =
+                            formData.permissions?.includes("admin_permissions");
                           const newPerms = has
-                            ? (formData.permissions || []).filter((p) => p !== "admin_permissions")
-                            : [...(formData.permissions || []), "admin_permissions"];
+                            ? (formData.permissions || []).filter(
+                                (p) => p !== "admin_permissions",
+                              )
+                            : [
+                                ...(formData.permissions || []),
+                                "admin_permissions",
+                              ];
                           setFormData({ ...formData, permissions: newPerms });
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -1374,6 +1399,9 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Can Login
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Shift
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -1383,7 +1411,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       Loading users...
@@ -1392,7 +1420,7 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                 ) : employees.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       No users found. Add your first employee to get started.
@@ -1514,6 +1542,31 @@ export function EmployeesPage({ userRole }: { userRole?: string }) {
                               </>
                             )}
                           </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {isAdmin ? (
+                          <button
+                            onClick={() => handleToggleShift(employee)}
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                              employee.shift === 'AM'
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : employee.shift === 'PM'
+                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                            title={employee.shift ? `Click to switch to ${employee.shift === 'AM' ? 'PM' : 'AM'}` : 'Click to assign AM shift'}
+                          >
+                            {employee.shift ?? '—'}
+                          </button>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
+                            employee.shift === 'AM'
+                              ? 'bg-blue-100 text-blue-700'
+                              : employee.shift === 'PM'
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-gray-100 text-gray-400'
+                          }`}>{employee.shift ?? '—'}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">
