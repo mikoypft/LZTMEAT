@@ -293,12 +293,14 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const [loading, setLoading] = useState(true);
   const [storesList, setStoresList] = useState<string[]>(["All Stores"]);
   const [allCashiers, setAllCashiers] = useState<string[]>([]);
+  const [cashierShiftMap, setCashierShiftMap] = useState<Record<string, string | null>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStore, setSelectedStore] = useState<string>("All Stores");
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
   const [selectedStatus, setSelectedStatus] = useState<string>("All Status");
   const [selectedCashier, setSelectedCashier] =
     useState<string>("All Cashiers");
+  const [selectedShift, setSelectedShift] = useState<"" | "AM" | "PM">("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [sortField, setSortField] = useState<keyof SaleRecord>("date");
@@ -325,6 +327,12 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
           .filter(Boolean)
           .sort() as string[];
         setAllCashiers(names);
+        const shiftMap: Record<string, string | null> = {};
+        users.forEach((u) => {
+          const name = (u.fullName || (u as any).name || u.username || "").toLowerCase();
+          shiftMap[name] = (u as any).shift ?? null;
+        });
+        setCashierShiftMap(shiftMap);
       })
       .catch(() => {});
   }, []);
@@ -437,6 +445,9 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
       const matchesCashier =
         selectedCashier === "All Cashiers" || sale.cashier === selectedCashier;
 
+      const matchesShift = !selectedShift ||
+        cashierShiftMap[(sale.cashier || "").toLowerCase()] === selectedShift;
+
       const saleDate = sale.date; // already "YYYY-MM-DD"
       const matchesFrom = !startDate || saleDate >= startDate;
       const matchesTo = !endDate || saleDate <= endDate;
@@ -447,6 +458,7 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
         matchesPayment &&
         matchesStatus &&
         matchesCashier &&
+        matchesShift &&
         matchesFrom &&
         matchesTo
       );
@@ -839,6 +851,15 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
                     {cashier}
                   </option>
                 ))}
+              </select>
+              <select
+                value={selectedShift}
+                onChange={(e) => setSelectedShift(e.target.value as "" | "AM" | "PM")}
+                className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              >
+                <option value="">All Shifts</option>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
               </select>
 
               {/* Date range */}
