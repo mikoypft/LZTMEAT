@@ -99,11 +99,13 @@ export function EODStockCountModal({
   const autoLoggedOut = useRef(false);
 
   // Resolved context — recovery session overrides current user
-  const targetStoreName = recoverySession?.storeName ?? currentUser.storeName ?? "";
-  const targetStoreId   = recoverySession?.storeId   ?? currentUser.storeId   ?? null;
-  const targetShift     = recoverySession?.shift      ?? currentUser.shift     ?? null;
-  const targetUserId    = recoverySession?.userId     ?? currentUser.id        ?? null;
-  const targetUserName  = recoverySession?.userName   ?? currentUser.fullName  ?? currentUser.username;
+  const targetStoreName =
+    recoverySession?.storeName ?? currentUser.storeName ?? "";
+  const targetStoreId = recoverySession?.storeId ?? currentUser.storeId ?? null;
+  const targetShift = recoverySession?.shift ?? currentUser.shift ?? null;
+  const targetUserId = recoverySession?.userId ?? currentUser.id ?? null;
+  const targetUserName =
+    recoverySession?.userName ?? currentUser.fullName ?? currentUser.username;
 
   // For a recovery session use that session's date; otherwise use today
   const shiftDate = recoverySession
@@ -112,13 +114,16 @@ export function EODStockCountModal({
 
   // ── Load preflight data ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!targetStoreId || !targetStoreName) { setLoading(false); return; }
+    if (!targetStoreId || !targetStoreName) {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       setLoading(true);
       try {
         const preflight = await getEODPreflight({
-          storeId:   String(targetStoreId),
+          storeId: String(targetStoreId),
           storeName: targetStoreName,
           shiftDate,
         });
@@ -171,7 +176,9 @@ export function EODStockCountModal({
         <div className="bg-background rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-muted-foreground">
-            {noSales ? "No sales today — logging out…" : "Checking today's sales…"}
+            {noSales
+              ? "No sales today — logging out…"
+              : "Checking today's sales…"}
           </p>
         </div>
       </div>
@@ -179,8 +186,14 @@ export function EODStockCountModal({
   }
 
   const handleSubmit = async () => {
-    if (!allFilled) { setError("Please fill in the actual quantity for all products."); return; }
-    if (!password)  { setError("Please enter your password to confirm."); return; }
+    if (!allFilled) {
+      setError("Please fill in the actual quantity for all products.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password to confirm.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -199,22 +212,22 @@ export function EODStockCountModal({
 
       // 2. Build items payload
       const items: EODStockCountItem[] = rows.map((r) => ({
-        productId:   r.productId,
+        productId: r.productId,
         productName: r.productName,
-        unit:        r.unit,
+        unit: r.unit,
         expectedQty: r.expectedQty,
-        actualQty:   parseFloat(r.actualQty) || 0,
+        actualQty: parseFloat(r.actualQty) || 0,
       }));
 
       // 3. Submit EOD count (backend auto-creates discrepancy records)
       await submitEODCount({
-        userId:    userId   ? String(userId) : null,
-        userName:  targetUserName,
-        storeId:   targetStoreId,
+        userId: userId ? String(userId) : null,
+        userName: targetUserName,
+        storeId: targetStoreId,
         storeName: targetStoreName,
         shiftDate,
-        shift:     targetShift,
-        notes:     notes || null,
+        shift: targetShift,
+        notes: notes || null,
         items,
       });
 
@@ -247,7 +260,12 @@ export function EODStockCountModal({
                 <p className="text-sm text-muted-foreground">
                   {targetStoreName}
                   {targetShift ? ` · ${targetShift} Shift` : ""}
-                  {" · "}{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {" · "}
+                  {new Date().toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             </div>
@@ -265,11 +283,14 @@ export function EODStockCountModal({
               <span>
                 Your previous session on{" "}
                 <strong>
-                  {new Date(recoverySession.loginTime).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  })}
+                  {new Date(recoverySession.loginTime).toLocaleDateString(
+                    "en-US",
+                    {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    },
+                  )}
                 </strong>{" "}
                 ended without a stock count. Please complete it now.
               </span>
@@ -303,28 +324,39 @@ export function EODStockCountModal({
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                 <tr>
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Product</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">
+                    Product
+                  </th>
                   <th className="text-right px-4 py-3 font-medium text-blue-600">
                     <span className="flex items-center justify-end gap-1">
                       <TrendingDown className="w-3.5 h-3.5" />
                       Sold Today
                     </span>
                   </th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Expected</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actual</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Discrepancy</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">
+                    Expected
+                  </th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">
+                    Actual
+                  </th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">
+                    Discrepancy
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, idx) => {
-                  const actual    = parseFloat(row.actualQty);
+                  const actual = parseFloat(row.actualQty);
                   const hasActual = !isNaN(actual);
-                  const disc      = hasActual ? row.expectedQty - actual : null;
+                  const disc = hasActual ? row.expectedQty - actual : null;
                   const discColor =
-                    disc === null ? "" :
-                    disc <= 0    ? "text-green-600" :
-                    disc < 1     ? "text-yellow-600" :
-                                   "text-red-600";
+                    disc === null
+                      ? ""
+                      : disc <= 0
+                        ? "text-green-600"
+                        : disc < 1
+                          ? "text-yellow-600"
+                          : "text-red-600";
 
                   return (
                     <tr
@@ -333,19 +365,29 @@ export function EODStockCountModal({
                     >
                       <td className="px-5 py-3 font-medium">
                         {row.productName}
-                        <span className="ml-1 text-xs text-muted-foreground">({row.unit})</span>
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({row.unit})
+                        </span>
                         {(row.transfersIn > 0 || row.transfersOut > 0) && (
                           <span className="ml-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
-                            {row.transfersIn > 0 ? `+${row.transfersIn} delivered` : ""}
-                            {row.transfersIn > 0 && row.transfersOut > 0 ? " / " : ""}
-                            {row.transfersOut > 0 ? `−${row.transfersOut} sent out` : ""}
+                            {row.transfersIn > 0
+                              ? `+${row.transfersIn} delivered`
+                              : ""}
+                            {row.transfersIn > 0 && row.transfersOut > 0
+                              ? " / "
+                              : ""}
+                            {row.transfersOut > 0
+                              ? `−${row.transfersOut} sent out`
+                              : ""}
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-blue-600">
-                        {row.totalSoldToday > 0
-                          ? row.totalSoldToday.toFixed(3)
-                          : <span className="text-muted-foreground">—</span>}
+                        {row.totalSoldToday > 0 ? (
+                          row.totalSoldToday.toFixed(3)
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">
                         {row.expectedQty.toFixed(3)}
@@ -361,7 +403,9 @@ export function EODStockCountModal({
                           className="w-28 px-2 py-1 bg-background border border-border rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </td>
-                      <td className={`px-4 py-3 text-right font-semibold ${discColor}`}>
+                      <td
+                        className={`px-4 py-3 text-right font-semibold ${discColor}`}
+                      >
                         {disc !== null
                           ? `${disc > 0 ? "−" : "+"}${Math.abs(disc).toFixed(3)}`
                           : "—"}
@@ -381,8 +425,10 @@ export function EODStockCountModal({
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm text-red-700">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>
-                <strong>{rowsWithDisc.length}</strong> item{rowsWithDisc.length !== 1 ? "s" : ""} with stock discrepancy —
-                these will be auto-logged and may result in an adjustment charge.
+                <strong>{rowsWithDisc.length}</strong> item
+                {rowsWithDisc.length !== 1 ? "s" : ""} with stock discrepancy —
+                these will be auto-logged and may result in an adjustment
+                charge.
               </span>
             </div>
           )}
@@ -426,13 +472,19 @@ export function EODStockCountModal({
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
           )}
 
           <div className="flex justify-between items-center">

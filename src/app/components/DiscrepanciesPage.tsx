@@ -37,7 +37,13 @@ function formatDate(ts: string) {
   });
 }
 
-function DiscrepancyBadge({ value, unit = "kg" }: { value: number; unit?: string }) {
+function DiscrepancyBadge({
+  value,
+  unit = "kg",
+}: {
+  value: number;
+  unit?: string;
+}) {
   const abs = Math.abs(value);
   const color =
     abs === 0
@@ -60,8 +66,14 @@ interface TableSection {
   icon: React.ElementType;
   color: string;
   records: ProductionRecord[];
-  discrepancyKey: "mixingDiscrepancy" | "packingDiscrepancy" | "cookingDiscrepancy";
-  reasonKey: "mixingDiscrepancyReason" | "packingDiscrepancyReason" | "cookingDiscrepancyReason";
+  discrepancyKey:
+    | "mixingDiscrepancy"
+    | "packingDiscrepancy"
+    | "cookingDiscrepancy";
+  reasonKey:
+    | "mixingDiscrepancyReason"
+    | "packingDiscrepancyReason"
+    | "cookingDiscrepancyReason";
   phaseLabel: string;
   inputLabel: string;
   outputLabel: string;
@@ -88,7 +100,9 @@ function ReportModal({
   const [productId, setProductId] = useState("");
   const [productName, setProductName] = useState("");
   const [unit, setUnit] = useState("kg");
-  const [shiftDate, setShiftDate] = useState(new Date().toISOString().slice(0, 10));
+  const [shiftDate, setShiftDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [shift, setShift] = useState<"AM" | "PM" | "">("");
   const [startingStock, setStartingStock] = useState("");
   const [salesQuantity, setSalesQuantity] = useState("");
@@ -99,7 +113,7 @@ function ReportModal({
   const [error, setError] = useState("");
 
   const start = parseFloat(startingStock) || 0;
-  const sold  = parseFloat(salesQuantity)  || 0;
+  const sold = parseFloat(salesQuantity) || 0;
   const reported = parseFloat(reportedRemaining) || 0;
   const expected = start - sold;
   const discrepancy = expected - reported;
@@ -120,7 +134,13 @@ function ReportModal({
   };
 
   const handleSubmit = async () => {
-    if (!storeName || !productId || !productName || !startingStock || !reportedRemaining) {
+    if (
+      !storeName ||
+      !productId ||
+      !productName ||
+      !startingStock ||
+      !reportedRemaining
+    ) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -156,40 +176,78 @@ function ReportModal({
       <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-bold text-lg">Report Sales Discrepancy</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="p-5 space-y-4">
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Store *</label>
-              <select value={storeId} onChange={(e) => handleStoreChange(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Store *
+              </label>
+              <select
+                value={storeId}
+                onChange={(e) => handleStoreChange(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
                 <option value="">Select store…</option>
-                {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Product *</label>
-              <select value={productId} onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Product *
+              </label>
+              <select
+                value={productId}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
                 <option value="">Select product…</option>
-                {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                {products.map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Date *</label>
-              <input type="date" value={shiftDate} onChange={(e) => setShiftDate(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Date *
+              </label>
+              <input
+                type="date"
+                value={shiftDate}
+                onChange={(e) => setShiftDate(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Shift</label>
-              <select value={shift} onChange={(e) => setShift(e.target.value as "AM" | "PM" | "")}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Shift
+              </label>
+              <select
+                value={shift}
+                onChange={(e) => setShift(e.target.value as "AM" | "PM" | "")}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
                 <option value="">All shifts</option>
                 <option value="AM">AM</option>
                 <option value="PM">PM</option>
@@ -199,27 +257,60 @@ function ReportModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Starting Stock *</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Starting Stock *
+              </label>
               <div className="flex">
-                <input type="number" min="0" step="0.001" value={startingStock} onChange={(e) => setStartingStock(e.target.value)}
-                  placeholder="0.000" className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">{unit}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={startingStock}
+                  onChange={(e) => setStartingStock(e.target.value)}
+                  placeholder="0.000"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">
+                  {unit}
+                </span>
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Qty Sold</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Qty Sold
+              </label>
               <div className="flex">
-                <input type="number" min="0" step="0.001" value={salesQuantity} onChange={(e) => setSalesQuantity(e.target.value)}
-                  placeholder="0.000" className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">{unit}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={salesQuantity}
+                  onChange={(e) => setSalesQuantity(e.target.value)}
+                  placeholder="0.000"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">
+                  {unit}
+                </span>
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Reported Remaining *</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Reported Remaining *
+              </label>
               <div className="flex">
-                <input type="number" min="0" step="0.001" value={reportedRemaining} onChange={(e) => setReportedRemaining(e.target.value)}
-                  placeholder="0.000" className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">{unit}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={reportedRemaining}
+                  onChange={(e) => setReportedRemaining(e.target.value)}
+                  placeholder="0.000"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-l-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="px-2 py-2 bg-muted border border-l-0 border-border rounded-r-lg text-xs text-muted-foreground">
+                  {unit}
+                </span>
               </div>
             </div>
           </div>
@@ -228,12 +319,20 @@ function ReportModal({
           {(startingStock || salesQuantity || reportedRemaining) && (
             <div className="bg-muted rounded-lg px-4 py-3 text-sm space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expected remaining</span>
-                <span className="font-medium">{expected.toFixed(3)} {unit}</span>
+                <span className="text-muted-foreground">
+                  Expected remaining
+                </span>
+                <span className="font-medium">
+                  {expected.toFixed(3)} {unit}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Reported remaining</span>
-                <span className="font-medium">{reported.toFixed(3)} {unit}</span>
+                <span className="text-muted-foreground">
+                  Reported remaining
+                </span>
+                <span className="font-medium">
+                  {reported.toFixed(3)} {unit}
+                </span>
               </div>
               <div className="flex justify-between border-t border-border pt-1 mt-1">
                 <span className="font-semibold">Discrepancy</span>
@@ -243,20 +342,42 @@ function ReportModal({
           )}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Responsible Cashier</label>
-            <input type="text" value={cashier} onChange={(e) => setCashier(e.target.value)}
-              placeholder="Cashier name…" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <label className="text-xs font-medium text-muted-foreground block mb-1">
+              Responsible Cashier
+            </label>
+            <input
+              type="text"
+              value={cashier}
+              onChange={(e) => setCashier(e.target.value)}
+              placeholder="Cashier name…"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Notes</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-              placeholder="Optional notes…" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
+            <label className="text-xs font-medium text-muted-foreground block mb-1">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional notes…"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-border">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
+          >
             {saving ? "Saving…" : "Save Discrepancy"}
           </button>
         </div>
@@ -282,7 +403,7 @@ function AdjustModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const cost  = parseFloat(unitCost) || 0;
+  const cost = parseFloat(unitCost) || 0;
   const total = discrepancy.discrepancyAmount * cost;
 
   const handleSubmit = async () => {
@@ -310,45 +431,96 @@ function AdjustModal({
       <div className="bg-background rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-bold text-lg">Record Discrepancy Adjustment</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="p-5 space-y-4">
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="bg-muted rounded-lg px-4 py-3 text-sm space-y-1">
-            <p><span className="text-muted-foreground">Product:</span> <span className="font-medium">{discrepancy.productName}</span></p>
-            <p><span className="text-muted-foreground">Store:</span> <span className="font-medium">{discrepancy.storeName}</span></p>
-            <p><span className="text-muted-foreground">Missing:</span> <span className="font-semibold text-red-600">{discrepancy.discrepancyAmount.toFixed(3)} {discrepancy.unit}</span></p>
-            <p><span className="text-muted-foreground">Cashier:</span> <span className="font-medium">{discrepancy.cashier || "—"}</span></p>
+            <p>
+              <span className="text-muted-foreground">Product:</span>{" "}
+              <span className="font-medium">{discrepancy.productName}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Store:</span>{" "}
+              <span className="font-medium">{discrepancy.storeName}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Missing:</span>{" "}
+              <span className="font-semibold text-red-600">
+                {discrepancy.discrepancyAmount.toFixed(3)} {discrepancy.unit}
+              </span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Cashier:</span>{" "}
+              <span className="font-medium">{discrepancy.cashier || "—"}</span>
+            </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Unit Cost (₱ per {discrepancy.unit})</label>
-            <input type="number" min="0" step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)}
-              placeholder="0.00" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+            <label className="text-xs font-medium text-muted-foreground block mb-1">
+              Unit Cost (₱ per {discrepancy.unit})
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(e.target.value)}
+              placeholder="0.00"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
 
           {unitCost && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
               <p className="text-amber-800 font-medium">
-                Total charge to {discrepancy.cashier || "cashier"}: <span className="text-red-600 font-bold">₱{total.toFixed(2)}</span>
+                Total charge to {discrepancy.cashier || "cashier"}:{" "}
+                <span className="text-red-600 font-bold">
+                  ₱{total.toFixed(2)}
+                </span>
               </p>
               <p className="text-amber-600 text-xs mt-1">
-                {discrepancy.discrepancyAmount.toFixed(3)} {discrepancy.unit} × ₱{cost.toFixed(2)} / {discrepancy.unit}
+                {discrepancy.discrepancyAmount.toFixed(3)} {discrepancy.unit} ×
+                ₱{cost.toFixed(2)} / {discrepancy.unit}
               </p>
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Notes</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-              placeholder="Optional notes…" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
+            <label className="text-xs font-medium text-muted-foreground block mb-1">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Optional notes…"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-border">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+          >
             {saving ? "Saving…" : "Confirm Adjustment"}
           </button>
         </div>
@@ -371,7 +543,9 @@ function SalesDiscrepanciesSection({
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [adjustTarget, setAdjustTarget] = useState<SalesDiscrepancy | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<SalesDiscrepancy | null>(
+    null,
+  );
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -391,13 +565,17 @@ function SalesDiscrepanciesSection({
     }
   };
 
-  useEffect(() => { fetchData(); }, [dateFrom, dateTo]);
+  useEffect(() => {
+    fetchData();
+  }, [dateFrom, dateTo]);
 
-  const pending  = items.filter((i) => i.status === "pending");
+  const pending = items.filter((i) => i.status === "pending");
   const adjusted = items.filter((i) => i.status === "adjusted");
 
   const handleAdjusted = (id: string) => {
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "adjusted" } : i));
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: "adjusted" } : i)),
+    );
   };
 
   return (
@@ -409,8 +587,12 @@ function SalesDiscrepanciesSection({
         >
           <div className="flex items-center gap-3">
             <ShoppingBag className="w-5 h-5 text-violet-600" />
-            <span className="font-semibold text-foreground">Sales Discrepancies</span>
-            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{items.length}</span>
+            <span className="font-semibold text-foreground">
+              Sales Discrepancies
+            </span>
+            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+              {items.length}
+            </span>
             {pending.length > 0 && (
               <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
                 {pending.length} pending
@@ -419,50 +601,109 @@ function SalesDiscrepanciesSection({
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={(e) => { e.stopPropagation(); setShowReport(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowReport(true);
+              }}
               className="flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90"
             >
               <Plus className="w-3.5 h-3.5" /> Report
             </button>
-            {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+            {collapsed ? (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            )}
           </div>
         </button>
 
         {!collapsed && (
           <>
             {loading ? (
-              <div className="px-5 py-10 text-center text-muted-foreground text-sm">Loading…</div>
+              <div className="px-5 py-10 text-center text-muted-foreground text-sm">
+                Loading…
+              </div>
             ) : items.length === 0 ? (
               <div className="px-5 py-10 text-center text-muted-foreground text-sm">
-                No sales discrepancies found{(dateFrom || dateTo) ? " for the selected date range" : ""}. Click <strong>Report</strong> to log one.
+                No sales discrepancies found
+                {dateFrom || dateTo ? " for the selected date range" : ""}.
+                Click <strong>Report</strong> to log one.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-t border-border bg-muted/30">
-                      {["Date","Shift","Store","Product","Starting","Sold","Expected","Reported","Discrepancy","Cashier","Status","Action"].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                      {[
+                        "Date",
+                        "Shift",
+                        "Store",
+                        "Product",
+                        "Starting",
+                        "Sold",
+                        "Expected",
+                        "Reported",
+                        "Discrepancy",
+                        "Cashier",
+                        "Status",
+                        "Action",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((r, idx) => (
-                      <tr key={r.id} className={`border-t border-border ${idx % 2 === 1 ? "bg-muted/10" : ""} hover:bg-muted/20 transition-colors`}>
-                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatDate(r.shiftDate)}</td>
+                      <tr
+                        key={r.id}
+                        className={`border-t border-border ${idx % 2 === 1 ? "bg-muted/10" : ""} hover:bg-muted/20 transition-colors`}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                          {formatDate(r.shiftDate)}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {r.shift ? (
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.shift === "AM" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>{r.shift}</span>
-                          ) : "—"}
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.shift === "AM" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}
+                            >
+                              {r.shift}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">{r.storeName}</td>
-                        <td className="px-4 py-3 whitespace-nowrap font-medium">{r.productName}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">{r.startingStock.toFixed(3)} {r.unit}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">{r.salesQuantity.toFixed(3)} {r.unit}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">{r.expectedRemaining.toFixed(3)} {r.unit}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">{r.reportedRemaining.toFixed(3)} {r.unit}</td>
-                        <td className="px-4 py-3 whitespace-nowrap"><DiscrepancyBadge value={r.discrepancyAmount} unit={r.unit} /></td>
-                        <td className="px-4 py-3 whitespace-nowrap">{r.cashier || "—"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {r.storeName}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap font-medium">
+                          {r.productName}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          {r.startingStock.toFixed(3)} {r.unit}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          {r.salesQuantity.toFixed(3)} {r.unit}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          {r.expectedRemaining.toFixed(3)} {r.unit}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          {r.reportedRemaining.toFixed(3)} {r.unit}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <DiscrepancyBadge
+                            value={r.discrepancyAmount}
+                            unit={r.unit}
+                          />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {r.cashier || "—"}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {r.status === "adjusted" ? (
                             <span className="flex items-center gap-1 text-green-600 text-xs font-semibold">
@@ -537,7 +778,10 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const data = await getProductionRecords(dateFrom || undefined, dateTo || undefined);
+      const data = await getProductionRecords(
+        dateFrom || undefined,
+        dateTo || undefined,
+      );
       setRecords(data);
     } finally {
       setLoading(false);
@@ -605,8 +849,7 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
       phaseLabel: "Cooking",
       inputLabel: "Mix Used (Input)",
       outputLabel: "Total Output",
-      getInput: (r) =>
-        r.mixUsed != null ? `${r.mixUsed.toFixed(3)} kg` : "—",
+      getInput: (r) => (r.mixUsed != null ? `${r.mixUsed.toFixed(3)} kg` : "—"),
       getOutput: (r) =>
         r.quantity != null ? `${Number(r.quantity).toFixed(3)} kg` : "—",
     },
@@ -615,8 +858,7 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
   const totalDiscrepancy = (
     key: "mixingDiscrepancy" | "packingDiscrepancy" | "cookingDiscrepancy",
     recs: ProductionRecord[],
-  ) =>
-    recs.reduce((sum, r) => sum + Math.abs(Number(r[key] ?? 0)), 0);
+  ) => recs.reduce((sum, r) => sum + Math.abs(Number(r[key] ?? 0)), 0);
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -742,7 +984,7 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
                 {section.records.length === 0 ? (
                   <div className="px-5 py-10 text-center text-muted-foreground text-sm">
                     No {section.phaseLabel.toLowerCase()} discrepancies found
-                    {(dateFrom || dateTo) ? " for the selected date range" : ""}.
+                    {dateFrom || dateTo ? " for the selected date range" : ""}.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -777,12 +1019,16 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
                       </thead>
                       <tbody>
                         {section.records.map((r, idx) => {
-                          const discVal = Number(r[section.discrepancyKey] ?? 0);
-                          const reason = (r[section.reasonKey] as string | null | undefined) || "";
+                          const discVal = Number(
+                            r[section.discrepancyKey] ?? 0,
+                          );
+                          const reason =
+                            (r[section.reasonKey] as
+                              | string
+                              | null
+                              | undefined) || "";
                           const productLabel =
-                            r.productMixCategoryName ||
-                            r.productName ||
-                            "—";
+                            r.productMixCategoryName || r.productName || "—";
                           return (
                             <tr
                               key={r.id}
@@ -811,7 +1057,9 @@ export function DiscrepanciesPage({ currentUser }: DiscrepanciesPageProps) {
                               </td>
                               <td className="px-4 py-3 max-w-[200px]">
                                 {reason ? (
-                                  <span className="text-foreground">{reason}</span>
+                                  <span className="text-foreground">
+                                    {reason}
+                                  </span>
                                 ) : (
                                   <span className="text-muted-foreground italic">
                                     No reason provided

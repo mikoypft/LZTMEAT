@@ -482,10 +482,21 @@ export function TransferPage({ userRole }: { userRole?: string }) {
     userShiftMap[name.toLowerCase()] = (u as any).shift ?? null;
   });
 
-  const activeFilterCount = [filterUser, filterDateFrom, filterDateTo, filterShift, filterFromStore, filterToStore].filter(Boolean).length;
+  const activeFilterCount = [
+    filterUser,
+    filterDateFrom,
+    filterDateTo,
+    filterShift,
+    filterFromStore,
+    filterToStore,
+  ].filter(Boolean).length;
 
   const filteredTransfers = transfers.filter((t) => {
-    if (filterUser && !(t.transferredBy || "").toLowerCase().includes(filterUser.toLowerCase())) return false;
+    if (
+      filterUser &&
+      !(t.transferredBy || "").toLowerCase().includes(filterUser.toLowerCase())
+    )
+      return false;
     if (filterDateFrom && t.date < filterDateFrom) return false;
     if (filterDateTo && t.date > filterDateTo) return false;
     if (filterFromStore && t.from !== filterFromStore) return false;
@@ -759,18 +770,23 @@ export function TransferPage({ userRole }: { userRole?: string }) {
                   onClick={() => setShowFilters(!showFilters)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                     activeFilterCount > 0
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'border-border hover:bg-muted'
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border hover:bg-muted"
                   }`}
                 >
                   <Filter className="w-4 h-4" />
                   Filters
                   {activeFilterCount > 0 && (
-                    <span className="bg-white text-primary rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">{activeFilterCount}</span>
+                    <span className="bg-white text-primary rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">
+                      {activeFilterCount}
+                    </span>
                   )}
                 </button>
                 {activeFilterCount > 0 && (
-                  <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
                     <X className="w-3.5 h-3.5" /> Clear filters
                   </button>
                 )}
@@ -778,38 +794,58 @@ export function TransferPage({ userRole }: { userRole?: string }) {
               {showFilters && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-muted/40 rounded-lg border border-border">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Transferred By</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Transferred By
+                    </label>
                     <input
                       type="text"
                       value={filterUser}
-                      onChange={(e) => { setFilterUser(e.target.value); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterUser(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       placeholder="Name..."
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Date From</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Date From
+                    </label>
                     <input
                       type="date"
                       value={filterDateFrom}
-                      onChange={(e) => { setFilterDateFrom(e.target.value); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterDateFrom(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Date To</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Date To
+                    </label>
                     <input
                       type="date"
                       value={filterDateTo}
-                      onChange={(e) => { setFilterDateTo(e.target.value); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterDateTo(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Shift</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Shift
+                    </label>
                     <select
                       value={filterShift}
-                      onChange={(e) => { setFilterShift(e.target.value as "" | "AM" | "PM"); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterShift(e.target.value as "" | "AM" | "PM");
+                        setCurrentPage(1);
+                      }}
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="">All Shifts</option>
@@ -818,27 +854,49 @@ export function TransferPage({ userRole }: { userRole?: string }) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">From Store</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      From Store
+                    </label>
                     <select
                       value={filterFromStore}
-                      onChange={(e) => { setFilterFromStore(e.target.value); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterFromStore(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="">All</option>
-                      <option value="Production Facility">Production Facility</option>
-                      {stores.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      <option value="Production Facility">
+                        Production Facility
+                      </option>
+                      {stores.map((s) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">To Store</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      To Store
+                    </label>
                     <select
                       value={filterToStore}
-                      onChange={(e) => { setFilterToStore(e.target.value); setCurrentPage(1); }}
+                      onChange={(e) => {
+                        setFilterToStore(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="">All</option>
-                      <option value="Production Facility">Production Facility</option>
-                      {stores.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      <option value="Production Facility">
+                        Production Facility
+                      </option>
+                      {stores.map((s) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -995,8 +1053,10 @@ export function TransferPage({ userRole }: { userRole?: string }) {
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
                   Page {currentPage} of {totalPages} • Showing{" "}
-                  {paginatedTransfers.length} of {filteredTransfers.length} transfers
-                  {activeFilterCount > 0 && ` (filtered from ${transfers.length})`}
+                  {paginatedTransfers.length} of {filteredTransfers.length}{" "}
+                  transfers
+                  {activeFilterCount > 0 &&
+                    ` (filtered from ${transfers.length})`}
                 </div>
                 <div className="flex gap-2">
                   <button

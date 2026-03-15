@@ -1856,32 +1856,32 @@ $routes = [
     },
     
     'POST /api/sales' => function() use ($pdo, $body) {
+        // DDL must run OUTSIDE any transaction — ALTER TABLE causes implicit COMMIT in MySQL/MariaDB
+        // which would silently end any active transaction and make rollBack() throw.
         try {
-            $pdo->beginTransaction();
-            
+            $chk = $pdo->query("SHOW COLUMNS FROM sales LIKE 'wholesale_discount'");
+            if ($chk->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE sales ADD COLUMN wholesale_discount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER global_discount");
+            }
+        } catch (Exception $e) {
+            error_log('Could not add wholesale_discount column: ' . $e->getMessage());
+        }
+        try { $pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+
+        try {
             // Validate required fields
             if (empty($body['items']) || !is_array($body['items'])) {
                 http_response_code(400);
                 return ['error' => 'Items array is required'];
             }
-            
+
             if (empty($body['storeId'])) {
                 http_response_code(400);
                 return ['error' => 'Store ID is required'];
             }
-            
-            // Ensure wholesale_discount column exists
-            try {
-                $stmt = $pdo->query("SHOW COLUMNS FROM sales LIKE 'wholesale_discount'");
-                if ($stmt->rowCount() === 0) {
-                    $pdo->exec("ALTER TABLE sales ADD COLUMN wholesale_discount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER global_discount");
-                }
-            } catch (Exception $e) {
-                error_log('Could not add wholesale_discount column: ' . $e->getMessage());
-            }
-            // Ensure shift column exists
-            try { $pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
-            
+
+            $pdo->beginTransaction();
+
             // Create sales record with wholesale discount column
             $stmt = $pdo->prepare('
                 INSERT INTO sales (
@@ -2067,7 +2067,7 @@ $routes = [
             ];
             
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
             http_response_code(500);
             return ['error' => 'Failed to process sale: ' . $e->getMessage()];
         }
@@ -6743,7 +6743,7 @@ $routes = [
 
             return ['success' => true, 'countId' => (string)$countId];
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
             http_response_code(500);
             return ['error' => 'Failed to save EOD count: ' . $e->getMessage()];
         }

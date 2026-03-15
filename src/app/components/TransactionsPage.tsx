@@ -22,7 +22,7 @@ interface Transaction {
   createdBy: string;
   timestamp: string;
   sourceTransactionId?: string | null;
-  shift?: 'AM' | 'PM' | null;
+  shift?: "AM" | "PM" | null;
 }
 
 interface TransactionsPageProps {
@@ -369,107 +369,143 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                 </tr>
               ) : (
                 (() => {
-                  const amTx = filteredTransactions.filter(t => t.shift === 'AM');
-                  const pmTx = filteredTransactions.filter(t => t.shift === 'PM');
-                  const untagged = filteredTransactions.filter(t => !t.shift);
+                  const amTx = filteredTransactions.filter(
+                    (t) => t.shift === "AM",
+                  );
+                  const pmTx = filteredTransactions.filter(
+                    (t) => t.shift === "PM",
+                  );
+                  const untagged = filteredTransactions.filter((t) => !t.shift);
 
-                  const renderRows = (items: Transaction[]) => items.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(transaction.timestamp).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          transaction.type === "Cash In"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {transaction.type === "Cash In" ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
-                        )}
-                        {transaction.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {transaction.category}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {transaction.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {transaction.reference || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span
-                        className={`text-sm font-semibold ${
-                          transaction.type === "Cash In"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {transaction.type === "Cash In" ? "+" : "-"}₱
-                        {transaction.amount.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {transaction.createdBy}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {transaction.type === "Cash In" &&
-                        (isAdmin ||
-                          user?.permissions?.includes("admin_permissions")) &&
-                        (() => {
-                          const alreadyCashedOut = transactions.some(
-                            (t) =>
-                              t.type === "Cash Out" &&
-                              t.sourceTransactionId === transaction.id,
-                          );
-                          return alreadyCashedOut ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
-                              <ArrowDownCircle className="w-3.5 h-3.5" />
-                              Cashed Out
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => setCashOutConfirm(transaction)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                            >
-                              <ArrowDownCircle className="w-3.5 h-3.5" />
-                              Cash Out
-                            </button>
-                          );
-                        })()}
-                    </td>
-                  </tr>
-                  ));
+                  const renderRows = (items: Transaction[]) =>
+                    items.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(transaction.timestamp).toLocaleString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                              transaction.type === "Cash In"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {transaction.type === "Cash In" ? (
+                              <TrendingUp className="w-3 h-3" />
+                            ) : (
+                              <TrendingDown className="w-3 h-3" />
+                            )}
+                            {transaction.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {transaction.category}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {transaction.description}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {transaction.reference || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <span
+                            className={`text-sm font-semibold ${
+                              transaction.type === "Cash In"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {transaction.type === "Cash In" ? "+" : "-"}₱
+                            {transaction.amount.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {transaction.createdBy}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {transaction.type === "Cash In" &&
+                            (isAdmin ||
+                              user?.permissions?.includes(
+                                "admin_permissions",
+                              )) &&
+                            (() => {
+                              const alreadyCashedOut = transactions.some(
+                                (t) =>
+                                  t.type === "Cash Out" &&
+                                  t.sourceTransactionId === transaction.id,
+                              );
+                              return alreadyCashedOut ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                                  <ArrowDownCircle className="w-3.5 h-3.5" />
+                                  Cashed Out
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => setCashOutConfirm(transaction)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  <ArrowDownCircle className="w-3.5 h-3.5" />
+                                  Cash Out
+                                </button>
+                              );
+                            })()}
+                        </td>
+                      </tr>
+                    ));
 
-                  const renderGroupHeader = (label: string, count: number, colorClass: string) => (
+                  const renderGroupHeader = (
+                    label: string,
+                    count: number,
+                    colorClass: string,
+                  ) => (
                     <tr key={`hdr-${label}`} className={colorClass}>
-                      <td colSpan={8} className="px-6 py-2 text-xs font-semibold uppercase tracking-wider">
-                        {label} <span className="font-normal opacity-70">({count})</span>
+                      <td
+                        colSpan={8}
+                        className="px-6 py-2 text-xs font-semibold uppercase tracking-wider"
+                      >
+                        {label}{" "}
+                        <span className="font-normal opacity-70">
+                          ({count})
+                        </span>
                       </td>
                     </tr>
                   );
 
                   return (
                     <>
-                      {amTx.length > 0 && renderGroupHeader('AM Shift', amTx.length, 'bg-blue-50 text-blue-700 border-b border-blue-100')}
+                      {amTx.length > 0 &&
+                        renderGroupHeader(
+                          "AM Shift",
+                          amTx.length,
+                          "bg-blue-50 text-blue-700 border-b border-blue-100",
+                        )}
                       {renderRows(amTx)}
-                      {pmTx.length > 0 && renderGroupHeader('PM Shift', pmTx.length, 'bg-orange-50 text-orange-700 border-b border-orange-100')}
+                      {pmTx.length > 0 &&
+                        renderGroupHeader(
+                          "PM Shift",
+                          pmTx.length,
+                          "bg-orange-50 text-orange-700 border-b border-orange-100",
+                        )}
                       {renderRows(pmTx)}
-                      {untagged.length > 0 && (amTx.length > 0 || pmTx.length > 0) && renderGroupHeader('Unassigned', untagged.length, 'bg-gray-50 text-gray-500 border-b border-gray-100')}
+                      {untagged.length > 0 &&
+                        (amTx.length > 0 || pmTx.length > 0) &&
+                        renderGroupHeader(
+                          "Unassigned",
+                          untagged.length,
+                          "bg-gray-50 text-gray-500 border-b border-gray-100",
+                        )}
                       {renderRows(untagged)}
                     </>
                   );

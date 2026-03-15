@@ -83,9 +83,8 @@ export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showEODModal, setShowEODModal] = useState(false);
   const [eodIsRecovery, setEodIsRecovery] = useState(false);
-  const [pendingEODSession, setPendingEODSession] = useState<ReturnType<
-    typeof getPendingEODSession
-  >>(null);
+  const [pendingEODSession, setPendingEODSession] =
+    useState<ReturnType<typeof getPendingEODSession>>(null);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -179,7 +178,10 @@ export default function App() {
     // EOD session tracking: check for an unfinished session from a previous day
     if (userData.storeId) {
       const prev = getPendingEODSession(String(userData.id));
-      if (prev && new Date(prev.loginTime).toDateString() !== new Date().toDateString()) {
+      if (
+        prev &&
+        new Date(prev.loginTime).toDateString() !== new Date().toDateString()
+      ) {
         setPendingEODSession(prev);
       }
       // Record this login so accidental logouts can be detected on the next login
@@ -1019,7 +1021,10 @@ export default function App() {
               <StoresManagementPage userRole={currentUser.role} />
             )}
             {currentPage === "employees" && (
-              <EmployeesPage userRole={currentUser.role} userPermissions={currentUser.permissions} />
+              <EmployeesPage
+                userRole={currentUser.role}
+                userPermissions={currentUser.permissions}
+              />
             )}
             {currentPage === "suppliers" && (
               <SuppliersPage
@@ -1040,7 +1045,9 @@ export default function App() {
             {currentPage === "discounts" && (
               <DiscountsPage userRole={currentUser.role} />
             )}
-            {currentPage === "discrepancies" && <DiscrepanciesPage currentUser={currentUser} />}
+            {currentPage === "discrepancies" && (
+              <DiscrepanciesPage currentUser={currentUser} />
+            )}
             {currentPage === "history" && (
               <HistoryPage currentUser={currentUser} />
             )}

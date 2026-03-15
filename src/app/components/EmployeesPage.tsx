@@ -114,9 +114,16 @@ const AVAILABLE_PERMISSIONS = [
   },
 ];
 
-export function EmployeesPage({ userRole, userPermissions }: { userRole?: string; userPermissions?: string[] }) {
+export function EmployeesPage({
+  userRole,
+  userPermissions,
+}: {
+  userRole?: string;
+  userPermissions?: string[];
+}) {
   const isAdmin = userRole === "ADMIN";
-  const canManageShift = isAdmin || (userPermissions?.includes("admin_permissions") ?? false);
+  const canManageShift =
+    isAdmin || (userPermissions?.includes("admin_permissions") ?? false);
   const [employees, setEmployees] = useState<AllUser[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<AllUser | null>(null);
@@ -128,7 +135,7 @@ export function EmployeesPage({ userRole, userPermissions }: { userRole?: string
     role?: "STORE" | "PRODUCTION" | "POS" | "EMPLOYEE";
     storeId?: string;
     permissions?: string[];
-    shift?: 'AM' | 'PM' | null;
+    shift?: "AM" | "PM" | null;
     dateOfBirth: string;
     gender: string;
     civilStatus: string;
@@ -440,13 +447,13 @@ export function EmployeesPage({ userRole, userPermissions }: { userRole?: string
 
   const handleToggleShift = async (employee: AllUser) => {
     try {
-      const newShift = employee.shift === 'AM' ? 'PM' : 'AM';
+      const newShift = employee.shift === "AM" ? "PM" : "AM";
       await updateEmployee(employee.id, { shift: newShift });
       toast.success(`${employee.name} assigned to ${newShift} shift`);
       await loadEmployees();
     } catch (error) {
-      console.error('Error toggling shift:', error);
-      toast.error('Failed to update shift');
+      console.error("Error toggling shift:", error);
+      toast.error("Failed to update shift");
     }
   };
 
@@ -1555,24 +1562,32 @@ export function EmployeesPage({ userRole, userPermissions }: { userRole?: string
                           <button
                             onClick={() => handleToggleShift(employee)}
                             className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                              employee.shift === 'AM'
-                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                : employee.shift === 'PM'
-                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                              employee.shift === "AM"
+                                ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                : employee.shift === "PM"
+                                  ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                                  : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                             }`}
-                            title={employee.shift ? `Click to switch to ${employee.shift === 'AM' ? 'PM' : 'AM'}` : 'Click to assign AM shift'}
+                            title={
+                              employee.shift
+                                ? `Click to switch to ${employee.shift === "AM" ? "PM" : "AM"}`
+                                : "Click to assign AM shift"
+                            }
                           >
-                            {employee.shift ?? '—'}
+                            {employee.shift ?? "—"}
                           </button>
                         ) : (
-                          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
-                            employee.shift === 'AM'
-                              ? 'bg-blue-100 text-blue-700'
-                              : employee.shift === 'PM'
-                              ? 'bg-orange-100 text-orange-700'
-                              : 'bg-gray-100 text-gray-400'
-                          }`}>{employee.shift ?? '—'}</span>
+                          <span
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
+                              employee.shift === "AM"
+                                ? "bg-blue-100 text-blue-700"
+                                : employee.shift === "PM"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-gray-100 text-gray-400"
+                            }`}
+                          >
+                            {employee.shift ?? "—"}
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">

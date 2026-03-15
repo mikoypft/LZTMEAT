@@ -109,7 +109,7 @@ export interface User {
   storeId?: string; // Store assignment
   storeName?: string; // Store name
   canLogin?: boolean; // Whether user can login
-  shift?: 'AM' | 'PM'; // Employee shift assignment
+  shift?: "AM" | "PM"; // Employee shift assignment
 }
 
 export async function login(username: string, password: string): Promise<User> {
@@ -920,11 +920,27 @@ export async function adjustSalesDiscrepancy(
   notes?: string,
   cashier?: string,
   userId?: string,
-): Promise<{ success: boolean; adjustment: { id: string; unitCost: number; totalCost: number; createdAt: string } }> {
-  const data = await apiRequest<{ success: boolean; adjustment: { id: string; unitCost: number; totalCost: number; createdAt: string } }>(
-    `/sales-discrepancies/${id}/adjust`,
-    { method: "POST", body: JSON.stringify({ unitCost, notes, cashier, userId }) },
-  );
+): Promise<{
+  success: boolean;
+  adjustment: {
+    id: string;
+    unitCost: number;
+    totalCost: number;
+    createdAt: string;
+  };
+}> {
+  const data = await apiRequest<{
+    success: boolean;
+    adjustment: {
+      id: string;
+      unitCost: number;
+      totalCost: number;
+      createdAt: string;
+    };
+  }>(`/sales-discrepancies/${id}/adjust`, {
+    method: "POST",
+    body: JSON.stringify({ unitCost, notes, cashier, userId }),
+  });
   return data;
 }
 
@@ -956,7 +972,11 @@ export async function getEODPreflight(params: {
   storeId: string;
   storeName: string;
   shiftDate: string;
-}): Promise<{ hasSales: boolean; salesCount: number; items: EODPreflightItem[] }> {
+}): Promise<{
+  hasSales: boolean;
+  salesCount: number;
+  items: EODPreflightItem[];
+}> {
   const qs = new URLSearchParams({
     storeId: params.storeId,
     storeName: params.storeName,
@@ -1369,7 +1389,7 @@ export interface Employee {
   storeId?: string;
   storeName?: string;
   canLogin?: boolean;
-  shift?: 'AM' | 'PM';
+  shift?: "AM" | "PM";
   employeeProfile?: EmployeeProfile;
   permissions?: string[];
 }

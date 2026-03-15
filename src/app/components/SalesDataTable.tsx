@@ -289,18 +289,25 @@ interface SalesDataTableProps {
 
 export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
   const isAdmin = userRole === "ADMIN";
-  const currentUserName = currentUser?.fullName || (currentUser as any)?.name || currentUser?.username || "";
+  const currentUserName =
+    currentUser?.fullName ||
+    (currentUser as any)?.name ||
+    currentUser?.username ||
+    "";
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [storesList, setStoresList] = useState<string[]>(["All Stores"]);
   const [allCashiers, setAllCashiers] = useState<string[]>([]);
-  const [cashierShiftMap, setCashierShiftMap] = useState<Record<string, string | null>>({});
+  const [cashierShiftMap, setCashierShiftMap] = useState<
+    Record<string, string | null>
+  >({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStore, setSelectedStore] = useState<string>("All Stores");
   const [selectedPayment, setSelectedPayment] = useState<string>("All Methods");
   const [selectedStatus, setSelectedStatus] = useState<string>("All Status");
-  const [selectedCashier, setSelectedCashier] =
-    useState<string>(isAdmin ? "All Cashiers" : currentUserName);
+  const [selectedCashier, setSelectedCashier] = useState<string>(
+    isAdmin ? "All Cashiers" : currentUserName,
+  );
   const [selectedShift, setSelectedShift] = useState<"" | "AM" | "PM">("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -330,7 +337,12 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
         setAllCashiers(names);
         const shiftMap: Record<string, string | null> = {};
         users.forEach((u) => {
-          const name = (u.fullName || (u as any).name || u.username || "").toLowerCase();
+          const name = (
+            u.fullName ||
+            (u as any).name ||
+            u.username ||
+            ""
+          ).toLowerCase();
           shiftMap[name] = (u as any).shift ?? null;
         });
         setCashierShiftMap(shiftMap);
@@ -446,7 +458,8 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
       const matchesCashier =
         selectedCashier === "All Cashiers" || sale.cashier === selectedCashier;
 
-      const matchesShift = !selectedShift ||
+      const matchesShift =
+        !selectedShift ||
         cashierShiftMap[(sale.cashier || "").toLowerCase()] === selectedShift;
 
       const saleDate = sale.date; // already "YYYY-MM-DD"
@@ -861,7 +874,9 @@ export function SalesDataTable({ userRole, currentUser }: SalesDataTableProps) {
               )}
               <select
                 value={selectedShift}
-                onChange={(e) => setSelectedShift(e.target.value as "" | "AM" | "PM")}
+                onChange={(e) =>
+                  setSelectedShift(e.target.value as "" | "AM" | "PM")
+                }
                 className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               >
                 <option value="">All Shifts</option>
