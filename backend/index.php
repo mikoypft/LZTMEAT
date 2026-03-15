@@ -6345,9 +6345,11 @@ $routes = [
         if ($endDate)   { $where[] = 'sd.shift_date <= ?'; $params[] = $endDate; }
         if ($status)    { $where[] = 'sd.status = ?';      $params[] = $status; }
 
-        $query = 'SELECT sd.*, da.id as adj_id, da.unit_cost, da.total_cost as adj_total_cost, da.created_at as adj_created_at
+        $query = 'SELECT sd.*, da.id as adj_id, da.unit_cost, da.total_cost as adj_total_cost, da.created_at as adj_created_at,
+                         COALESCE(p.price, 0) as product_unit_price
                   FROM sales_discrepancies sd
-                  LEFT JOIN discrepancy_adjustments da ON da.sales_discrepancy_id = sd.id'
+                  LEFT JOIN discrepancy_adjustments da ON da.sales_discrepancy_id = sd.id
+                  LEFT JOIN products p ON p.id = sd.product_id'
                  . (!empty($where) ? ' WHERE ' . implode(' AND ', $where) : '')
                  . ' ORDER BY sd.shift_date DESC, sd.created_at DESC';
 
@@ -6376,6 +6378,7 @@ $routes = [
                     'status'            => $r['status'],
                     'notes'             => $r['notes'],
                     'createdAt'         => $r['created_at'],
+                    'unitPrice'         => (float)$r['product_unit_price'],
                     'adjustment'        => $r['adj_id'] ? [
                         'id'        => (string)$r['adj_id'],
                         'unitCost'  => (float)$r['unit_cost'],

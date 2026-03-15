@@ -868,6 +868,7 @@ export interface SalesDiscrepancy {
   status: "pending" | "adjusted";
   notes?: string | null;
   createdAt: string;
+  unitPrice?: number;
   adjustment?: {
     id: string;
     unitCost: number;

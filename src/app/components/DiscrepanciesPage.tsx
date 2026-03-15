@@ -398,7 +398,11 @@ function AdjustModal({
   onClose: () => void;
   onAdjusted: (id: string) => void;
 }) {
-  const [unitCost, setUnitCost] = useState("");
+  const [unitCost, setUnitCost] = useState(
+    discrepancy.unitPrice != null && discrepancy.unitPrice > 0
+      ? discrepancy.unitPrice.toFixed(2)
+      : ""
+  );
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -479,22 +483,12 @@ function AdjustModal({
               placeholder="0.00"
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
+            {discrepancy.unitPrice != null && discrepancy.unitPrice > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-filled from product price · ₱{discrepancy.unitPrice.toFixed(2)} / {discrepancy.unit}
+              </p>
+            )}
           </div>
-
-          {unitCost && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
-              <p className="text-amber-800 font-medium">
-                Total charge to {discrepancy.cashier || "cashier"}:{" "}
-                <span className="text-red-600 font-bold">
-                  ₱{total.toFixed(2)}
-                </span>
-              </p>
-              <p className="text-amber-600 text-xs mt-1">
-                {discrepancy.discrepancyAmount.toFixed(3)} {discrepancy.unit} ×
-                ₱{cost.toFixed(2)} / {discrepancy.unit}
-              </p>
-            </div>
-          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-1">
