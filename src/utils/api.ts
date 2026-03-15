@@ -976,6 +976,8 @@ export async function getEODPreflight(params: {
 }): Promise<{
   hasSales: boolean;
   salesCount: number;
+  alreadySubmitted: boolean;
+  newSalesSinceSubmission: boolean;
   items: EODPreflightItem[];
 }> {
   const qs = new URLSearchParams({
@@ -986,6 +988,8 @@ export async function getEODPreflight(params: {
   const data = await apiRequest<{
     hasSales: boolean;
     salesCount: number;
+    alreadySubmitted: boolean;
+    newSalesSinceSubmission: boolean;
     items: EODPreflightItem[];
   }>(`/eod-counts/preflight?${qs}`);
   return data;

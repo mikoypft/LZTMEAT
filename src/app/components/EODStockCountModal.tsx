@@ -91,6 +91,7 @@ export function EODStockCountModal({
   const [rows, setRows] = useState<CountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSales, setNoSales] = useState(false);
+  const [autoSkipReason, setAutoSkipReason] = useState<"no_sales" | "already_submitted" | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -131,6 +132,18 @@ export function EODStockCountModal({
         if (!preflight.hasSales) {
           // No sales for this store on this date → skip the modal
           setNoSales(true);
+          setAutoSkipReason("no_sales");
+          if (!autoLoggedOut.current) {
+            autoLoggedOut.current = true;
+            setTimeout(() => onConfirmLogout(), 400);
+          }
+          return;
+        }
+
+        if (preflight.alreadySubmitted && !preflight.newSalesSinceSubmission) {
+          // EOD already submitted and no new sales since → skip the modal
+          setNoSales(true);
+          setAutoSkipReason("already_submitted");
           if (!autoLoggedOut.current) {
             autoLoggedOut.current = true;
             setTimeout(() => onConfirmLogout(), 400);
@@ -176,7 +189,9 @@ export function EODStockCountModal({
         <div className="bg-background rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-muted-foreground">
-            {noSales
+            {autoSkipReason === "already_submitted"
+              ? "Stock count already submitted — logging out…"
+              : noSales
               ? "No sales today — logging out…"
               : "Checking today's sales…"}
           </p>

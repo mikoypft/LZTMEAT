@@ -6552,9 +6552,26 @@ $routes = [
             $cStmt->execute([$storeId, $shiftDate]);
         } else {
             // Fallback: no store_id provided → no sales check possible
-            return ['hasSales' => false, 'salesCount' => 0, 'items' => []];
+            return ['hasSales' => false, 'salesCount' => 0, 'items' => [], 'alreadySubmitted' => false, 'newSalesSinceSubmission' => false];
         }
         $salesCount = (int)$cStmt->fetchColumn();
+
+        // 1b. Check if an EOD count was already submitted for this store + date
+        $prevStmt = $pdo->prepare(
+            'SELECT id, created_at FROM eod_stock_counts WHERE store_id = ? AND shift_date = ? ORDER BY created_at DESC LIMIT 1'
+        );
+        $prevStmt->execute([$storeId, $shiftDate]);
+        $prevEOD = $prevStmt->fetch();
+        $alreadySubmitted = !empty($prevEOD);
+        $newSalesSinceSubmission = false;
+        if ($alreadySubmitted) {
+            // Check for any sales made AFTER the last submission
+            $nStmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM sales WHERE store_id = ? AND DATE(created_at) = ? AND created_at > ?'
+            );
+            $nStmt->execute([$storeId, $shiftDate, $prevEOD['created_at']]);
+            $newSalesSinceSubmission = (int)$nStmt->fetchColumn() > 0;
+        }
 
         // 2. Current inventory for this store (already reflects all sales + received transfers)
         $invStmt = $pdo->prepare(
@@ -6625,9 +6642,11 @@ $routes = [
         }, $inventory);
 
         return [
-            'hasSales'   => $salesCount > 0,
-            'salesCount' => $salesCount,
-            'items'      => $items,
+            'hasSales'                => $salesCount > 0,
+            'salesCount'              => $salesCount,
+            'alreadySubmitted'        => $alreadySubmitted,
+            'newSalesSinceSubmission' => $newSalesSinceSubmission,
+            'items'                   => $items,
         ];
     },
 
