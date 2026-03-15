@@ -993,6 +993,7 @@ export default function App() {
               <EnhancedDashboardPage
                 userRole={currentUser.role}
                 userName={currentUser.fullName}
+                currentUser={currentUser}
                 onNavigate={handlePageChange}
               />
             )}

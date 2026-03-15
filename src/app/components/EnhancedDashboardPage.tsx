@@ -53,6 +53,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { UserRole } from "./LoginPage";
+import { type UserData } from "./LoginPage";
 import {
   getProducts,
   getInventory,
@@ -72,6 +73,7 @@ import { toast } from "sonner";
 interface DashboardPageProps {
   userRole: UserRole;
   userName: string;
+  currentUser?: UserData;
   onNavigate?: (page: string) => void;
 }
 
@@ -113,8 +115,12 @@ const COLORS = [
 export function EnhancedDashboardPage({
   userRole,
   userName,
+  currentUser,
   onNavigate,
 }: DashboardPageProps) {
+  const isAdmin =
+    userRole === "ADMIN" ||
+    (currentUser?.permissions?.includes("admin_permissions") ?? false);
   const [selectedPeriod, setSelectedPeriod] = useState<
     "today" | "week" | "month"
   >("today");
@@ -186,10 +192,10 @@ export function EnhancedDashboardPage({
 
       const [
         products,
-        inventory,
-        sales,
-        productionRecords,
-        transfers,
+        rawInventory,
+        rawSales,
+        rawProductionRecords,
+        rawTransfers,
         categories,
       ] = await Promise.all([
         getProducts(),
@@ -199,6 +205,27 @@ export function EnhancedDashboardPage({
         getTransfers(),
         getCategories(),
       ]);
+
+      // Scope data to the user's store for non-admin employees
+      const userStoreName = !isAdmin ? currentUser?.storeName : undefined;
+      const sales = userStoreName
+        ? rawSales.filter(
+            (s) =>
+              s.storeId === currentUser?.storeId ||
+              s.location === userStoreName,
+          )
+        : rawSales;
+      const inventory = userStoreName
+        ? rawInventory.filter((inv) => inv.location === userStoreName)
+        : rawInventory;
+      const transfers = userStoreName
+        ? rawTransfers.filter(
+            (t) => t.from === userStoreName || t.to === userStoreName,
+          )
+        : rawTransfers;
+      const productionRecords = userStoreName
+        ? ([] as typeof rawProductionRecords)
+        : rawProductionRecords;
 
       // Filter data by selected period
       const filteredSales = filterByDateRange(sales, "timestamp");
