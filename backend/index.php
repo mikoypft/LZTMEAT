@@ -6736,6 +6736,13 @@ $routes = [
                         $expected, $actual, $discrepancy,
                         $userName, $userId, $note,
                     ]);
+
+                    // Reconcile inventory to the physically counted actual quantity
+                    $invUpd = $pdo->prepare(
+                        'UPDATE inventory SET quantity = ?, updated_at = NOW()
+                         WHERE product_id = ? AND location = ?'
+                    );
+                    $invUpd->execute([$actual, $item['productId'] ?? '', $storeName]);
                 }
             }
 
