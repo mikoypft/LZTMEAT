@@ -113,10 +113,14 @@ export default function App() {
             // Use cached session directly
             setCurrentUser(userData);
 
-            // Restore the last page if valid
+            // Restore the last page if valid and allowed for this user
             if (savedPage && (savedPage as Page)) {
-              setCurrentPage(savedPage as Page);
-              console.log("📄 Restored page:", savedPage);
+              const isPosOnlyUser =
+                userData.role === "POS" ||
+                (userData.role === "EMPLOYEE" && !!userData.storeId && !(userData.permissions || []).includes("dashboard"));
+              const safePage = isPosOnlyUser ? "pos" : (savedPage as Page);
+              setCurrentPage(safePage);
+              console.log("📄 Restored page:", safePage);
             }
           } else {
             console.log("⚠️ Session expired, clearing...");
@@ -222,7 +226,12 @@ export default function App() {
         "✅ PRODUCTION role detected → Redirecting to Production Dashboard",
       );
     }
-    // 5. Employee-based roles (for employees created in admin)
+    // 5. EMPLOYEE role (system-created, storeId-assigned) → POS
+    else if (userData.role === "EMPLOYEE" && userData.storeId) {
+      initialPage = "pos";
+      console.log("✅ EMPLOYEE with store assignment → Redirecting to Point of Sale");
+    }
+    // 6. Employee-based roles (for employees created in admin)
     else if (userData.employeeRole === "Store") {
       initialPage = "pos";
       console.log("✅ Store Employee detected → Redirecting to Point of Sale");
@@ -310,20 +319,22 @@ export default function App() {
         history: "history",
       };
 
-      // Dashboard is always available for Employee role
+      // Dashboard only shown if explicitly granted
       const items: Array<{
         id: Page;
         icon: any;
         label: string;
         roles: string[];
-      }> = [
-        {
+      }> = [];
+
+      if (permissions.includes("dashboard")) {
+        items.push({
           id: "dashboard" as Page,
           icon: BarChart3,
           label: "Dashboard",
           roles: ["ADMIN"],
-        },
-      ];
+        });
+      }
 
       // Add menu items based on permissions
       const allMenuItems = [
