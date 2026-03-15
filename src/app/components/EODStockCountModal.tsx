@@ -140,7 +140,7 @@ export function EODStockCountModal({
 
         setRows(
           preflight.items
-            .filter((item) => item.expectedQty >= 0)
+            .filter((item) => item.totalSoldToday > 0)
             .map((item) => ({ ...item, actualQty: "" })),
         );
       } catch (e: any) {
