@@ -118,9 +118,7 @@ export function EnhancedDashboardPage({
   currentUser,
   onNavigate,
 }: DashboardPageProps) {
-  const isAdmin =
-    userRole === "ADMIN" ||
-    (currentUser?.permissions?.includes("admin_permissions") ?? false);
+  const isAdmin = userRole === "ADMIN";
   const [selectedPeriod, setSelectedPeriod] = useState<
     "today" | "week" | "month"
   >("today");
