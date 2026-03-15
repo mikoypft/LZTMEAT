@@ -1015,6 +1015,7 @@ export default function App() {
                 isAdminPermissions={currentUser.permissions?.includes(
                   "admin_permissions",
                 )}
+                userPermissions={currentUser.permissions}
               />
             )}
             {currentPage === "sales" && (
