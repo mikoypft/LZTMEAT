@@ -47,8 +47,8 @@ interface Transfer {
   receivedBy?: string;
 }
 
-export function TransferPage({ userRole }: { userRole?: string }) {
-  const isAdmin = userRole === "ADMIN";
+export function TransferPage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+  const isAdmin = userRole === "ADMIN" || isAdminPermissions === true;
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);

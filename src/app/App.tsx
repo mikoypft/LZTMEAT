@@ -1009,7 +1009,12 @@ export default function App() {
               <IngredientsInventoryPage currentUser={currentUser} />
             )}
             {currentPage === "transfer" && (
-              <TransferPage userRole={currentUser.role} />
+              <TransferPage
+                userRole={currentUser.role}
+                isAdminPermissions={currentUser.permissions?.includes(
+                  "admin_permissions",
+                )}
+              />
             )}
             {currentPage === "sales" && (
               <SalesDataTable
