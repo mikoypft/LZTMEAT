@@ -91,7 +91,9 @@ export function EODStockCountModal({
   const [rows, setRows] = useState<CountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [noSales, setNoSales] = useState(false);
-  const [autoSkipReason, setAutoSkipReason] = useState<"no_sales" | "already_submitted" | null>(null);
+  const [autoSkipReason, setAutoSkipReason] = useState<
+    "no_sales" | "already_submitted" | null
+  >(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -192,8 +194,8 @@ export function EODStockCountModal({
             {autoSkipReason === "already_submitted"
               ? "Stock count already submitted — logging out…"
               : noSales
-              ? "No sales today — logging out…"
-              : "Checking today's sales…"}
+                ? "No sales today — logging out…"
+                : "Checking today's sales…"}
           </p>
         </div>
       </div>

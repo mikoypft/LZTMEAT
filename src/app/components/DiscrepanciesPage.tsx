@@ -401,7 +401,7 @@ function AdjustModal({
   const [unitCost, setUnitCost] = useState(
     discrepancy.unitPrice != null && discrepancy.unitPrice > 0
       ? discrepancy.unitPrice.toFixed(2)
-      : ""
+      : "",
   );
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -485,7 +485,8 @@ function AdjustModal({
             />
             {discrepancy.unitPrice != null && discrepancy.unitPrice > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                Auto-filled from product price · ₱{discrepancy.unitPrice.toFixed(2)} / {discrepancy.unit}
+                Auto-filled from product price · ₱
+                {discrepancy.unitPrice.toFixed(2)} / {discrepancy.unit}
               </p>
             )}
           </div>

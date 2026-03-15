@@ -47,7 +47,15 @@ interface Transfer {
   receivedBy?: string;
 }
 
-export function TransferPage({ userRole, isAdminPermissions, userPermissions }: { userRole?: string; isAdminPermissions?: boolean; userPermissions?: string[] }) {
+export function TransferPage({
+  userRole,
+  isAdminPermissions,
+  userPermissions,
+}: {
+  userRole?: string;
+  isAdminPermissions?: boolean;
+  userPermissions?: string[];
+}) {
   const isAdmin =
     userRole === "ADMIN" ||
     isAdminPermissions === true ||

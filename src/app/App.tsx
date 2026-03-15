@@ -117,7 +117,9 @@ export default function App() {
             if (savedPage && (savedPage as Page)) {
               const isPosOnlyUser =
                 userData.role === "POS" ||
-                (userData.role === "EMPLOYEE" && !!userData.storeId && !(userData.permissions || []).includes("dashboard"));
+                (userData.role === "EMPLOYEE" &&
+                  !!userData.storeId &&
+                  !(userData.permissions || []).includes("dashboard"));
               const safePage = isPosOnlyUser ? "pos" : (savedPage as Page);
               setCurrentPage(safePage);
               console.log("📄 Restored page:", safePage);
@@ -229,7 +231,9 @@ export default function App() {
     // 5. EMPLOYEE role (system-created, storeId-assigned) → POS
     else if (userData.role === "EMPLOYEE" && userData.storeId) {
       initialPage = "pos";
-      console.log("✅ EMPLOYEE with store assignment → Redirecting to Point of Sale");
+      console.log(
+        "✅ EMPLOYEE with store assignment → Redirecting to Point of Sale",
+      );
     }
     // 6. Employee-based roles (for employees created in admin)
     else if (userData.employeeRole === "Store") {
