@@ -46,6 +46,7 @@ import {
   setEODSessionMarker,
   getPendingEODSession,
 } from "@/app/components/EODStockCountModal";
+import { ShiftReminderModal } from "@/app/components/ShiftReminderModal";
 import { refreshSession } from "@/utils/api";
 
 type Page =
@@ -71,6 +72,7 @@ const SESSION_KEY = "lzt_user_session";
 const SESSION_EXPIRY_KEY = "lzt_session_expiry";
 const SESSION_PAGE_KEY = "lzt_current_page";
 const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+const SHIFT_REMINDER_KEY = "shift_reminder_dismissed";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -81,6 +83,7 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showShiftReminder, setShowShiftReminder] = useState(false);
   const [showEODModal, setShowEODModal] = useState(false);
   const [eodIsRecovery, setEodIsRecovery] = useState(false);
   const [pendingEODSession, setPendingEODSession] =
@@ -148,6 +151,30 @@ export default function App() {
       saveSession(currentUser);
     }
   }, [currentUser]);
+
+  // Show daily shift reminder to admins / users with users-page access
+  useEffect(() => {
+    if (!currentUser || !sessionChecked) return;
+
+    const permissions = currentUser.permissions || [];
+    const canSeeReminder =
+      currentUser.role === "ADMIN" ||
+      permissions.includes("admin_permissions") ||
+      permissions.includes("employees");
+
+    if (!canSeeReminder) return;
+
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    if (localStorage.getItem(SHIFT_REMINDER_KEY) !== today) {
+      setShowShiftReminder(true);
+    }
+  }, [currentUser, sessionChecked]);
+
+  const dismissShiftReminder = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(SHIFT_REMINDER_KEY, today);
+    setShowShiftReminder(false);
+  };
 
   // Save current page to session
   useEffect(() => {
@@ -1079,6 +1106,17 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {/* Daily Shift Reminder Modal */}
+      {showShiftReminder && (
+        <ShiftReminderModal
+          onGoToUsers={() => {
+            dismissShiftReminder();
+            handlePageChange("employees");
+          }}
+          onDismiss={dismissShiftReminder}
+        />
+      )}
 
       {/* EOD Stock Count Modal - Main View */}
       {showEODModal && currentUser && (
