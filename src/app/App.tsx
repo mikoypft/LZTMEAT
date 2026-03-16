@@ -159,8 +159,8 @@ export default function App() {
     const permissions = currentUser.permissions || [];
     const canSeeReminder =
       currentUser.role === "ADMIN" ||
-      permissions.includes("admin_permissions") ||
-      permissions.includes("employees");
+      (permissions.includes("admin_permissions") &&
+        permissions.includes("employees"));
 
     if (!canSeeReminder) return;
 
