@@ -119,6 +119,10 @@ export default function App() {
             // Restore the last page if valid and allowed for this user
             if (savedPage && (savedPage as Page)) {
               const permissions = userData.permissions || [];
+              const roleAlwaysHasPos =
+                userData.role === "POS" ||
+                userData.role === "STORE" ||
+                userData.employeeRole === "Store";
               const isPosOnlyUser =
                 userData.role === "POS" ||
                 (userData.role === "EMPLOYEE" &&
@@ -128,31 +132,45 @@ export default function App() {
                 ? "pos"
                 : (savedPage as Page);
 
+              const restorePageOrder: Array<{
+                permission: string;
+                page: Page;
+              }> = [
+                { permission: "pos", page: "pos" },
+                { permission: "production", page: "production" },
+                { permission: "inventory", page: "inventory" },
+                { permission: "ingredients", page: "ingredients" },
+                { permission: "transfer", page: "transfer" },
+                { permission: "sales", page: "sales" },
+                { permission: "reports", page: "reports" },
+                { permission: "employees", page: "employees" },
+                { permission: "stores", page: "stores" },
+                { permission: "suppliers", page: "suppliers" },
+                { permission: "history", page: "history" },
+                { permission: "transactions", page: "transactions" },
+                { permission: "discrepancies", page: "discrepancies" },
+              ];
+
+              // If restoring to pos but user has no pos permission, find first accessible page
+              if (
+                safePage === "pos" &&
+                !roleAlwaysHasPos &&
+                !permissions.includes("pos")
+              ) {
+                const firstAccessible = [
+                  { permission: "dashboard", page: "dashboard" as Page },
+                  ...restorePageOrder,
+                ].find((p) => permissions.includes(p.permission));
+                if (firstAccessible) safePage = firstAccessible.page;
+              }
+
               // If restoring to dashboard but user has no dashboard permission, find first accessible page
               if (
                 safePage === "dashboard" &&
                 userData.role !== "ADMIN" &&
                 !permissions.includes("dashboard")
               ) {
-                const permissionPageOrder: Array<{
-                  permission: string;
-                  page: Page;
-                }> = [
-                  { permission: "pos", page: "pos" },
-                  { permission: "production", page: "production" },
-                  { permission: "inventory", page: "inventory" },
-                  { permission: "ingredients", page: "ingredients" },
-                  { permission: "transfer", page: "transfer" },
-                  { permission: "sales", page: "sales" },
-                  { permission: "reports", page: "reports" },
-                  { permission: "employees", page: "employees" },
-                  { permission: "stores", page: "stores" },
-                  { permission: "suppliers", page: "suppliers" },
-                  { permission: "history", page: "history" },
-                  { permission: "transactions", page: "transactions" },
-                  { permission: "discrepancies", page: "discrepancies" },
-                ];
-                const firstAccessible = permissionPageOrder.find((p) =>
+                const firstAccessible = restorePageOrder.find((p) =>
                   permissions.includes(p.permission),
                 );
                 if (firstAccessible) safePage = firstAccessible.page;
@@ -289,12 +307,16 @@ export default function App() {
         "✅ PRODUCTION role detected → Redirecting to Production Dashboard",
       );
     }
-    // 5. EMPLOYEE role (system-created, storeId-assigned) → POS
+    // 5. EMPLOYEE role (system-created, storeId-assigned) → POS only if permitted
     else if (userData.role === "EMPLOYEE" && userData.storeId) {
-      initialPage = "pos";
-      console.log(
-        "✅ EMPLOYEE with store assignment → Redirecting to Point of Sale",
-      );
+      const perms = userData.permissions || [];
+      if (perms.length === 0 || perms.includes("pos")) {
+        initialPage = "pos";
+        console.log(
+          "✅ EMPLOYEE with store assignment → Redirecting to Point of Sale",
+        );
+      }
+      // else: falls through to dashboard or pos guard below
     }
     // 6. Employee-based roles (for employees created in admin)
     else if (userData.employeeRole === "Store") {
@@ -331,30 +353,55 @@ export default function App() {
       }
     }
 
+    // Helper: shared page priority order for fallback redirects
+    const permissionPageOrder: Array<{ permission: string; page: Page }> = [
+      { permission: "pos", page: "pos" },
+      { permission: "production", page: "production" },
+      { permission: "inventory", page: "inventory" },
+      { permission: "ingredients", page: "ingredients" },
+      { permission: "transfer", page: "transfer" },
+      { permission: "sales", page: "sales" },
+      { permission: "reports", page: "reports" },
+      { permission: "employees", page: "employees" },
+      { permission: "stores", page: "stores" },
+      { permission: "suppliers", page: "suppliers" },
+      { permission: "history", page: "history" },
+      { permission: "transactions", page: "transactions" },
+      { permission: "discrepancies", page: "discrepancies" },
+    ];
+    const loginPerms = userData.permissions || [];
+
+    // Final guard: if landing on pos but user has no pos permission (and isn't a role that always has pos)
+    const roleAlwaysHasPos =
+      userData.role === "POS" ||
+      userData.role === "STORE" ||
+      userData.employeeRole === "Store";
+    if (
+      initialPage === "pos" &&
+      !roleAlwaysHasPos &&
+      !loginPerms.includes("pos")
+    ) {
+      const firstAccessible = [
+        { permission: "dashboard", page: "dashboard" as Page },
+        ...permissionPageOrder,
+      ].find((p) => loginPerms.includes(p.permission));
+      if (firstAccessible) {
+        initialPage = firstAccessible.page;
+        console.log(
+          "✅ No POS access → Redirecting to first accessible page:",
+          initialPage,
+        );
+      }
+    }
+
     // Final guard: if landing on dashboard but user has no dashboard permission, redirect to first accessible page
     if (
       initialPage === "dashboard" &&
       userData.role !== "ADMIN" &&
-      !(userData.permissions || []).includes("dashboard")
+      !loginPerms.includes("dashboard")
     ) {
-      const permissionPageOrder: Array<{ permission: string; page: Page }> = [
-        { permission: "pos", page: "pos" },
-        { permission: "production", page: "production" },
-        { permission: "inventory", page: "inventory" },
-        { permission: "ingredients", page: "ingredients" },
-        { permission: "transfer", page: "transfer" },
-        { permission: "sales", page: "sales" },
-        { permission: "reports", page: "reports" },
-        { permission: "employees", page: "employees" },
-        { permission: "stores", page: "stores" },
-        { permission: "suppliers", page: "suppliers" },
-        { permission: "history", page: "history" },
-        { permission: "transactions", page: "transactions" },
-        { permission: "discrepancies", page: "discrepancies" },
-      ];
-      const permissions = userData.permissions || [];
       const firstAccessible = permissionPageOrder.find((p) =>
-        permissions.includes(p.permission),
+        loginPerms.includes(p.permission),
       );
       if (firstAccessible) {
         initialPage = firstAccessible.page;
