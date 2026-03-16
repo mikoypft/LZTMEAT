@@ -118,12 +118,46 @@ export default function App() {
 
             // Restore the last page if valid and allowed for this user
             if (savedPage && (savedPage as Page)) {
+              const permissions = userData.permissions || [];
               const isPosOnlyUser =
                 userData.role === "POS" ||
                 (userData.role === "EMPLOYEE" &&
                   !!userData.storeId &&
-                  !(userData.permissions || []).includes("dashboard"));
-              const safePage = isPosOnlyUser ? "pos" : (savedPage as Page);
+                  !permissions.includes("dashboard"));
+              let safePage: Page = isPosOnlyUser
+                ? "pos"
+                : (savedPage as Page);
+
+              // If restoring to dashboard but user has no dashboard permission, find first accessible page
+              if (
+                safePage === "dashboard" &&
+                userData.role !== "ADMIN" &&
+                !permissions.includes("dashboard")
+              ) {
+                const permissionPageOrder: Array<{
+                  permission: string;
+                  page: Page;
+                }> = [
+                  { permission: "pos", page: "pos" },
+                  { permission: "production", page: "production" },
+                  { permission: "inventory", page: "inventory" },
+                  { permission: "ingredients", page: "ingredients" },
+                  { permission: "transfer", page: "transfer" },
+                  { permission: "sales", page: "sales" },
+                  { permission: "reports", page: "reports" },
+                  { permission: "employees", page: "employees" },
+                  { permission: "stores", page: "stores" },
+                  { permission: "suppliers", page: "suppliers" },
+                  { permission: "history", page: "history" },
+                  { permission: "transactions", page: "transactions" },
+                  { permission: "discrepancies", page: "discrepancies" },
+                ];
+                const firstAccessible = permissionPageOrder.find((p) =>
+                  permissions.includes(p.permission),
+                );
+                if (firstAccessible) safePage = firstAccessible.page;
+              }
+
               setCurrentPage(safePage);
               console.log("📄 Restored page:", safePage);
             }
@@ -293,6 +327,40 @@ export default function App() {
         initialPage = "dashboard";
         console.log(
           "✅ Employee with no specific permissions → Redirecting to Dashboard",
+        );
+      }
+    }
+
+    // Final guard: if landing on dashboard but user has no dashboard permission, redirect to first accessible page
+    if (
+      initialPage === "dashboard" &&
+      userData.role !== "ADMIN" &&
+      !(userData.permissions || []).includes("dashboard")
+    ) {
+      const permissionPageOrder: Array<{ permission: string; page: Page }> = [
+        { permission: "pos", page: "pos" },
+        { permission: "production", page: "production" },
+        { permission: "inventory", page: "inventory" },
+        { permission: "ingredients", page: "ingredients" },
+        { permission: "transfer", page: "transfer" },
+        { permission: "sales", page: "sales" },
+        { permission: "reports", page: "reports" },
+        { permission: "employees", page: "employees" },
+        { permission: "stores", page: "stores" },
+        { permission: "suppliers", page: "suppliers" },
+        { permission: "history", page: "history" },
+        { permission: "transactions", page: "transactions" },
+        { permission: "discrepancies", page: "discrepancies" },
+      ];
+      const permissions = userData.permissions || [];
+      const firstAccessible = permissionPageOrder.find((p) =>
+        permissions.includes(p.permission),
+      );
+      if (firstAccessible) {
+        initialPage = firstAccessible.page;
+        console.log(
+          "✅ No dashboard access → Redirecting to first accessible page:",
+          initialPage,
         );
       }
     }
