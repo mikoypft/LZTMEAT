@@ -788,9 +788,9 @@ export function EmployeesPage({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Permissions
                   </label>
-                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 space-y-3">
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 grid grid-cols-2 gap-x-4 gap-y-3">
                     {AVAILABLE_PERMISSIONS.map((perm) => (
-                      <div key={perm.id}>
+                      <div key={perm.id} className={perm.id === "production" && formData.permissions?.includes("production") ? "col-span-2" : ""}>
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input
                             type="checkbox"
@@ -937,7 +937,7 @@ export function EmployeesPage({
                     </div>
 
                     {/* Individual granular sub-permissions */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 grid grid-cols-2 gap-x-4 gap-y-3">
                       {ADMIN_SUB_PERMISSIONS.map((sub) => {
                         const hasAll =
                           formData.permissions?.includes("admin_permissions") ??
