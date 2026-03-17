@@ -491,44 +491,49 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                           {transaction.createdBy}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Edit button — admin only */}
-                            {isAdmin && (
-                              <button
-                                onClick={() => openEditModal(transaction)}
-                                className="inline-flex items-center gap-1 w-[72px] justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                Edit
-                              </button>
-                            )}
-                            {/* Quick Cash Out button */}
-                            {transaction.type === "Cash In" &&
-                              (isAdmin ||
-                                user?.permissions?.includes(
-                                  "admin_permissions",
-                                )) &&
-                              (() => {
-                                const alreadyCashedOut = transactions.some(
-                                  (t) =>
-                                    t.type === "Cash Out" &&
-                                    t.sourceTransactionId === transaction.id,
-                                );
-                                return alreadyCashedOut ? (
-                                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
-                                    <ArrowDownCircle className="w-3.5 h-3.5" />
-                                    Cashed Out
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={() => setCashOutConfirm(transaction)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                                  >
-                                    <ArrowDownCircle className="w-3.5 h-3.5" />
-                                    Cash Out
-                                  </button>
-                                );
-                              })()}
+                          {/* Fixed two-slot layout: Edit left, Cash Out right */}
+                          <div className="flex items-center gap-2">
+                            {/* Left slot — Edit */}
+                            <div className="w-[72px]">
+                              {isAdmin && (
+                                <button
+                                  onClick={() => openEditModal(transaction)}
+                                  className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  Edit
+                                </button>
+                              )}
+                            </div>
+                            {/* Right slot — Cash Out */}
+                            <div className="w-[90px]">
+                              {transaction.type === "Cash In" &&
+                                (isAdmin ||
+                                  user?.permissions?.includes(
+                                    "admin_permissions",
+                                  )) &&
+                                (() => {
+                                  const alreadyCashedOut = transactions.some(
+                                    (t) =>
+                                      t.type === "Cash Out" &&
+                                      t.sourceTransactionId === transaction.id,
+                                  );
+                                  return alreadyCashedOut ? (
+                                    <span className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                                      <ArrowDownCircle className="w-3.5 h-3.5" />
+                                      Cashed Out
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => setCashOutConfirm(transaction)}
+                                      className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                                    >
+                                      <ArrowDownCircle className="w-3.5 h-3.5" />
+                                      Cash Out
+                                    </button>
+                                  );
+                                })()}
+                            </div>
                           </div>
                         </td>
                       </tr>
