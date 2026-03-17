@@ -398,7 +398,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created By
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -490,13 +490,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {transaction.createdBy}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2">
                             {/* Edit button — admin only */}
                             {isAdmin && (
                               <button
                                 onClick={() => openEditModal(transaction)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
+                                className="inline-flex items-center gap-1 w-[72px] justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                                 Edit
