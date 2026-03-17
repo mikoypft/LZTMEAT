@@ -267,7 +267,8 @@ export function InventoryPage({
 }) {
   const isAdmin =
     currentUser?.role === "ADMIN" ||
-    !!currentUser?.permissions?.includes("admin_permissions");
+    !!currentUser?.permissions?.includes("admin_permissions") ||
+    !!currentUser?.permissions?.includes("admin_perm_inventory");
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

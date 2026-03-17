@@ -47,7 +47,7 @@ interface IngredientsInventoryPageProps {
 export function IngredientsInventoryPage({
   currentUser,
 }: IngredientsInventoryPageProps) {
-  const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions");
+  const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions") || !!currentUser?.permissions?.includes("admin_perm_ingredients");
   const context = useContext(IngredientsContext);
   if (!context) {
     return (

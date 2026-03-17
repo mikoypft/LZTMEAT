@@ -31,7 +31,10 @@ interface TransactionsPageProps {
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin =
+    user?.role === "ADMIN" ||
+    !!user?.permissions?.includes("admin_permissions") ||
+    !!user?.permissions?.includes("admin_perm_transactions");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -259,7 +262,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             Manage cash in and cash out transactions
           </p>
         </div>
-        {(isAdmin || user?.permissions?.includes("admin_permissions")) && (
+        {isAdmin && (
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -508,10 +511,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                             {/* Right slot — Cash Out */}
                             <div className="w-[90px]">
                               {transaction.type === "Cash In" &&
-                                (isAdmin ||
-                                  user?.permissions?.includes(
-                                    "admin_permissions",
-                                  )) &&
+                                isAdmin &&
                                 (() => {
                                   const alreadyCashedOut = transactions.some(
                                     (t) =>

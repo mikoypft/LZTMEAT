@@ -1158,9 +1158,10 @@ export default function App() {
             {currentPage === "transfer" && (
               <TransferPage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes(
-                  "admin_permissions",
-                )}
+                isAdminPermissions={
+                  currentUser.permissions?.includes("admin_permissions") ||
+                  currentUser.permissions?.includes("admin_perm_transfer")
+                }
                 userPermissions={currentUser.permissions}
               />
             )}
@@ -1176,9 +1177,10 @@ export default function App() {
             {currentPage === "categories" && (
               <CategoriesPage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes(
-                  "admin_permissions",
-                )}
+                isAdminPermissions={
+                  currentUser.permissions?.includes("admin_permissions") ||
+                  currentUser.permissions?.includes("admin_perm_categories")
+                }
               />
             )}
             {currentPage === "stores" && (
@@ -1193,17 +1195,19 @@ export default function App() {
             {currentPage === "suppliers" && (
               <SuppliersPage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes(
-                  "admin_permissions",
-                )}
+                isAdminPermissions={
+                  currentUser.permissions?.includes("admin_permissions") ||
+                  currentUser.permissions?.includes("admin_perm_suppliers")
+                }
               />
             )}
             {currentPage === "supplier-invoices" && (
               <SupplierInvoicePage
                 userRole={currentUser.role}
-                isAdminPermissions={currentUser.permissions?.includes(
-                  "admin_permissions",
-                )}
+                isAdminPermissions={
+                  currentUser.permissions?.includes("admin_permissions") ||
+                  currentUser.permissions?.includes("admin_perm_suppliers")
+                }
               />
             )}
             {currentPage === "discounts" && (

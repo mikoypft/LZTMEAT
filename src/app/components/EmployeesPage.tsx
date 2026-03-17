@@ -39,6 +39,40 @@ import {
   type EmployeeProfile,
 } from "@/utils/api";
 
+// Granular admin sub-permissions
+const ADMIN_SUB_PERMISSIONS = [
+  {
+    id: "admin_perm_inventory",
+    label: "Product Inventory",
+    description: "Add, edit, and delete products in Inventory",
+  },
+  {
+    id: "admin_perm_ingredients",
+    label: "Ingredients / Raw Materials",
+    description: "Add, edit, adjust stock, and delete ingredients",
+  },
+  {
+    id: "admin_perm_categories",
+    label: "Categories",
+    description: "Add, edit, and delete product and ingredient categories",
+  },
+  {
+    id: "admin_perm_suppliers",
+    label: "Suppliers & Invoices",
+    description: "Add, edit, and delete suppliers and supplier invoices",
+  },
+  {
+    id: "admin_perm_transactions",
+    label: "Transactions (Cash In/Out)",
+    description: "Add transactions, perform cash-out, and edit records",
+  },
+  {
+    id: "admin_perm_transfer",
+    label: "Transfer",
+    description: "Create new transfers and return items to production",
+  },
+];
+
 // Production sub-permissions
 const PRODUCTION_SUB_PERMISSIONS = [
   {
@@ -849,16 +883,26 @@ export function EmployeesPage({
                   <p className="text-xs text-gray-500 mt-2">
                     Select which features this employee can access
                   </p>
-                  {/* Admin Permissions toggle */}
+                  {/* Admin Permissions — granular */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
+                    <div className="mb-3">
+                      <div className="text-sm font-medium text-gray-900">
+                        Admin Permissions
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Grant admin-level actions on specific pages, or enable
+                        all at once
+                      </div>
+                    </div>
+
+                    {/* Select All toggle */}
+                    <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          Admin Permissions
+                        <div className="text-sm text-gray-700 font-medium">
+                          Select All
                         </div>
                         <div className="text-xs text-gray-500">
-                          Allow this employee to add, edit, and delete records
-                          across all pages
+                          Grant all admin actions across every page
                         </div>
                       </div>
                       <button
@@ -890,6 +934,53 @@ export function EmployeesPage({
                           }`}
                         />
                       </button>
+                    </div>
+
+                    {/* Individual granular sub-permissions */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      {ADMIN_SUB_PERMISSIONS.map((sub) => {
+                        const hasAll =
+                          formData.permissions?.includes("admin_permissions") ??
+                          false;
+                        const hasSub =
+                          formData.permissions?.includes(sub.id) ?? false;
+                        const checked = hasAll || hasSub;
+                        return (
+                          <label
+                            key={sub.id}
+                            className={`flex items-start gap-3 ${hasAll ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={hasAll}
+                              onChange={(e) => {
+                                const newPermissions = e.target.checked
+                                  ? [
+                                      ...(formData.permissions || []),
+                                      sub.id,
+                                    ]
+                                  : (formData.permissions || []).filter(
+                                      (p) => p !== sub.id,
+                                    );
+                                setFormData({
+                                  ...formData,
+                                  permissions: newPermissions,
+                                });
+                              }}
+                              className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-900">
+                                {sub.label}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {sub.description}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
