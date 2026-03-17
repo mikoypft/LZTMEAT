@@ -21,6 +21,7 @@ export interface UserData {
   permissions?: string[]; // Permissions for Employee role
   storeId?: string; // Store assignment
   storeName?: string; // Store name
+  shift?: "AM" | "PM" | null; // Today's shift
 }
 
 interface LoginPageProps {
@@ -62,9 +63,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         permissions: user.permissions,
         storeId: user.storeId,
         storeName: user.storeName,
+        shift: user.shift ?? null,
       });
-    } catch (err: any) {
-      console.error("Login error:", err);
       setError(err.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
@@ -88,8 +88,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         employeeRole: user.employeeRole,
         permissions: user.permissions,
         storeId: user.storeId,
-        storeName: user.storeName,
-      });
+        storeName: user.storeName,        shift: user.shift ?? null,      });
     } catch (err: any) {
       console.error("Quick login error:", err);
       setError(err.message || "Quick login failed");

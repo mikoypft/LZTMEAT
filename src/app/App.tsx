@@ -30,6 +30,7 @@ import { LoginPage, UserData, UserRole } from "@/app/components/LoginPage";
 import { EnhancedDashboardPage } from "@/app/components/EnhancedDashboardPage";
 import { SalesDataTable } from "@/app/components/SalesDataTable";
 import { IngredientsProvider } from "@/app/context/IngredientsContext";
+import { API_BASE_URL } from "@/utils/api";
 import { Toaster } from "@/app/components/ui/sonner";
 import { CategoriesPage } from "@/app/components/CategoriesPage";
 import { StoresManagementPage } from "@/app/components/StoresManagementPage";
@@ -46,7 +47,7 @@ import {
   setEODSessionMarker,
   getPendingEODSession,
 } from "@/app/components/EODStockCountModal";
-import { ShiftReminderModal } from "@/app/components/ShiftReminderModal";
+import { ShiftPickerModal } from "@/app/components/ShiftPickerModal";
 import { refreshSession } from "@/utils/api";
 
 type Page =
@@ -72,7 +73,6 @@ const SESSION_KEY = "lzt_user_session";
 const SESSION_EXPIRY_KEY = "lzt_session_expiry";
 const SESSION_PAGE_KEY = "lzt_current_page";
 const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-const SHIFT_REMINDER_KEY = "shift_reminder_dismissed";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -83,7 +83,7 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showShiftReminder, setShowShiftReminder] = useState(false);
+  const [showShiftPicker, setShowShiftPicker] = useState(false);
   const [showEODModal, setShowEODModal] = useState(false);
   const [eodIsRecovery, setEodIsRecovery] = useState(false);
   const [pendingEODSession, setPendingEODSession] =
@@ -207,28 +207,33 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Show daily shift reminder to admins / users with users-page access
+  // Show daily shift picker for non-admin employees who haven't chosen today
   useEffect(() => {
     if (!currentUser || !sessionChecked) return;
-
-    const permissions = currentUser.permissions || [];
-    const canSeeReminder =
-      currentUser.role === "ADMIN" ||
-      (permissions.includes("admin_permissions") &&
-        permissions.includes("employees"));
-
-    if (!canSeeReminder) return;
-
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    if (localStorage.getItem(SHIFT_REMINDER_KEY) !== today) {
-      setShowShiftReminder(true);
+    // Only EMPLOYEE and PRODUCTION roles need to pick a shift
+    const needsShift =
+      currentUser.role === "EMPLOYEE" || currentUser.role === "PRODUCTION";
+    if (!needsShift) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `shift_picked_${currentUser.id}_${today}`;
+    if (!localStorage.getItem(key)) {
+      setShowShiftPicker(true);
     }
   }, [currentUser, sessionChecked]);
 
-  const dismissShiftReminder = () => {
+  const handleShiftPick = async (shift: "AM" | "PM") => {
+    if (!currentUser) return;
+    await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shift }),
+    });
     const today = new Date().toISOString().slice(0, 10);
-    localStorage.setItem(SHIFT_REMINDER_KEY, today);
-    setShowShiftReminder(false);
+    localStorage.setItem(`shift_picked_${currentUser.id}_${today}`, "1");
+    const updated = { ...currentUser, shift };
+    setCurrentUser(updated);
+    saveSession(updated);
+    setShowShiftPicker(false);
   };
 
   // Save current page to session
@@ -1232,14 +1237,11 @@ export default function App() {
         </div>
       </div>
 
-      {/* Daily Shift Reminder Modal */}
-      {showShiftReminder && (
-        <ShiftReminderModal
-          onGoToUsers={() => {
-            dismissShiftReminder();
-            handlePageChange("employees");
-          }}
-          onDismiss={dismissShiftReminder}
+      {/* Shift Picker Modal — shown once per day for employees */}
+      {showShiftPicker && currentUser && (
+        <ShiftPickerModal
+          userName={currentUser.fullName}
+          onPick={handleShiftPick}
         />
       )}
 
