@@ -8,6 +8,7 @@ import {
   User,
   FileText,
   ArrowDownCircle,
+  Pencil,
 } from "lucide-react";
 import { API_BASE_URL, getTransactionCategories } from "../../utils/api";
 import { toast } from "sonner";
@@ -59,10 +60,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [reference, setReference] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(
-    null,
-  );
+  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(null);
   const [cashOutLoading, setCashOutLoading] = useState(false);
+
+  // Edit state
+  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
+  const [editType, setEditType] = useState<"Cash In" | "Cash Out">("Cash In");
+  const [editAmount, setEditAmount] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editReference, setEditReference] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -138,6 +146,54 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     } catch (error) {
       console.error("Error adding transaction:", error);
       toast.error("Error adding transaction");
+    }
+  };
+
+  const openEditModal = (t: Transaction) => {
+    setEditTarget(t);
+    setEditType(t.type);
+    setEditAmount(String(t.amount));
+    setEditDescription(t.description);
+    setEditCategory(t.category);
+    setEditReference(t.reference || "");
+  };
+
+  const handleEditTransaction = async () => {
+    if (!editTarget) return;
+    const numAmount = parseFloat(editAmount);
+    if (!editAmount || isNaN(numAmount) || numAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    if (!editDescription || !editCategory) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/${editTarget.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: editType,
+          amount: numAmount,
+          description: editDescription,
+          category: editCategory,
+          reference: editReference || null,
+        }),
+      });
+      if (response.ok) {
+        await fetchTransactions();
+        setEditTarget(null);
+        toast.success("Transaction updated successfully");
+      } else {
+        const err = await response.json();
+        toast.error(err.error || "Failed to update transaction");
+      }
+    } catch {
+      toast.error("Error updating transaction");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -435,32 +491,45 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                           {transaction.createdBy}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                          {transaction.type === "Cash In" &&
-                            (isAdmin ||
-                              user?.permissions?.includes(
-                                "admin_permissions",
-                              )) &&
-                            (() => {
-                              const alreadyCashedOut = transactions.some(
-                                (t) =>
-                                  t.type === "Cash Out" &&
-                                  t.sourceTransactionId === transaction.id,
-                              );
-                              return alreadyCashedOut ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
-                                  <ArrowDownCircle className="w-3.5 h-3.5" />
-                                  Cashed Out
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => setCashOutConfirm(transaction)}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                                >
-                                  <ArrowDownCircle className="w-3.5 h-3.5" />
-                                  Cash Out
-                                </button>
-                              );
-                            })()}
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Edit button — admin only */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => openEditModal(transaction)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                Edit
+                              </button>
+                            )}
+                            {/* Quick Cash Out button */}
+                            {transaction.type === "Cash In" &&
+                              (isAdmin ||
+                                user?.permissions?.includes(
+                                  "admin_permissions",
+                                )) &&
+                              (() => {
+                                const alreadyCashedOut = transactions.some(
+                                  (t) =>
+                                    t.type === "Cash Out" &&
+                                    t.sourceTransactionId === transaction.id,
+                                );
+                                return alreadyCashedOut ? (
+                                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                                    <ArrowDownCircle className="w-3.5 h-3.5" />
+                                    Cashed Out
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => setCashOutConfirm(transaction)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                                  >
+                                    <ArrowDownCircle className="w-3.5 h-3.5" />
+                                    Cash Out
+                                  </button>
+                                );
+                              })()}
+                          </div>
                         </td>
                       </tr>
                     ));
@@ -577,6 +646,146 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
               >
                 {cashOutLoading ? "Recording..." : "Confirm Cash Out"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editTarget && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => !editSaving && setEditTarget(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                Edit Transaction
+              </h2>
+              <p className="text-sm text-gray-500 mb-6">
+                ID #{editTarget.id} · Created by {editTarget.createdBy}
+              </p>
+
+              <div className="space-y-4">
+                {/* Transaction Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Transaction Type *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditType("Cash In")}
+                      className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg transition-all ${
+                        editType === "Cash In"
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      <TrendingUp className="w-5 h-5" />
+                      Cash In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditType("Cash Out")}
+                      className={`flex items-center justify-center gap-2 px-4 py-3 border-2 rounded-lg transition-all ${
+                        editType === "Cash Out"
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      <TrendingDown className="w-5 h-5" />
+                      Cash Out
+                    </button>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount (₱) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">Select a category</option>
+                    {(editType === "Cash In"
+                      ? cashInCategories
+                      : cashOutCategories
+                    ).map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description *
+                  </label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    rows={3}
+                    placeholder="Enter transaction description"
+                  />
+                </div>
+
+                {/* Reference */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reference Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editReference}
+                    onChange={(e) => setEditReference(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="e.g., INV-001, Receipt #123"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  disabled={editSaving}
+                  onClick={() => setEditTarget(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={editSaving}
+                  onClick={handleEditTransaction}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                >
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -5445,6 +5445,72 @@ $routes = [
         }
     },
 
+    'PUT /api/transactions/{id}' => function() use ($pdo, $body) {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $id = basename($uri);
+
+        try {
+            $type        = $body['type']        ?? null;
+            $amount      = isset($body['amount'])      ? (float)$body['amount']      : null;
+            $description = $body['description'] ?? null;
+            $category    = $body['category']    ?? null;
+            $reference   = array_key_exists('reference', $body) ? ($body['reference'] ?: null) : false;
+
+            if ($amount !== null && $amount <= 0) {
+                http_response_code(400);
+                return ['error' => 'Amount must be greater than 0'];
+            }
+
+            // Fetch existing row so we only overwrite supplied fields
+            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ?');
+            $existing->execute([$id]);
+            $row = $existing->fetch();
+            if (!$row) {
+                http_response_code(404);
+                return ['error' => 'Transaction not found'];
+            }
+
+            $newType        = $type        ?? $row['type'];
+            $newAmount      = $amount      ?? (float)$row['amount'];
+            $newDescription = $description ?? $row['description'];
+            $newCategory    = $category    ?? $row['category'];
+            $newReference   = ($reference !== false) ? $reference : $row['reference'];
+
+            $stmt = $pdo->prepare('
+                UPDATE transactions
+                SET type = ?, amount = ?, description = ?, category = ?, reference = ?, updated_at = NOW()
+                WHERE id = ?
+            ');
+            $stmt->execute([$newType, $newAmount, $newDescription, $newCategory, $newReference, $id]);
+
+            logSystemHistory($pdo, 'Transaction Updated', 'Transaction', $id, [
+                'type'        => $newType,
+                'amount'      => $newAmount,
+                'description' => $newDescription,
+                'category'    => $newCategory,
+            ]);
+
+            return [
+                'success' => true,
+                'transaction' => [
+                    'id'                  => (string)$id,
+                    'type'                => $newType,
+                    'amount'              => $newAmount,
+                    'description'         => $newDescription,
+                    'category'            => $newCategory,
+                    'reference'           => $newReference,
+                    'createdBy'           => $row['created_by'],
+                    'timestamp'           => $row['created_at'],
+                    'sourceTransactionId' => $row['source_transaction_id'] ? (string)$row['source_transaction_id'] : null,
+                    'shift'               => $row['shift'] ?? null,
+                ],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to update transaction: ' . $e->getMessage()];
+        }
+    },
+
     'DELETE /api/transactions/{id}' => function() use ($pdo) {
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $id = basename($uri);
