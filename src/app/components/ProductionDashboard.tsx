@@ -1763,7 +1763,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
   return (
     <div className="h-full overflow-auto bg-muted/30">
       <div className="container mx-auto p-6 space-y-6">
-        {/* Header Stats */}
+        {/* Header Stats — admin only */}
+        {isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-card rounded-lg p-6 border border-border">
             <div className="flex items-center justify-between mb-3">
@@ -1812,6 +1813,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             <p className="text-sm text-muted-foreground">vs Last Week</p>
           </div>
         </div>
+        )}
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
