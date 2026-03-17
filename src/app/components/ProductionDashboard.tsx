@@ -1861,7 +1861,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         </div>
         )}
 
-        {/* Product Mix Inventory */}
+        {/* Product Mix Inventory — visible to users with pack permission */}
+        {(isAdmin || canPack) && (
         <div className="bg-card rounded-lg border border-border">
           <div className="p-6 border-b border-border flex items-center gap-3">
             <Package className="w-6 h-6 text-primary" />
@@ -1929,8 +1930,10 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             )}
           </div>
         </div>
+        )}
 
-        {/* Raw Product Inventory */}
+        {/* Raw Product Inventory — visible to users with cook permission */}
+        {(isAdmin || canCook) && (
         <div className="bg-card rounded-lg border border-border">
           <div className="p-6 border-b border-border flex items-center gap-3">
             <Package className="w-6 h-6 text-purple-600" />
@@ -1993,6 +1996,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             )}
           </div>
         </div>
+        )}
 
         {/* Production Records Section */}
         <div className="bg-card rounded-lg border border-border">
