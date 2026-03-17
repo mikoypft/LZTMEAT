@@ -1815,7 +1815,8 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
         </div>
         )}
 
-        {/* Charts Row */}
+        {/* Charts Row — admin only */}
+        {isAdmin && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Daily Production Chart */}
           <div className="bg-card rounded-lg p-6 border border-border">
@@ -1858,6 +1859,7 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
             </ResponsiveContainer>
           </div>
         </div>
+        )}
 
         {/* Product Mix Inventory */}
         <div className="bg-card rounded-lg border border-border">
