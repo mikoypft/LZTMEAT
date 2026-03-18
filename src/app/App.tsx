@@ -1211,6 +1211,7 @@ export default function App() {
                   currentUser.permissions?.includes("admin_permissions") ||
                   currentUser.permissions?.includes("admin_perm_categories")
                 }
+                userPermissions={currentUser.permissions}
               />
             )}
             {currentPage === "stores" && (
@@ -1229,6 +1230,7 @@ export default function App() {
                   currentUser.permissions?.includes("admin_permissions") ||
                   currentUser.permissions?.includes("admin_perm_suppliers")
                 }
+                userPermissions={currentUser.permissions}
               />
             )}
             {currentPage === "supplier-invoices" && (
@@ -1238,6 +1240,7 @@ export default function App() {
                   currentUser.permissions?.includes("admin_permissions") ||
                   currentUser.permissions?.includes("admin_perm_suppliers")
                 }
+                userPermissions={currentUser.permissions}
               />
             )}
             {currentPage === "discounts" && (

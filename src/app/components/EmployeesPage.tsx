@@ -40,36 +40,60 @@ import {
 } from "@/utils/api";
 
 // Granular admin sub-permissions
-const ADMIN_SUB_PERMISSIONS = [
+const ADMIN_GRANULAR_PERMISSIONS = [
   {
     id: "admin_perm_inventory",
     label: "Product Inventory",
-    description: "Add, edit, and delete products in Inventory",
+    actions: [
+      { id: "admin_perm_inventory_add", label: "Add" },
+      { id: "admin_perm_inventory_edit", label: "Edit" },
+      { id: "admin_perm_inventory_delete", label: "Delete" },
+    ],
   },
   {
     id: "admin_perm_ingredients",
     label: "Ingredients / Raw Materials",
-    description: "Add, edit, adjust stock, and delete ingredients",
+    actions: [
+      { id: "admin_perm_ingredients_add", label: "Add" },
+      { id: "admin_perm_ingredients_edit", label: "Edit" },
+      { id: "admin_perm_ingredients_adjust", label: "Adjust" },
+      { id: "admin_perm_ingredients_delete", label: "Delete" },
+    ],
   },
   {
     id: "admin_perm_categories",
     label: "Categories",
-    description: "Add, edit, and delete product and ingredient categories",
+    actions: [
+      { id: "admin_perm_categories_add", label: "Add" },
+      { id: "admin_perm_categories_edit", label: "Edit" },
+      { id: "admin_perm_categories_delete", label: "Delete" },
+    ],
   },
   {
     id: "admin_perm_suppliers",
     label: "Suppliers & Invoices",
-    description: "Add, edit, and delete suppliers and supplier invoices",
+    actions: [
+      { id: "admin_perm_suppliers_add", label: "Add" },
+      { id: "admin_perm_suppliers_edit", label: "Edit" },
+      { id: "admin_perm_suppliers_delete", label: "Delete" },
+    ],
   },
   {
     id: "admin_perm_transactions",
     label: "Transactions (Cash In/Out)",
-    description: "Add transactions, perform cash-out, and edit records",
+    actions: [
+      { id: "admin_perm_transactions_add", label: "Add" },
+      { id: "admin_perm_transactions_cashout", label: "Cash Out" },
+      { id: "admin_perm_transactions_edit", label: "Edit" },
+    ],
   },
   {
     id: "admin_perm_transfer",
     label: "Transfer",
-    description: "Create new transfers and return items to production",
+    actions: [
+      { id: "admin_perm_transfer_new", label: "New Transfer" },
+      { id: "admin_perm_transfer_return", label: "Return" },
+    ],
   },
 ];
 
@@ -938,48 +962,82 @@ export function EmployeesPage({
                     </div>
 
                     {/* Individual granular sub-permissions */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 grid grid-cols-2 gap-x-4 gap-y-3">
-                      {ADMIN_SUB_PERMISSIONS.map((sub) => {
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3">
+                      {ADMIN_GRANULAR_PERMISSIONS.map((section) => {
                         const hasAll =
                           formData.permissions?.includes("admin_permissions") ??
                           false;
-                        const hasSub =
-                          formData.permissions?.includes(sub.id) ?? false;
-                        const checked = hasAll || hasSub;
+                        const hasSectionAll =
+                          formData.permissions?.includes(section.id) ?? false;
+                        const effectiveAll = hasAll || hasSectionAll;
                         return (
-                          <label
-                            key={sub.id}
-                            className={`flex items-start gap-3 ${hasAll ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={hasAll}
-                              onChange={(e) => {
-                                const newPermissions = e.target.checked
-                                  ? [
-                                      ...(formData.permissions || []),
-                                      sub.id,
-                                    ]
-                                  : (formData.permissions || []).filter(
-                                      (p) => p !== sub.id,
-                                    );
-                                setFormData({
-                                  ...formData,
-                                  permissions: newPermissions,
-                                });
-                              }}
-                              className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                            />
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-gray-900">
-                                {sub.label}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {sub.description}
-                              </div>
+                          <div key={section.id} className="space-y-1.5">
+                            <label
+                              className={`flex items-center gap-2.5 ${hasAll ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={effectiveAll}
+                                disabled={hasAll}
+                                onChange={(e) => {
+                                  const newPermissions = e.target.checked
+                                    ? [
+                                        ...(formData.permissions || []),
+                                        section.id,
+                                      ]
+                                    : (formData.permissions || []).filter(
+                                        (p) => p !== section.id,
+                                      );
+                                  setFormData({
+                                    ...formData,
+                                    permissions: newPermissions,
+                                  });
+                                }}
+                                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                              />
+                              <span className="text-sm font-semibold text-gray-900">
+                                {section.label}
+                              </span>
+                            </label>
+                            <div className="ml-6 flex flex-wrap gap-x-4 gap-y-1.5">
+                              {section.actions.map((action) => {
+                                const hasAction =
+                                  formData.permissions?.includes(action.id) ??
+                                  false;
+                                const checked = effectiveAll || hasAction;
+                                return (
+                                  <label
+                                    key={action.id}
+                                    className={`flex items-center gap-1.5 ${effectiveAll ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      disabled={effectiveAll}
+                                      onChange={(e) => {
+                                        const newPermissions = e.target.checked
+                                          ? [
+                                              ...(formData.permissions || []),
+                                              action.id,
+                                            ]
+                                          : (formData.permissions || []).filter(
+                                              (p) => p !== action.id,
+                                            );
+                                        setFormData({
+                                          ...formData,
+                                          permissions: newPermissions,
+                                        });
+                                      }}
+                                      className="w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                    />
+                                    <span className="text-xs text-gray-700">
+                                      {action.label}
+                                    </span>
+                                  </label>
+                                );
+                              })}
                             </div>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>

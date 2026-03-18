@@ -60,6 +60,10 @@ export function TransferPage({
     userRole === "ADMIN" ||
     isAdminPermissions === true ||
     (userPermissions || []).includes("transfer");
+  const canNewTransfer =
+    isAdmin || (userPermissions || []).includes("admin_perm_transfer_new");
+  const canReturn =
+    isAdmin || (userPermissions || []).includes("admin_perm_transfer_return");
   const [transfers, setTransfers] = useState<TransferRequest[]>([]);
   const [stores, setStores] = useState<StoreLocation[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -580,7 +584,7 @@ export function TransferPage({
               <h2>Transfer Management</h2>
             </div>
             <div className="flex items-center gap-2">
-              {isAdmin && (
+              {canReturn && (
                 <button
                   onClick={() => {
                     setReturnData({
@@ -598,7 +602,7 @@ export function TransferPage({
                   Return to Production
                 </button>
               )}
-              {isAdmin && (
+              {canNewTransfer && (
                 <button
                   onClick={() => setShowAddForm(!showAddForm)}
                   className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"

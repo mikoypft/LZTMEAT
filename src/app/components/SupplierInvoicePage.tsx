@@ -24,11 +24,16 @@ import {
 export function SupplierInvoicePage({
   userRole,
   isAdminPermissions,
+  userPermissions,
 }: {
   userRole?: string;
   isAdminPermissions?: boolean;
+  userPermissions?: string[];
 }) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
+  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
+  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
+  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
@@ -278,7 +283,7 @@ export function SupplierInvoicePage({
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && (
+            {canAdd && (
               <button
                 onClick={openAdd}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
@@ -414,7 +419,7 @@ export function SupplierInvoicePage({
             <div className="p-12 text-center">
               <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground">No invoices found</p>
-              {isAdmin && (
+              {canAdd && (
                 <button
                   onClick={openAdd}
                   className="mt-3 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90"
@@ -449,7 +454,7 @@ export function SupplierInvoicePage({
                     <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Remarks
                     </th>
-                    {isAdmin && (
+                    {(canEdit || canDelete) && (
                       <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         Actions
                       </th>
@@ -501,23 +506,27 @@ export function SupplierInvoicePage({
                       <td className="px-4 py-3 text-sm text-muted-foreground max-w-[200px] truncate">
                         {inv.remarks || <span>—</span>}
                       </td>
-                      {isAdmin && (
+                      {(canEdit || canDelete) && (
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => openEdit(inv)}
-                              className="p-1.5 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(inv)}
-                              className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => openEdit(inv)}
+                                className="p-1.5 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => setDeleteTarget(inv)}
+                                className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}
@@ -548,7 +557,7 @@ export function SupplierInvoicePage({
                         ₱{fmt(totalBalance)}
                       </span>
                     </td>
-                    <td colSpan={isAdmin ? 2 : 1} />
+                    <td colSpan={(canEdit || canDelete) ? 2 : 1} />
                   </tr>
                 </tfoot>
               </table>

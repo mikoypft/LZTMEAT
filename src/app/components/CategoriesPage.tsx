@@ -37,8 +37,11 @@ import {
   type DefaultIngredient,
 } from "@/utils/api";
 
-export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+export function CategoriesPage({ userRole, isAdminPermissions, userPermissions }: { userRole?: string; isAdminPermissions?: boolean; userPermissions?: string[] }) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
+  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_categories_add");
+  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_categories_edit");
+  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_categories_delete");
   const [productCategories, setProductCategories] = useState<Category[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>(
     [],
@@ -236,7 +239,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                   <Beef className="w-5 h-5 text-orange-600" />
                   Ingredient Categories ({ingredientCategories.length})
                 </h2>
-                {isAdmin && (
+                {canAdd && (
                   <button
                     onClick={() => setShowAddIngredientModal(true)}
                     className="flex items-center gap-2 bg-orange-600 text-white px-3 py-1.5 rounded-lg hover:bg-orange-700 transition-colors text-sm"
@@ -273,7 +276,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                     ? "No matching categories"
                     : "No ingredient categories yet"}
                 </p>
-                {!ingredientSearchTerm && isAdmin && (
+                {!ingredientSearchTerm && canAdd && (
                   <button
                     onClick={() => setShowAddIngredientModal(true)}
                     className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm"
@@ -304,27 +307,31 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                         )}
                       </div>
 
-                      {isAdmin && (
+                      {(canEdit || canDelete) && (
                         <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() =>
-                              handleEditIngredientCategory(category)
-                            }
-                            className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors text-xs"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteIngredientCategory(
-                                category.id,
-                                category.name,
-                              )
-                            }
-                            className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() =>
+                                handleEditIngredientCategory(category)
+                              }
+                              className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors text-xs"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() =>
+                                handleDeleteIngredientCategory(
+                                  category.id,
+                                  category.name,
+                                )
+                              }
+                              className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -342,7 +349,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                   <Package className="w-5 h-5 text-blue-600" />
                   Product Categories ({productCategories.length})
                 </h2>
-                {isAdmin && (
+                {canAdd && (
                   <button
                     onClick={() => setShowAddProductModal(true)}
                     className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -379,7 +386,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                     ? "No matching categories"
                     : "No product categories yet"}
                 </p>
-                {!productSearchTerm && isAdmin && (
+                {!productSearchTerm && canAdd && (
                   <button
                     onClick={() => setShowAddProductModal(true)}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -410,25 +417,29 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                         )}
                       </div>
 
-                      {isAdmin && (
+                      {(canEdit || canDelete) && (
                         <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() => handleEditProductCategory(category)}
-                            className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors text-xs"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteProductCategory(
-                                category.id,
-                                category.name,
-                              )
-                            }
-                            className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleEditProductCategory(category)}
+                              className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors text-xs"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() =>
+                                handleDeleteProductCategory(
+                                  category.id,
+                                  category.name,
+                                )
+                              }
+                              className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -446,7 +457,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                   <Tag className="w-5 h-5 text-purple-600" />
                   Product Mix Categories ({productMixCategories.length})
                 </h2>
-                {isAdmin && (
+                {canAdd && (
                   <button
                     onClick={() => setShowAddProductMixModal(true)}
                     className="flex items-center gap-2 bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors text-sm"
@@ -483,7 +494,7 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                     ? "No matching categories"
                     : "No product mix categories yet"}
                 </p>
-                {!productMixSearchTerm && isAdmin && (
+                {!productMixSearchTerm && canAdd && (
                   <button
                     onClick={() => setShowAddProductMixModal(true)}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
@@ -514,27 +525,31 @@ export function CategoriesPage({ userRole, isAdminPermissions }: { userRole?: st
                         )}
                       </div>
 
-                      {isAdmin && (
+                      {(canEdit || canDelete) && (
                         <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() =>
-                              handleEditProductMixCategory(category)
-                            }
-                            className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors text-xs"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteProductMixCategory(
-                                category.id,
-                                category.name,
-                              )
-                            }
-                            className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() =>
+                                handleEditProductMixCategory(category)
+                              }
+                              className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors text-xs"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() =>
+                                handleDeleteProductMixCategory(
+                                  category.id,
+                                  category.name,
+                                )
+                              }
+                              className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors text-xs"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

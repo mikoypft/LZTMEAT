@@ -19,8 +19,11 @@ import {
   type Supplier,
 } from "@/utils/api";
 
-export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: string; isAdminPermissions?: boolean }) {
+export function SuppliersPage({ userRole, isAdminPermissions, userPermissions }: { userRole?: string; isAdminPermissions?: boolean; userPermissions?: string[] }) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
+  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
+  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
+  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -154,7 +157,7 @@ export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: str
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {canAdd && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -296,7 +299,7 @@ export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: str
               <p className="text-sm text-muted-foreground mb-4">
                 Add your first supplier to get started
               </p>
-              {isAdmin && (
+              {canAdd && (
                 <button
                   onClick={() => setShowAddForm(true)}
                   className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -391,7 +394,7 @@ export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: str
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          {isAdmin && (
+                          {canEdit && (
                             <button
                               onClick={() => handleEdit(supplier)}
                               className="p-2 hover:bg-blue-100 text-blue-600 rounded transition-colors"
@@ -400,7 +403,7 @@ export function SuppliersPage({ userRole, isAdminPermissions }: { userRole?: str
                               <Edit2 className="w-4 h-4" />
                             </button>
                           )}
-                          {isAdmin && (
+                          {canDelete && (
                             <button
                               onClick={() => handleDelete(supplier)}
                               className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"

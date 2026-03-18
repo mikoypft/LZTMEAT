@@ -48,6 +48,10 @@ export function IngredientsInventoryPage({
   currentUser,
 }: IngredientsInventoryPageProps) {
   const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions") || !!currentUser?.permissions?.includes("admin_perm_ingredients");
+  const canAdd = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_add");
+  const canEdit = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_edit");
+  const canAdjust = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_adjust");
+  const canDelete = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_delete");
   const context = useContext(IngredientsContext);
   if (!context) {
     return (
@@ -344,7 +348,7 @@ export function IngredientsInventoryPage({
               />
             </div>
             <div className="flex gap-2">
-              {isAdmin && (
+              {canAdd && (
                 <button
                   onClick={() => setShowAddIngredientModal(true)}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
@@ -511,7 +515,7 @@ export function IngredientsInventoryPage({
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
-                          {isAdmin && (
+                          {canEdit && (
                             <button
                               onClick={() => {
                                 setSelectedIngredient(item);
@@ -523,7 +527,7 @@ export function IngredientsInventoryPage({
                               <Edit2 className="w-4 h-4" />
                             </button>
                           )}
-                          {isAdmin && (
+                          {canAdjust && (
                             <button
                               onClick={() => {
                                 setSelectedIngredient(item);
@@ -535,7 +539,7 @@ export function IngredientsInventoryPage({
                               <Plus className="w-4 h-4" />
                             </button>
                           )}
-                          {isAdmin && (
+                          {canDelete && (
                             <button
                               onClick={() => {
                                 setSelectedIngredient(item);

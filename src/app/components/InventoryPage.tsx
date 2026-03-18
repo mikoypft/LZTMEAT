@@ -269,6 +269,15 @@ export function InventoryPage({
     currentUser?.role === "ADMIN" ||
     !!currentUser?.permissions?.includes("admin_permissions") ||
     !!currentUser?.permissions?.includes("admin_perm_inventory");
+  const canAdd =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_inventory_add");
+  const canEdit =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_inventory_edit");
+  const canDelete =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_inventory_delete");
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -786,7 +795,7 @@ export function InventoryPage({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
-          {isAdmin && (
+          {canAdd && (
             <button
               onClick={() => setShowEncodeProductModal(true)}
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
@@ -1039,7 +1048,7 @@ export function InventoryPage({
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
-                          {isAdmin && (
+                          {canEdit && (
                             <button
                               onClick={() => {
                                 setSelectedItem(item);
@@ -1051,7 +1060,7 @@ export function InventoryPage({
                               <Edit className="w-4 h-4" />
                             </button>
                           )}
-                          {isAdmin && (
+                          {canDelete && (
                             <button
                               onClick={() =>
                                 handleDeleteProduct(item.id, item.name)

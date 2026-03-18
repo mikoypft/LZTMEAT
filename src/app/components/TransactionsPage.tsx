@@ -35,6 +35,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     user?.role === "ADMIN" ||
     !!user?.permissions?.includes("admin_permissions") ||
     !!user?.permissions?.includes("admin_perm_transactions");
+  const canAdd =
+    isAdmin ||
+    !!user?.permissions?.includes("admin_perm_transactions_add");
+  const canEdit =
+    isAdmin ||
+    !!user?.permissions?.includes("admin_perm_transactions_edit");
+  const canCashOut =
+    isAdmin ||
+    !!user?.permissions?.includes("admin_perm_transactions_cashout");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -262,7 +271,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             Manage cash in and cash out transactions
           </p>
         </div>
-        {isAdmin && (
+        {canAdd && (
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -498,7 +507,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                           <div className="flex items-center gap-2">
                             {/* Left slot — Edit */}
                             <div className="w-[72px]">
-                              {isAdmin && (
+                              {canEdit && (
                                 <button
                                   onClick={() => openEditModal(transaction)}
                                   className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
@@ -511,7 +520,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                             {/* Right slot — Cash Out */}
                             <div className="w-[90px]">
                               {transaction.type === "Cash In" &&
-                                isAdmin &&
+                                canCashOut &&
                                 (() => {
                                   const alreadyCashedOut = transactions.some(
                                     (t) =>
