@@ -113,8 +113,27 @@ export default function App() {
               "minutes",
             );
 
-            // Use cached session directly
+            // Use cached session directly (fast path — UI appears immediately)
             setCurrentUser(userData);
+
+            // Silently refresh from server in background to pick up any
+            // permission/role changes the admin may have made since last login
+            refreshSession(userData.id, userData.username)
+              .then((fresh) => {
+                const updated: UserData = {
+                  ...userData,
+                  permissions: fresh.permissions,
+                  role: fresh.role as UserData["role"],
+                  storeId: fresh.storeId ?? userData.storeId,
+                  storeName: fresh.storeName ?? userData.storeName,
+                  shift: (fresh.shift as UserData["shift"]) ?? userData.shift,
+                };
+                setCurrentUser(updated);
+                saveSession(updated);
+              })
+              .catch(() => {
+                // Ignore refresh errors — cached session remains valid
+              });
 
             // Restore the last page if valid and allowed for this user
             if (savedPage && (savedPage as Page)) {
