@@ -207,7 +207,7 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
     product: null,
     weight: "1",
   });
-  const [mobileView, setMobileView] = useState<"products" | "cart">("products");
+
   const [toolbarHidden, setToolbarHidden] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -849,42 +849,10 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-      {/* Mobile Tab Bar - only on small screens */}
-      <div className="lg:hidden flex border-b border-gray-200 bg-white flex-shrink-0">
-        <button
-          onClick={() => setMobileView("products")}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            mobileView === "products"
-              ? "border-b-2 border-primary text-primary"
-              : "text-gray-500 hover:text-gray-800"
-          }`}
-        >
-          Products
-        </button>
-        <button
-          onClick={() => setMobileView("cart")}
-          className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-            mobileView === "cart"
-              ? "border-b-2 border-primary text-primary"
-              : "text-gray-500 hover:text-gray-800"
-          }`}
-        >
-          Cart
-          {cartItemCount > 0 && (
-            <span className="ml-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
-              {cartItemCount}
-            </span>
-          )}
-        </button>
-      </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
         {/* Left Side - Products */}
-        <div
-          className={`flex-1 flex flex-col overflow-hidden ${
-            mobileView === "products" ? "flex" : "hidden"
-          } lg:flex`}
-        >
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Store Selector + Action Bar */}
           <div className="flex-shrink-0">
             {/* Toggle strip - always visible */}
@@ -1104,11 +1072,7 @@ export function POSPage({ currentUser, externalSearch }: POSPageProps = {}) {
         </div>
 
         {/* Right Side - Cart */}
-        <div
-          className={`w-full lg:w-72 flex-shrink-0 flex flex-col bg-white border-l border-gray-200 ${
-            mobileView === "cart" ? "flex" : "hidden"
-          } lg:flex`}
-        >
+        <div className="h-72 sm:h-auto w-full sm:w-72 flex-shrink-0 flex flex-col bg-white border-t sm:border-t-0 sm:border-l border-gray-200">
           {/* Order Header */}
           <div className="bg-primary px-3 py-2.5 flex items-center gap-2 flex-shrink-0">
             <ShoppingCart className="w-4 h-4 text-primary-foreground" />
