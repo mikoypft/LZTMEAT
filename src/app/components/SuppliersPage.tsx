@@ -19,11 +19,22 @@ import {
   type Supplier,
 } from "@/utils/api";
 
-export function SuppliersPage({ userRole, isAdminPermissions, userPermissions }: { userRole?: string; isAdminPermissions?: boolean; userPermissions?: string[] }) {
+export function SuppliersPage({
+  userRole,
+  isAdminPermissions,
+  userPermissions,
+}: {
+  userRole?: string;
+  isAdminPermissions?: boolean;
+  userPermissions?: string[];
+}) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
-  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
-  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
-  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
+  const canAdd =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
+  const canEdit =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
+  const canDelete =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);

@@ -1765,237 +1765,237 @@ export function ProductionDashboard({ currentUser }: ProductionDashboardProps) {
       <div className="container mx-auto p-6 space-y-6">
         {/* Header Stats — admin only */}
         {isAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Package className="w-6 h-6 text-primary" />
+                </div>
               </div>
+              <p className="text-3xl text-primary mb-1">
+                {(totalProducedToday || 0).toFixed(1)} KG
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Total Produced Today
+              </p>
             </div>
-            <p className="text-3xl text-primary mb-1">
-              {(totalProducedToday || 0).toFixed(1)} KG
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Total Produced Today
-            </p>
-          </div>
 
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-primary" />
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Clock className="w-6 h-6 text-primary" />
+                </div>
               </div>
+              <p className="text-3xl text-primary mb-1">{inProgressCount}</p>
+              <p className="text-sm text-muted-foreground">In Progress</p>
             </div>
-            <p className="text-3xl text-primary mb-1">{inProgressCount}</p>
-            <p className="text-sm text-muted-foreground">In Progress</p>
-          </div>
 
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Factory className="w-6 h-6 text-primary" />
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Factory className="w-6 h-6 text-primary" />
+                </div>
               </div>
+              <p className="text-3xl text-primary mb-1">{completedCount}</p>
+              <p className="text-sm text-muted-foreground">Completed Batches</p>
             </div>
-            <p className="text-3xl text-primary mb-1">{completedCount}</p>
-            <p className="text-sm text-muted-foreground">Completed Batches</p>
-          </div>
 
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-primary" />
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                </div>
               </div>
+              <p className="text-3xl text-primary mb-1">
+                {vsLastWeek.isPositive ? "+" : ""}
+                {vsLastWeek.value}%
+              </p>
+              <p className="text-sm text-muted-foreground">vs Last Week</p>
             </div>
-            <p className="text-3xl text-primary mb-1">
-              {vsLastWeek.isPositive ? "+" : ""}
-              {vsLastWeek.value}%
-            </p>
-            <p className="text-sm text-muted-foreground">vs Last Week</p>
           </div>
-        </div>
         )}
 
         {/* Charts Row — admin only */}
         {isAdmin && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Daily Production Chart */}
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <h3 className="mb-4">Weekly Production (KG)</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={weeklyProductionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="weight" fill="#dc2626" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Daily Production Chart */}
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <h3 className="mb-4">Weekly Production (KG)</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={weeklyProductionData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="weight" fill="#dc2626" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-          {/* Product Distribution */}
-          <div className="bg-card rounded-lg p-6 border border-border">
-            <h3 className="mb-4">Product Distribution (%)</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={productDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {productDistributionData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {/* Product Distribution */}
+            <div className="bg-card rounded-lg p-6 border border-border">
+              <h3 className="mb-4">Product Distribution (%)</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={productDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {productDistributionData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Product Mix Inventory — visible to users with pack permission */}
         {(isAdmin || canPack) && (
-        <div className="bg-card rounded-lg border border-border">
-          <div className="p-6 border-b border-border flex items-center gap-3">
-            <Package className="w-6 h-6 text-primary" />
-            <h2>Product Mix Inventory</h2>
-          </div>
-          <div className="p-6">
-            {!mixInventory || mixInventory.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No mix inventory available yet. Complete a mixing phase to
-                create mix stock.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {mixInventory.map((mix) => {
-                  // Find the matching category for this mix
-                  const matchingCategory = mixCategories?.find(
-                    (cat) =>
-                      String(cat.id) === String(mix.productMixCategoryId),
-                  );
+          <div className="bg-card rounded-lg border border-border">
+            <div className="p-6 border-b border-border flex items-center gap-3">
+              <Package className="w-6 h-6 text-primary" />
+              <h2>Product Mix Inventory</h2>
+            </div>
+            <div className="p-6">
+              {!mixInventory || mixInventory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No mix inventory available yet. Complete a mixing phase to
+                  create mix stock.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {mixInventory.map((mix) => {
+                    // Find the matching category for this mix
+                    const matchingCategory = mixCategories?.find(
+                      (cat) =>
+                        String(cat.id) === String(mix.productMixCategoryId),
+                    );
 
-                  return (
+                    return (
+                      <div
+                        key={mix.id}
+                        className="bg-card border border-border rounded-lg p-4"
+                      >
+                        <div className="flex flex-col h-full">
+                          <h3 className="font-medium text-sm mb-2">
+                            {mix.productMixName}
+                          </h3>
+                          <div className="mt-auto">
+                            <p className="text-2xl text-primary font-bold">
+                              {mix.stock.toFixed(1)} KG
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Available for packing
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Cost: ₱{mix.cost.toFixed(2)}
+                            </p>
+                            {mix.stock > 0 &&
+                              (inProgressCategoryIds.has(
+                                String(mix.productMixCategoryId),
+                              ) ? (
+                                <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
+                                  Ongoing Production
+                                </div>
+                              ) : !canPack ? (
+                                <div className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
+                                  No Pack Permission
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleStartPackingFromMix(mix)}
+                                  className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                                >
+                                  Start Packing
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Raw Product Inventory — visible to users with cook permission */}
+        {(isAdmin || canCook) && (
+          <div className="bg-card rounded-lg border border-border">
+            <div className="p-6 border-b border-border flex items-center gap-3">
+              <Package className="w-6 h-6 text-purple-600" />
+              <h2>Raw Product Inventory</h2>
+              <span className="text-xs text-muted-foreground ml-1">
+                (Packed — Ready for Cooking)
+              </span>
+            </div>
+            <div className="p-6">
+              {!rawProductInventory || rawProductInventory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No raw packed items yet. Complete a packing phase to add raw
+                  products here.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {rawProductInventory.map((item) => (
                     <div
-                      key={mix.id}
-                      className="bg-card border border-border rounded-lg p-4"
+                      key={item.id}
+                      className="bg-card border border-purple-200 dark:border-purple-900 rounded-lg p-4"
                     >
                       <div className="flex flex-col h-full">
                         <h3 className="font-medium text-sm mb-2">
-                          {mix.productMixName}
+                          {item.productMixName}
                         </h3>
                         <div className="mt-auto">
-                          <p className="text-2xl text-primary font-bold">
-                            {mix.stock.toFixed(1)} KG
+                          <p className="text-2xl text-purple-600 font-bold">
+                            {item.stock.toFixed(1)} KG
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Available for packing
+                            Raw packed — available for cooking
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
-                            Cost: ₱{mix.cost.toFixed(2)}
+                            Cost: ₱{item.cost.toFixed(2)}
                           </p>
-                          {mix.stock > 0 &&
+                          {item.stock > 0 &&
                             (inProgressCategoryIds.has(
-                              String(mix.productMixCategoryId),
+                              String(item.productMixCategoryId),
                             ) ? (
                               <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
                                 Ongoing Production
                               </div>
-                            ) : !canPack ? (
+                            ) : !canCook ? (
                               <div className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
-                                No Pack Permission
+                                No Cook Permission
                               </div>
                             ) : (
                               <button
-                                onClick={() => handleStartPackingFromMix(mix)}
-                                className="w-full mt-3 px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                                onClick={() => handleStartCookingFromRaw(item)}
+                                className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                               >
-                                Start Packing
+                                Start Cooking
                               </button>
                             ))}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        )}
-
-        {/* Raw Product Inventory — visible to users with cook permission */}
-        {(isAdmin || canCook) && (
-        <div className="bg-card rounded-lg border border-border">
-          <div className="p-6 border-b border-border flex items-center gap-3">
-            <Package className="w-6 h-6 text-purple-600" />
-            <h2>Raw Product Inventory</h2>
-            <span className="text-xs text-muted-foreground ml-1">
-              (Packed — Ready for Cooking)
-            </span>
-          </div>
-          <div className="p-6">
-            {!rawProductInventory || rawProductInventory.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No raw packed items yet. Complete a packing phase to add raw
-                products here.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {rawProductInventory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-card border border-purple-200 dark:border-purple-900 rounded-lg p-4"
-                  >
-                    <div className="flex flex-col h-full">
-                      <h3 className="font-medium text-sm mb-2">
-                        {item.productMixName}
-                      </h3>
-                      <div className="mt-auto">
-                        <p className="text-2xl text-purple-600 font-bold">
-                          {item.stock.toFixed(1)} KG
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Raw packed — available for cooking
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Cost: ₱{item.cost.toFixed(2)}
-                        </p>
-                        {item.stock > 0 &&
-                          (inProgressCategoryIds.has(
-                            String(item.productMixCategoryId),
-                          ) ? (
-                            <div className="w-full mt-3 px-3 py-2 bg-gray-300 text-gray-500 text-xs rounded text-center cursor-not-allowed select-none">
-                              Ongoing Production
-                            </div>
-                          ) : !canCook ? (
-                            <div className="w-full mt-3 px-3 py-2 bg-gray-100 text-gray-400 text-xs rounded text-center cursor-not-allowed select-none border border-gray-200">
-                              No Cook Permission
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleStartCookingFromRaw(item)}
-                              className="w-full mt-3 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                            >
-                              Start Cooking
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
         )}
 
         {/* Production Records Section */}

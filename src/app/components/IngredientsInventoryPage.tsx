@@ -47,11 +47,22 @@ interface IngredientsInventoryPageProps {
 export function IngredientsInventoryPage({
   currentUser,
 }: IngredientsInventoryPageProps) {
-  const isAdmin = currentUser?.role === "ADMIN" || !!currentUser?.permissions?.includes("admin_permissions") || !!currentUser?.permissions?.includes("admin_perm_ingredients");
-  const canAdd = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_add");
-  const canEdit = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_edit");
-  const canAdjust = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_adjust");
-  const canDelete = isAdmin || !!currentUser?.permissions?.includes("admin_perm_ingredients_delete");
+  const isAdmin =
+    currentUser?.role === "ADMIN" ||
+    !!currentUser?.permissions?.includes("admin_permissions") ||
+    !!currentUser?.permissions?.includes("admin_perm_ingredients");
+  const canAdd =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_ingredients_add");
+  const canEdit =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_ingredients_edit");
+  const canAdjust =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_ingredients_adjust");
+  const canDelete =
+    isAdmin ||
+    !!currentUser?.permissions?.includes("admin_perm_ingredients_delete");
   const context = useContext(IngredientsContext);
   if (!context) {
     return (

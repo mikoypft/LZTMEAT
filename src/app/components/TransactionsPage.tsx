@@ -36,14 +36,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     !!user?.permissions?.includes("admin_permissions") ||
     !!user?.permissions?.includes("admin_perm_transactions");
   const canAdd =
-    isAdmin ||
-    !!user?.permissions?.includes("admin_perm_transactions_add");
+    isAdmin || !!user?.permissions?.includes("admin_perm_transactions_add");
   const canEdit =
-    isAdmin ||
-    !!user?.permissions?.includes("admin_perm_transactions_edit");
+    isAdmin || !!user?.permissions?.includes("admin_perm_transactions_edit");
   const canCashOut =
-    isAdmin ||
-    !!user?.permissions?.includes("admin_perm_transactions_cashout");
+    isAdmin || !!user?.permissions?.includes("admin_perm_transactions_cashout");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -72,7 +69,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [reference, setReference] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(null);
+  const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(
+    null,
+  );
   const [cashOutLoading, setCashOutLoading] = useState(false);
 
   // Edit state
@@ -183,17 +182,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
     setEditSaving(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${editTarget.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: editType,
-          amount: numAmount,
-          description: editDescription,
-          category: editCategory,
-          reference: editReference || null,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/${editTarget.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: editType,
+            amount: numAmount,
+            description: editDescription,
+            category: editCategory,
+            reference: editReference || null,
+          }),
+        },
+      );
       if (response.ok) {
         await fetchTransactions();
         setEditTarget(null);
@@ -534,7 +536,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                                     </span>
                                   ) : (
                                     <button
-                                      onClick={() => setCashOutConfirm(transaction)}
+                                      onClick={() =>
+                                        setCashOutConfirm(transaction)
+                                      }
                                       className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
                                     >
                                       <ArrowDownCircle className="w-3.5 h-3.5" />

@@ -40,9 +40,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
-  
+
   // Only show demo credentials in development (localhost), not on Plesk deployment
-  const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isDevelopment =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
   const showDemoCredentials = isDevelopment;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,7 +91,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         employeeRole: user.employeeRole,
         permissions: user.permissions,
         storeId: user.storeId,
-        storeName: user.storeName,        shift: user.shift ?? null,      });
+        storeName: user.storeName,
+        shift: user.shift ?? null,
+      });
     } catch (err: any) {
       console.error("Quick login error:", err);
       setError(err.message || "Quick login failed");

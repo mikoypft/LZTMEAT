@@ -147,9 +147,7 @@ export default function App() {
                 (userData.role === "EMPLOYEE" &&
                   !!userData.storeId &&
                   !permissions.includes("dashboard"));
-              let safePage: Page = isPosOnlyUser
-                ? "pos"
-                : (savedPage as Page);
+              let safePage: Page = isPosOnlyUser ? "pos" : (savedPage as Page);
 
               const restorePageOrder: Array<{
                 permission: string;

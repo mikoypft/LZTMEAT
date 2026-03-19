@@ -31,9 +31,12 @@ export function SupplierInvoicePage({
   userPermissions?: string[];
 }) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
-  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
-  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
-  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
+  const canAdd =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_add");
+  const canEdit =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_edit");
+  const canDelete =
+    isAdmin || !!userPermissions?.includes("admin_perm_suppliers_delete");
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
@@ -445,8 +448,8 @@ export function SupplierInvoicePage({
                     <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Amount
                     </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Paid
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Status
                     </th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       Balance
@@ -487,12 +490,16 @@ export function SupplierInvoicePage({
                       <td className="px-4 py-3 text-sm text-right font-medium">
                         ₱{fmt(inv.amount)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600">
-                        {inv.paid > 0 ? (
-                          `₱${fmt(inv.paid)}`
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                      <td className="px-4 py-3 text-sm text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            inv.balance <= 0
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {inv.balance <= 0 ? "Paid" : "Not Paid"}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-semibold">
                         <span
@@ -545,9 +552,7 @@ export function SupplierInvoicePage({
                     <td className="px-4 py-3 text-sm font-bold text-right">
                       ₱{fmt(totalAmount)}
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-right text-green-600">
-                      {totalPaid > 0 ? `₱${fmt(totalPaid)}` : "—"}
-                    </td>
+                    <td />
                     <td className="px-4 py-3 text-sm font-bold text-right">
                       <span
                         className={
@@ -557,7 +562,7 @@ export function SupplierInvoicePage({
                         ₱{fmt(totalBalance)}
                       </span>
                     </td>
-                    <td colSpan={(canEdit || canDelete) ? 2 : 1} />
+                    <td colSpan={canEdit || canDelete ? 2 : 1} />
                   </tr>
                 </tfoot>
               </table>

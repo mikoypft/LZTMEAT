@@ -37,11 +37,22 @@ import {
   type DefaultIngredient,
 } from "@/utils/api";
 
-export function CategoriesPage({ userRole, isAdminPermissions, userPermissions }: { userRole?: string; isAdminPermissions?: boolean; userPermissions?: string[] }) {
+export function CategoriesPage({
+  userRole,
+  isAdminPermissions,
+  userPermissions,
+}: {
+  userRole?: string;
+  isAdminPermissions?: boolean;
+  userPermissions?: string[];
+}) {
   const isAdmin = userRole === "ADMIN" || !!isAdminPermissions;
-  const canAdd = isAdmin || !!userPermissions?.includes("admin_perm_categories_add");
-  const canEdit = isAdmin || !!userPermissions?.includes("admin_perm_categories_edit");
-  const canDelete = isAdmin || !!userPermissions?.includes("admin_perm_categories_delete");
+  const canAdd =
+    isAdmin || !!userPermissions?.includes("admin_perm_categories_add");
+  const canEdit =
+    isAdmin || !!userPermissions?.includes("admin_perm_categories_edit");
+  const canDelete =
+    isAdmin || !!userPermissions?.includes("admin_perm_categories_delete");
   const [productCategories, setProductCategories] = useState<Category[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>(
     [],
@@ -421,7 +432,9 @@ export function CategoriesPage({ userRole, isAdminPermissions, userPermissions }
                         <div className="flex gap-2 flex-shrink-0">
                           {canEdit && (
                             <button
-                              onClick={() => handleEditProductCategory(category)}
+                              onClick={() =>
+                                handleEditProductCategory(category)
+                              }
                               className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors text-xs"
                             >
                               <Edit2 className="w-3 h-3" />

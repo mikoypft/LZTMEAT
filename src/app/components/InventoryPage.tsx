@@ -270,8 +270,7 @@ export function InventoryPage({
     !!currentUser?.permissions?.includes("admin_permissions") ||
     !!currentUser?.permissions?.includes("admin_perm_inventory");
   const canAdd =
-    isAdmin ||
-    !!currentUser?.permissions?.includes("admin_perm_inventory_add");
+    isAdmin || !!currentUser?.permissions?.includes("admin_perm_inventory_add");
   const canEdit =
     isAdmin ||
     !!currentUser?.permissions?.includes("admin_perm_inventory_edit");

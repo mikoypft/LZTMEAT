@@ -815,7 +815,15 @@ export function EmployeesPage({
                   </label>
                   <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 grid grid-cols-2 gap-x-4 gap-y-3">
                     {AVAILABLE_PERMISSIONS.map((perm) => (
-                      <div key={perm.id} className={perm.id === "production" && formData.permissions?.includes("production") ? "col-span-2" : ""}>
+                      <div
+                        key={perm.id}
+                        className={
+                          perm.id === "production" &&
+                          formData.permissions?.includes("production")
+                            ? "col-span-2"
+                            : ""
+                        }
+                      >
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input
                             type="checkbox"

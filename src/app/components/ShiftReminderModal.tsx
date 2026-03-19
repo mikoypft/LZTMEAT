@@ -37,7 +37,9 @@ export function ShiftReminderModal({ onGoToUsers, onDismiss }: Props) {
         <div className="px-6 py-5">
           <p className="text-gray-700 text-sm leading-relaxed">
             Don't forget to set today's{" "}
-            <span className="font-semibold text-gray-900">AM/PM shift assignments</span>{" "}
+            <span className="font-semibold text-gray-900">
+              AM/PM shift assignments
+            </span>{" "}
             for your staff. Head over to the{" "}
             <span className="font-semibold text-gray-900">Users page</span> to
             keep schedules up to date.
