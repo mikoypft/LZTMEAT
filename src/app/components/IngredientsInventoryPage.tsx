@@ -114,18 +114,36 @@ export function IngredientsInventoryPage({
     ),
   ];
 
-  const filteredIngredients = ingredients.filter((item) => {
-    const matchesSearch =
-      (item.name &&
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.code &&
-        item.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.supplier &&
-        item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory =
-      selectedCategory === "All" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const CATEGORY_ORDER = [
+    "Raw Materials",
+    "Packaging Materials",
+    "Spices",
+    "Seasonings",
+    "Wrapper",
+    "Utilities",
+  ];
+
+  const filteredIngredients = ingredients
+    .filter((item) => {
+      const matchesSearch =
+        (item.name &&
+          item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.code &&
+          item.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.supplier &&
+          item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesCategory =
+        selectedCategory === "All" || item.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      const aIdx = CATEGORY_ORDER.indexOf(a.category ?? "");
+      const bIdx = CATEGORY_ORDER.indexOf(b.category ?? "");
+      const aOrder = aIdx === -1 ? CATEGORY_ORDER.length : aIdx;
+      const bOrder = bIdx === -1 ? CATEGORY_ORDER.length : bIdx;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
 
   const lowStockItems = ingredients.filter(
     (item) => item.stock < item.minStockLevel,
