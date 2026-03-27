@@ -416,6 +416,96 @@ try {
     } catch (Exception $seedErr) {
         error_log('Ingredient seed error: ' . $seedErr->getMessage());
     }
+
+    // Seed default ingredients for product mix categories
+    try {
+        // Ensure the table exists
+        $pdo->exec('CREATE TABLE IF NOT EXISTS product_mix_category_default_ingredients (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            product_mix_category_id BIGINT UNSIGNED NOT NULL,
+            ingredient_id BIGINT UNSIGNED NOT NULL,
+            quantity DECIMAL(10,2) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_pmc_category (product_mix_category_id),
+            KEY idx_pmc_ingredient (ingredient_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
+        // Helper: find ingredient id by exact name (case-insensitive)
+        $getIngId = function(string $name) use ($pdo): ?int {
+            $stmt = $pdo->prepare('SELECT id FROM ingredients WHERE LOWER(name) = LOWER(?) LIMIT 1');
+            $stmt->execute([$name]);
+            $row = $stmt->fetch();
+            return $row ? (int)$row['id'] : null;
+        };
+
+        // Ensure B.O. (Bone Oil) ingredient exists in Raw Materials
+        if (!$getIngId('B.O.')) {
+            $catRow = $pdo->query("SELECT id FROM ingredient_categories WHERE name = 'Raw Materials' LIMIT 1")->fetch();
+            $boCode = 'ING-' . str_pad(
+                (($pdo->query("SELECT MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)) as mx FROM ingredients WHERE code LIKE 'ING-%'")->fetch())['mx'] ?? 0) + 1,
+                3, '0', STR_PAD_LEFT
+            );
+            $pdo->prepare('INSERT INTO ingredients (name, code, category_id, category, unit, stock, min_stock_level, reorder_point, cost_per_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, NOW(), NOW())')
+                ->execute(['B.O.', $boCode, $catRow ? $catRow['id'] : null, 'Raw Materials', 'kg']);
+        }
+
+        // Default ingredients per product mix category
+        // Abbreviation key: Tubig=Water, Vetsin=MSG-Vetsin, Vit.C=Vitamin C, Fat=Giling-fat, B.O.=B.O., Bell p.=Redbell Pepper
+        $mixDefaults = [
+            'LONGGANISA MIX' => [
+                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Water',
+                'Cornstarch', 'Sugar', 'Garlic', 'Alexander', 'Pine Apple Juice', 'Knorr Liquid Seasoning',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
+            ],
+            'SALAMI MIX' => [
+                'MDM', 'B.O.',
+                'Sugar', 'Cornstarch', 'Water', 'Pine Apple Juice', 'Cheese',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Vitamin C', 'Ham Spice', 'Ham Flavor', 'Multiblend',
+            ],
+            'GULAY MIX' => [
+                'MDM', 'B.O.', 'Carrots', 'Onion', 'Celery', 'Redbell Pepper', 'Garlic', 'TVP Fine', 'Water',
+                'Cornstarch', 'Sugar', 'Alexander', 'Knorr Liquid Seasoning',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
+            ],
+            'SKINLESS MIX' => [
+                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Water',
+                'Cornstarch', 'Sugar', 'Garlic', 'Alexander', 'Knorr Liquid Seasoning', 'Pine Apple Juice',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
+            ],
+            'SQUARE HAM MIX' => [
+                'MDM', 'Water', 'Cornstarch', 'Sugar', 'Pine Apple Juice',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Vitamin C', 'Ham Spice', 'Ham Flavor', 'Multiblend',
+            ],
+            'BALLHAM MIX' => [
+                'MDM', 'Water', 'Cornstarch', 'Sugar', 'Pine Apple Juice',
+                'Accord', 'Praque Powder', 'MSG-Vetsin', 'Vitamin C', 'Ham Spice', 'Ham Flavor', 'Multiblend',
+            ],
+        ];
+
+        $insStmt = $pdo->prepare('INSERT IGNORE INTO product_mix_category_default_ingredients (product_mix_category_id, ingredient_id, quantity, created_at, updated_at) VALUES (?, ?, NULL, NOW(), NOW())');
+
+        foreach ($mixDefaults as $categoryName => $ingredientNames) {
+            $catStmt = $pdo->prepare('SELECT id FROM product_mix_categories WHERE name = ? LIMIT 1');
+            $catStmt->execute([$categoryName]);
+            $catRow = $catStmt->fetch();
+            if (!$catRow) continue;
+            $catId = (int)$catRow['id'];
+
+            // Only seed if this category has no default ingredients yet
+            $cntStmt = $pdo->prepare('SELECT COUNT(*) as cnt FROM product_mix_category_default_ingredients WHERE product_mix_category_id = ?');
+            $cntStmt->execute([$catId]);
+            if ((int)$cntStmt->fetch()['cnt'] > 0) continue;
+
+            foreach ($ingredientNames as $ingName) {
+                $ingId = $getIngId($ingName);
+                if ($ingId) $insStmt->execute([$catId, $ingId]);
+            }
+        }
+    } catch (Exception $seedMixErr) {
+        error_log('Mix category default ingredient seed error: ' . $seedMixErr->getMessage());
+    }
+
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
