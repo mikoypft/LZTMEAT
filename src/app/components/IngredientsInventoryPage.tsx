@@ -1320,59 +1320,23 @@ function DraggableCategorySection({
 
           {/* Mobile Cards */}
           <div className="lg:hidden divide-y divide-border">
-            {ingredients.map((item) => {
-              const isLowStock = item.stock < item.minStockLevel;
-              const needsReorder = item.stock <= item.reorderPoint;
-              const totalValue = (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
-              return (
-                <div key={item.id} className="p-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{item.name}</span>
-                        {isLowStock ? (
-                          <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Critical
-                          </span>
-                        ) : needsReorder ? (
-                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Reorder</span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">Normal</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-mono">{item.code}</p>
-                    </div>
-                    <div className="flex gap-1 ml-2">
-                      {canEdit && (
-                        <button onClick={() => onEditIngredient(item)} className="p-1.5 hover:bg-blue-100 rounded text-blue-600">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {canAdjust && (
-                        <button onClick={() => onAdjustIngredient(item)} className="p-1.5 hover:bg-accent rounded">
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button onClick={() => onDeleteIngredient(item)} className="p-1.5 hover:bg-red-100 rounded text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-4 text-xs">
-                    <div>
-                      <span className="text-muted-foreground">Stock: </span>
-                      <span className="font-medium text-primary">{item.stock} {item.unit}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Value: </span>
-                      <span className="font-medium text-green-600">₱{totalValue.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {ingredients.map((item, idx) => (
+              <DraggableMobileIngredientCard
+                key={item.id}
+                item={item}
+                index={idx}
+                categoryName={catName}
+                isAdmin={isAdmin}
+                canEdit={canEdit}
+                canAdjust={canAdjust}
+                canDelete={canDelete}
+                onMoveIngredient={onMoveIngredient}
+                onDropIngredient={onDropIngredient}
+                onEditIngredient={onEditIngredient}
+                onAdjustIngredient={onAdjustIngredient}
+                onDeleteIngredient={onDeleteIngredient}
+              />
+            ))}
             {ingredients.length === 0 && (
               <div className="p-6 text-center text-xs text-muted-foreground">No items in this category</div>
             )}
@@ -1384,6 +1348,126 @@ function DraggableCategorySection({
 }
 
 const INGREDIENT_DND_TYPE_PREFIX = "INGREDIENT_ROW_";
+
+function DraggableMobileIngredientCard({
+  item,
+  index,
+  categoryName,
+  isAdmin,
+  canEdit,
+  canAdjust,
+  canDelete,
+  onMoveIngredient,
+  onDropIngredient,
+  onEditIngredient,
+  onAdjustIngredient,
+  onDeleteIngredient,
+}: {
+  item: Ingredient;
+  index: number;
+  categoryName: string;
+  isAdmin: boolean;
+  canEdit: boolean;
+  canAdjust: boolean;
+  canDelete: boolean;
+  onMoveIngredient: (catName: string, dragIdx: number, hoverIdx: number) => void;
+  onDropIngredient: (updatedList: Ingredient[]) => void;
+  onEditIngredient: (item: Ingredient) => void;
+  onAdjustIngredient: (item: Ingredient) => void;
+  onDeleteIngredient: (item: Ingredient) => void;
+}) {
+  const dndType = INGREDIENT_DND_TYPE_PREFIX + categoryName;
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: dndType,
+    item: { index },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    canDrag: isAdmin,
+  });
+
+  const [, drop] = useDrop<{ index: number }, void, {}>({
+    accept: dndType,
+    hover(dragItem, monitor) {
+      if (!ref.current) return;
+      const dragIndex = dragItem.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      onMoveIngredient(categoryName, dragIndex, hoverIndex);
+      dragItem.index = hoverIndex;
+    },
+  });
+
+  dragPreview(drop(ref));
+
+  const isLowStock = item.stock < item.minStockLevel;
+  const needsReorder = item.stock <= item.reorderPoint;
+  const totalValue = (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
+
+  return (
+    <div
+      ref={ref}
+      className={`p-3 transition-opacity ${isDragging ? "opacity-40" : "opacity-100"}`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        {isAdmin && (
+          <div ref={drag as any} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground mr-2 mt-0.5 touch-none">
+            <GripVertical className="w-4 h-4" />
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">{item.name}</span>
+            {isLowStock ? (
+              <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Critical
+              </span>
+            ) : needsReorder ? (
+              <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Reorder</span>
+            ) : (
+              <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">Normal</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground font-mono">{item.code}</p>
+        </div>
+        <div className="flex gap-1 ml-2">
+          {canEdit && (
+            <button onClick={() => onEditIngredient(item)} className="p-1.5 hover:bg-blue-100 rounded text-blue-600">
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canAdjust && (
+            <button onClick={() => onAdjustIngredient(item)} className="p-1.5 hover:bg-accent rounded">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canDelete && (
+            <button onClick={() => onDeleteIngredient(item)} className="p-1.5 hover:bg-red-100 rounded text-red-600">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className={`flex gap-4 text-xs ${isAdmin ? "pl-6" : ""}`}>
+        <div>
+          <span className="text-muted-foreground">Stock: </span>
+          <span className="font-medium text-primary">{item.stock} {item.unit}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Value: </span>
+          <span className="font-medium text-green-600">₱{totalValue.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function DraggableIngredientRow({
   item,
