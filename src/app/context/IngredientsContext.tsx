@@ -17,6 +17,7 @@ export interface Ingredient {
   name: string;
   code: string;
   category: string;
+  categoryId?: string | null;
   stock: number;
   minStockLevel: number;
   reorderPoint: number;
@@ -26,6 +27,7 @@ export interface Ingredient {
   supplierId?: string | number;
   lastUpdated: string;
   expiryDate?: string | null;
+  sortOrder?: number;
 }
 
 interface IngredientsContextType {
@@ -58,6 +60,7 @@ export function IngredientsProvider({ children }: { children: ReactNode }) {
             name: apiIng.name,
             code: apiIng.code,
             category: apiIng.categoryName || apiIng.category || "Uncategorized",
+            categoryId: apiIng.categoryId,
             stock: apiIng.stock,
             minStockLevel: apiIng.minStockLevel,
             reorderPoint: apiIng.reorderPoint,
@@ -67,6 +70,7 @@ export function IngredientsProvider({ children }: { children: ReactNode }) {
             supplierId: apiIng.supplierId,
             lastUpdated: apiIng.lastUpdated,
             expiryDate: apiIng.expiryDate,
+            sortOrder: apiIng.sortOrder,
           }),
         );
         setIngredients(formattedIngredients);

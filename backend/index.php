@@ -383,6 +383,30 @@ try {
     } catch (Exception $tableErr) {
         error_log('store rename: ' . $tableErr->getMessage());
     }
+
+    // Add sort_order to ingredient_categories if not exists
+    try { $pdo->exec("ALTER TABLE ingredient_categories ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+    // Add sort_order to ingredients if not exists
+    try { $pdo->exec("ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+
+    // Seed missing raw materials - only insert if not already present by name
+    $missingIngredients = [
+        ['Isaw', 'Raw Materials', 18, 'kg'],
+        ['Monaco', 'Packaging Materials', 19, 'pcs'],
+        ['Oil', 'Raw Materials', 18, 'L'],
+    ];
+    foreach ($missingIngredients as $mi) {
+        $chk = $pdo->prepare('SELECT id FROM ingredients WHERE name = ?');
+        $chk->execute([$mi[0]]);
+        if (!$chk->fetch()) {
+            // Generate next code
+            $codeStmt = $pdo->query("SELECT MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)) as mx FROM ingredients WHERE code LIKE 'ING-%'");
+            $codeRow = $codeStmt->fetch();
+            $nextCode = 'ING-' . str_pad(($codeRow['mx'] ?? 0) + 1, 3, '0', STR_PAD_LEFT);
+            $ins = $pdo->prepare('INSERT INTO ingredients (name, code, category_id, category, unit, stock, min_stock_level, reorder_point, cost_per_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, NOW(), NOW())');
+            $ins->execute([$mi[0], $nextCode, $mi[2], $mi[1], $mi[3]]);
+        }
+    }
 } catch (PDOException $e) {
     $dbConnected = false;
     $dbError = $e->getMessage();
@@ -1153,7 +1177,7 @@ $routes = [
     
     // Ingredient Categories API
     'GET /api/ingredient-categories' => function() use ($pdo) {
-        $stmt = $pdo->query('SELECT * FROM ingredient_categories ORDER BY name');
+        $stmt = $pdo->query('SELECT * FROM ingredient_categories ORDER BY sort_order ASC, name ASC');
         $categories = $stmt->fetchAll();
         
         return [
@@ -1162,10 +1186,24 @@ $routes = [
                     'id' => (string)$c['id'],
                     'name' => $c['name'],
                     'description' => $c['description'],
+                    'sortOrder' => (int)$c['sort_order'],
                     'createdAt' => $c['created_at'],
                 ];
             }, $categories),
         ];
+    },
+
+    'PUT /api/ingredient-categories/reorder' => function() use ($pdo, $body) {
+        // $body['order'] = [{id: '18', sortOrder: 0}, {id: '19', sortOrder: 1}, ...]
+        $order = $body['order'] ?? [];
+        if (!is_array($order) || count($order) === 0) {
+            return ['success' => true];
+        }
+        $stmt = $pdo->prepare('UPDATE ingredient_categories SET sort_order = ? WHERE id = ?');
+        foreach ($order as $item) {
+            $stmt->execute([(int)$item['sortOrder'], (int)$item['id']]);
+        }
+        return ['success' => true];
     },
     
     'POST /api/ingredient-categories' => function() use ($pdo, $body) {
@@ -2074,7 +2112,13 @@ $routes = [
     },
     
     'GET /api/ingredients' => function() use ($pdo) {
-        $stmt = $pdo->query('SELECT i.*, COALESCE(s.name, "Unknown") as supplier_name FROM ingredients i LEFT JOIN suppliers s ON i.supplier_id = s.id ORDER BY i.name');
+        $stmt = $pdo->query(
+            'SELECT i.*, COALESCE(s.name, "Unknown") as supplier_name '
+            . 'FROM ingredients i '
+            . 'LEFT JOIN suppliers s ON i.supplier_id = s.id '
+            . 'LEFT JOIN ingredient_categories ic ON i.category_id = ic.id '
+            . 'ORDER BY COALESCE(ic.sort_order, 9999) ASC, i.sort_order ASC, i.name ASC'
+        );
         $ingredients = $stmt->fetchAll();
         
         return [
@@ -2084,6 +2128,7 @@ $routes = [
                     'name' => $i['name'],
                     'code' => $i['code'],
                     'category' => $i['category'],
+                    'categoryId' => $i['category_id'] ? (string)$i['category_id'] : null,
                     'unit' => $i['unit'],
                     'stock' => (float)$i['stock'],
                     'minStockLevel' => (float)$i['min_stock_level'],
@@ -2092,14 +2137,34 @@ $routes = [
                     'supplier' => $i['supplier_name'],
                     'lastUpdated' => $i['updated_at'],
                     'expiryDate' => $i['expiry_date'],
+                    'sortOrder' => (int)$i['sort_order'],
                 ];
             }, $ingredients),
         ];
     },
+
+    'PUT /api/ingredients/reorder' => function() use ($pdo, $body) {
+        // $body['order'] = [{id: '7', sortOrder: 0}, ...]
+        $order = $body['order'] ?? [];
+        if (!is_array($order) || count($order) === 0) {
+            return ['success' => true];
+        }
+        $stmt = $pdo->prepare('UPDATE ingredients SET sort_order = ? WHERE id = ?');
+        foreach ($order as $item) {
+            $stmt->execute([(int)$item['sortOrder'], (int)$item['id']]);
+        }
+        return ['success' => true];
+    },
     
     'POST /api/ingredients/reset' => function() use ($pdo) {
         // Reset endpoint - simply returns all ingredients (refreshes the list from database)
-        $stmt = $pdo->query('SELECT i.*, COALESCE(s.name, "Unknown") as supplier_name FROM ingredients i LEFT JOIN suppliers s ON i.supplier_id = s.id ORDER BY i.name');
+        $stmt = $pdo->query(
+            'SELECT i.*, COALESCE(s.name, "Unknown") as supplier_name '
+            . 'FROM ingredients i '
+            . 'LEFT JOIN suppliers s ON i.supplier_id = s.id '
+            . 'LEFT JOIN ingredient_categories ic ON i.category_id = ic.id '
+            . 'ORDER BY COALESCE(ic.sort_order, 9999) ASC, i.sort_order ASC, i.name ASC'
+        );
         $ingredients = $stmt->fetchAll();
         
         return [
@@ -2109,6 +2174,7 @@ $routes = [
                     'name' => $i['name'],
                     'code' => $i['code'],
                     'category' => $i['category'],
+                    'categoryId' => $i['category_id'] ? (string)$i['category_id'] : null,
                     'unit' => $i['unit'],
                     'stock' => (float)$i['stock'],
                     'minStockLevel' => (float)$i['min_stock_level'],
@@ -2117,6 +2183,7 @@ $routes = [
                     'supplier' => $i['supplier_name'],
                     'lastUpdated' => $i['updated_at'],
                     'expiryDate' => $i['expiry_date'],
+                    'sortOrder' => (int)$i['sort_order'],
                 ];
             }, $ingredients),
         ];

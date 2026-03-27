@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef, useCallback } from "react";
 import {
   Package,
   AlertTriangle,
@@ -13,6 +13,9 @@ import {
   Save,
   Trash2,
   Edit2,
+  GripVertical,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   IngredientsContext,
@@ -26,10 +29,14 @@ import {
   getSuppliers,
   getIngredientCategories,
   createStockAdjustment,
+  reorderIngredientCategories,
+  reorderIngredients,
   type Supplier,
   type Category,
 } from "@/utils/api";
 import { toast } from "sonner";
+import { useDrag, useDrop, DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 interface UserData {
   id: string;
@@ -74,7 +81,6 @@ export function IngredientsInventoryPage({
 
   const { ingredients, adjustStock, setIngredients } = context;
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
   const [showEditIngredientModal, setShowEditIngredientModal] = useState(false);
@@ -87,10 +93,21 @@ export function IngredientsInventoryPage({
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  // Ordered categories list (Category objects with id + name)
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  // Track collapsed state per category name
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  // Local ordered ingredients (to avoid re-fetching after drag)
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
+  // Sync localIngredients when context ingredients change
+  useEffect(() => {
+    setLocalIngredients(ingredients);
+  }, [ingredients]);
 
-  // Load suppliers from database
+  // Load suppliers + categories from database
   useEffect(() => {
     loadSuppliers();
+    loadCategories();
   }, []);
 
   const loadSuppliers = async () => {
@@ -99,51 +116,127 @@ export function IngredientsInventoryPage({
       setSuppliers(suppliersData);
     } catch (error) {
       console.error("Error loading suppliers:", error);
-      toast.error("Failed to load suppliers");
     }
   };
 
-  const categories = [
-    "All",
-    ...Array.from(
-      new Set(
-        ingredients
-          .filter((item) => item.category)
-          .map((item) => item.category),
-      ),
-    ),
-  ];
+  const loadCategories = async () => {
+    try {
+      const cats = await getIngredientCategories();
+      setAllCategories(cats);
+    } catch (error) {
+      console.error("Error loading ingredient categories:", error);
+    }
+  };
 
-  const CATEGORY_ORDER = [
-    "Raw Materials",
-    "Packaging Materials",
-    "Spices",
-    "Seasonings",
-    "Wrapper",
-    "Utilities",
-  ];
+  // Build ordered list of unique categories that appear in ingredients
+  const orderedCategoryNames: string[] = (() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    // First: categories from allCategories in sorted order
+    for (const cat of allCategories) {
+      if (!seen.has(cat.name)) {
+        seen.add(cat.name);
+        result.push(cat.name);
+      }
+    }
+    // Then: any uncategorized ingredients
+    for (const ing of localIngredients) {
+      const cat = ing.category || "Uncategorized";
+      if (!seen.has(cat)) {
+        seen.add(cat);
+        result.push(cat);
+      }
+    }
+    return result;
+  })();
 
-  const filteredIngredients = ingredients
-    .filter((item) => {
-      const matchesSearch =
-        (item.name &&
-          item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.code &&
-          item.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.supplier &&
-          item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory =
-        selectedCategory === "All" || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      const aIdx = CATEGORY_ORDER.indexOf(a.category ?? "");
-      const bIdx = CATEGORY_ORDER.indexOf(b.category ?? "");
-      const aOrder = aIdx === -1 ? CATEGORY_ORDER.length : aIdx;
-      const bOrder = bIdx === -1 ? CATEGORY_ORDER.length : bIdx;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return (a.name ?? "").localeCompare(b.name ?? "");
+  const categories = ["All", ...orderedCategoryNames];
+
+  const filteredIngredients = localIngredients.filter((item) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.code && item.code.toLowerCase().includes(q)) ||
+      (item.supplier && item.supplier.toLowerCase().includes(q))
+    );
+  });
+
+  // Move a category (drag-drop between categories)
+  const moveCategoryItem = useCallback(
+    (dragIndex: number, hoverIndex: number) => {
+      const newCats = [...allCategories];
+      const [removed] = newCats.splice(dragIndex, 1);
+      newCats.splice(hoverIndex, 0, removed);
+      setAllCategories(newCats);
+    },
+    [allCategories],
+  );
+
+  // Save category order to backend
+  const saveCategoryOrder = useCallback(
+    async (cats: Category[]) => {
+      try {
+        await reorderIngredientCategories(
+          cats.map((c, idx) => ({ id: c.id, sortOrder: idx })),
+        );
+      } catch {
+        toast.error("Failed to save category order");
+      }
+    },
+    [],
+  );
+
+  // Move an ingredient within a category
+  const moveIngredientItem = useCallback(
+    (categoryName: string, dragIndex: number, hoverIndex: number) => {
+      const newIngredients = [...localIngredients];
+      const catIngredients = newIngredients.filter(
+        (i) => i.category === categoryName,
+      );
+      const otherIngredients = newIngredients.filter(
+        (i) => i.category !== categoryName,
+      );
+      const [removed] = catIngredients.splice(dragIndex, 1);
+      catIngredients.splice(hoverIndex, 0, removed);
+      // Merge back — preserve original ordering of other categories
+      const merged: Ingredient[] = [];
+      let catIdx = 0;
+      for (const ing of newIngredients) {
+        if (ing.category === categoryName) {
+          merged.push(catIngredients[catIdx++]);
+        } else {
+          merged.push(ing);
+        }
+      }
+      setLocalIngredients(merged);
+    },
+    [localIngredients],
+  );
+
+  // Save ingredient order to backend
+  const saveIngredientOrder = useCallback(
+    async (categoryName: string, l: Ingredient[]) => {
+      try {
+        const catItems = l.filter((i) => i.category === categoryName);
+        await reorderIngredients(
+          catItems.map((ing, idx) => ({ id: ing.id, sortOrder: idx })),
+        );
+      } catch {
+        toast.error("Failed to save ingredient order");
+      }
+    },
+    [],
+  );
+
+  const toggleCategory = (catName: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(catName)) next.delete(catName);
+      else next.add(catName);
+      return next;
     });
+  };
 
   const lowStockItems = ingredients.filter(
     (item) => item.stock < item.minStockLevel,
@@ -363,7 +456,7 @@ export function IngredientsInventoryPage({
           </div>
         </div>
 
-        {/* Search, Filters and Actions */}
+        {/* Search and Actions */}
         <div className="bg-card rounded-lg p-4 lg:p-6 border border-border space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
@@ -402,24 +495,12 @@ export function IngredientsInventoryPage({
               </button>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Filter by:</span>
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <GripVertical className="w-3 h-3" />
+              Drag <GripVertical className="w-3 h-3" /> handles to reorder categories and ingredients. Order is saved automatically.
+            </p>
+          )}
         </div>
 
         {/* Low Stock Alerts */}
@@ -465,291 +546,57 @@ export function IngredientsInventoryPage({
           </div>
         )}
 
-        {/* Desktop Table View - Hidden on Mobile */}
-        <div className="hidden lg:block bg-card rounded-lg border border-border">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Code
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Ingredient Name
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Category
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-medium">
-                    Stock
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-medium">
-                    Value
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredIngredients.map((item) => {
-                  const isLowStock = item.stock < item.minStockLevel;
-                  const needsReorder = item.stock <= item.reorderPoint;
-                  const totalValue =
-                    (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="border-b border-border hover:bg-muted/50"
-                    >
-                      <td className="py-3 px-4 text-sm font-mono">
-                        {item.code}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="text-sm font-medium">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.supplier}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right text-primary font-medium text-sm">
-                        {item.stock} {item.unit}
-                      </td>
-                      <td className="py-3 px-4 text-right text-sm">
-                        ₱{Number(totalValue || 0).toFixed(2)}
-                      </td>
-                      <td className="py-3 px-4">
-                        {isLowStock ? (
-                          <span className="flex items-center gap-1 text-red-600 text-xs">
-                            <AlertTriangle className="w-4 h-4" />
-                            Critical
-                          </span>
-                        ) : needsReorder ? (
-                          <span className="text-orange-600 text-xs">
-                            Reorder
-                          </span>
-                        ) : (
-                          <span className="text-green-600 text-xs">Normal</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-1">
-                          {canEdit && (
-                            <button
-                              onClick={() => {
-                                setSelectedIngredient(item);
-                                setShowEditIngredientModal(true);
-                              }}
-                              className="p-1.5 hover:bg-blue-100 rounded text-blue-600"
-                              title="Edit Ingredient"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canAdjust && (
-                            <button
-                              onClick={() => {
-                                setSelectedIngredient(item);
-                                setShowAdjustmentModal(true);
-                              }}
-                              className="p-1.5 hover:bg-accent rounded"
-                              title="Adjust Stock"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              onClick={() => {
-                                setSelectedIngredient(item);
-                                setShowDeleteConfirm(true);
-                              }}
-                              className="p-1.5 hover:bg-red-100 rounded text-red-600"
-                              title="Delete Ingredient"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredIngredients.length === 0 && (
-            <div className="py-12 text-center text-muted-foreground">
-              <p>No ingredients found</p>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Card View - Shown on Mobile/Tablet */}
-        <div className="lg:hidden space-y-3">
-          {filteredIngredients.map((item) => {
-            const isLowStock = item.stock < item.minStockLevel;
-            const needsReorder = item.stock <= item.reorderPoint;
-            const totalValue =
-              (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
-
-            return (
-              <div
-                key={item.id}
-                className="bg-card rounded-lg border border-border p-4"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium">{item.name}</h3>
-                      {isLowStock ? (
-                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Critical
-                        </span>
-                      ) : needsReorder ? (
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
-                          Reorder
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
-                          Normal
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {item.code}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.supplier}
-                    </p>
-                  </div>
-                  <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
-                    {item.category}
-                  </span>
-                </div>
-
-                {/* Stock Info */}
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Stock</p>
-                    <p className="text-lg font-bold text-primary">
-                      {item.stock} {item.unit}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Total Value</p>
-                    <p className="text-lg font-bold text-green-600">
-                      ₱{Number(totalValue || 0).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedIngredient(item);
-                      setShowEditIngredientModal(true);
-                    }}
-                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedIngredient(item);
-                      setShowAdjustmentModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Adjust Stock
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedIngredient(item);
-                      setShowDeleteConfirm(true);
-                    }}
-                    className="flex items-center justify-center gap-2 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredIngredients.length === 0 && (
-            <div className="bg-card rounded-lg border border-border p-12 text-center text-muted-foreground">
-              <p>No ingredients found</p>
-            </div>
-          )}
-        </div>
-
-        {/* Category Summary Widgets */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {categories
-            .filter((cat) => cat !== "All")
-            .map((category) => {
-              const categoryItems = ingredients.filter(
-                (item) => item.category === category,
+        {/* Grouped Category Sections with Drag and Drop */}
+        <DndProvider backend={HTML5Backend}>
+          <div className="space-y-3">
+            {orderedCategoryNames.map((catName, catIdx) => {
+              const catIngredients = filteredIngredients.filter(
+                (i) => i.category === catName,
               );
-              const categoryValue = categoryItems.reduce(
-                (sum, item) =>
-                  sum +
-                  (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0),
-                0,
-              );
-              const categoryStock = categoryItems.reduce(
-                (sum, item) => sum + (Number(item.stock) || 0),
-                0,
-              );
-
+              if (catIngredients.length === 0 && searchTerm) return null;
+              const isCollapsed = collapsedCategories.has(catName);
+              const catCategory = allCategories.find((c) => c.name === catName);
+              const catId = catCategory?.id ?? catName;
               return (
-                <div
-                  key={category}
-                  className="bg-card rounded-lg p-4 border border-border"
-                >
-                  <h3 className="text-sm font-medium mb-3">{category}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Items:</span>
-                      <span className="font-medium">
-                        {categoryItems.length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Total Stock:
-                      </span>
-                      <span className="font-medium">
-                        {Number(categoryStock || 0).toFixed(0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Value:</span>
-                      <span className="text-primary font-medium">
-                        ₱{Number(categoryValue || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <DraggableCategorySection
+                  key={catId}
+                  catId={String(catId)}
+                  catName={catName}
+                  catIndex={catIdx}
+                  ingredients={catIngredients}
+                  allCategoryIngredients={localIngredients.filter((i) => i.category === catName)}
+                  isCollapsed={isCollapsed}
+                  isAdmin={isAdmin}
+                  canEdit={canEdit}
+                  canAdjust={canAdjust}
+                  canDelete={canDelete}
+                  onToggleCollapse={toggleCategory}
+                  onMoveCategory={moveCategoryItem}
+                  onDropCategory={() => saveCategoryOrder(allCategories)}
+                  onMoveIngredient={moveIngredientItem}
+                  onDropIngredient={(updatedList) => saveIngredientOrder(catName, updatedList)}
+                  onEditIngredient={(item) => {
+                    setSelectedIngredient(item);
+                    setShowEditIngredientModal(true);
+                  }}
+                  onAdjustIngredient={(item) => {
+                    setSelectedIngredient(item);
+                    setShowAdjustmentModal(true);
+                  }}
+                  onDeleteIngredient={(item) => {
+                    setSelectedIngredient(item);
+                    setShowDeleteConfirm(true);
+                  }}
+                />
               );
             })}
-        </div>
+            {filteredIngredients.length === 0 && (
+              <div className="bg-card rounded-lg border border-border p-12 text-center text-muted-foreground">
+                <p>No ingredients found</p>
+              </div>
+            )}
+          </div>
+        </DndProvider>
       </div>
 
       {/* Stock Adjustment Modal */}
@@ -1323,3 +1170,348 @@ function AddIngredientModal({
     </div>
   );
 }
+
+// ─── Drag-and-drop sub-components ───────────────────────────────────────────
+
+const CATEGORY_DND_TYPE = "INGREDIENT_CATEGORY";
+
+function DraggableCategorySection({
+  catId,
+  catName,
+  catIndex,
+  ingredients,
+  allCategoryIngredients,
+  isCollapsed,
+  isAdmin,
+  canEdit,
+  canAdjust,
+  canDelete,
+  onToggleCollapse,
+  onMoveCategory,
+  onDropCategory,
+  onMoveIngredient,
+  onDropIngredient,
+  onEditIngredient,
+  onAdjustIngredient,
+  onDeleteIngredient,
+}: {
+  catId: string;
+  catName: string;
+  catIndex: number;
+  ingredients: Ingredient[];
+  allCategoryIngredients: Ingredient[];
+  isCollapsed: boolean;
+  isAdmin: boolean;
+  canEdit: boolean;
+  canAdjust: boolean;
+  canDelete: boolean;
+  onToggleCollapse: (name: string) => void;
+  onMoveCategory: (dragIdx: number, hoverIdx: number) => void;
+  onDropCategory: () => void;
+  onMoveIngredient: (catName: string, dragIdx: number, hoverIdx: number) => void;
+  onDropIngredient: (updatedList: Ingredient[]) => void;
+  onEditIngredient: (item: Ingredient) => void;
+  onAdjustIngredient: (item: Ingredient) => void;
+  onDeleteIngredient: (item: Ingredient) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: CATEGORY_DND_TYPE,
+    item: { index: catIndex },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    canDrag: isAdmin,
+  });
+
+  const [, drop] = useDrop<{ index: number }, void, {}>({
+    accept: CATEGORY_DND_TYPE,
+    hover(item, monitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = catIndex;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      onMoveCategory(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+    drop() {
+      onDropCategory();
+    },
+  });
+
+  dragPreview(drop(ref));
+
+  return (
+    <div
+      ref={ref}
+      className={`bg-card rounded-lg border border-border overflow-hidden transition-opacity ${isDragging ? "opacity-50" : "opacity-100"}`}
+    >
+      {/* Category Header */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
+        {isAdmin && (
+          <div ref={drag as any} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+            <GripVertical className="w-4 h-4" />
+          </div>
+        )}
+        <button
+          onClick={() => onToggleCollapse(catName)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+          <span className="font-medium text-sm">{catName}</span>
+          <span className="ml-1 px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full text-xs">
+            {allCategoryIngredients.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Category Body */}
+      {!isCollapsed && (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/20">
+                <tr>
+                  {isAdmin && <th className="w-8 py-2 px-3" />}
+                  <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Code</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Name</th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Stock</th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingredients.map((item, idx) => (
+                  <DraggableIngredientRow
+                    key={item.id}
+                    item={item}
+                    index={idx}
+                    categoryName={catName}
+                    isAdmin={isAdmin}
+                    canEdit={canEdit}
+                    canAdjust={canAdjust}
+                    canDelete={canDelete}
+                    onMoveIngredient={onMoveIngredient}
+                    onDropIngredient={onDropIngredient}
+                    onEditIngredient={onEditIngredient}
+                    onAdjustIngredient={onAdjustIngredient}
+                    onDeleteIngredient={onDeleteIngredient}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {ingredients.length === 0 && (
+              <div className="py-6 text-center text-xs text-muted-foreground">No items in this category</div>
+            )}
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="lg:hidden divide-y divide-border">
+            {ingredients.map((item) => {
+              const isLowStock = item.stock < item.minStockLevel;
+              const needsReorder = item.stock <= item.reorderPoint;
+              const totalValue = (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
+              return (
+                <div key={item.id} className="p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{item.name}</span>
+                        {isLowStock ? (
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Critical
+                          </span>
+                        ) : needsReorder ? (
+                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Reorder</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">Normal</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">{item.code}</p>
+                    </div>
+                    <div className="flex gap-1 ml-2">
+                      {canEdit && (
+                        <button onClick={() => onEditIngredient(item)} className="p-1.5 hover:bg-blue-100 rounded text-blue-600">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {canAdjust && (
+                        <button onClick={() => onAdjustIngredient(item)} className="p-1.5 hover:bg-accent rounded">
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => onDeleteIngredient(item)} className="p-1.5 hover:bg-red-100 rounded text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-4 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Stock: </span>
+                      <span className="font-medium text-primary">{item.stock} {item.unit}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Value: </span>
+                      <span className="font-medium text-green-600">₱{totalValue.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {ingredients.length === 0 && (
+              <div className="p-6 text-center text-xs text-muted-foreground">No items in this category</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const INGREDIENT_DND_TYPE_PREFIX = "INGREDIENT_ROW_";
+
+function DraggableIngredientRow({
+  item,
+  index,
+  categoryName,
+  isAdmin,
+  canEdit,
+  canAdjust,
+  canDelete,
+  onMoveIngredient,
+  onDropIngredient,
+  onEditIngredient,
+  onAdjustIngredient,
+  onDeleteIngredient,
+}: {
+  item: Ingredient;
+  index: number;
+  categoryName: string;
+  isAdmin: boolean;
+  canEdit: boolean;
+  canAdjust: boolean;
+  canDelete: boolean;
+  onMoveIngredient: (catName: string, dragIdx: number, hoverIdx: number) => void;
+  onDropIngredient: (updatedList: Ingredient[]) => void;
+  onEditIngredient: (item: Ingredient) => void;
+  onAdjustIngredient: (item: Ingredient) => void;
+  onDeleteIngredient: (item: Ingredient) => void;
+}) {
+  const dndType = INGREDIENT_DND_TYPE_PREFIX + categoryName;
+  const ref = useRef<HTMLTableRowElement>(null);
+
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: dndType,
+    item: { index },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    canDrag: isAdmin,
+  });
+
+  const [, drop] = useDrop<{ index: number }, void, {}>({
+    accept: dndType,
+    hover(dragItem, monitor) {
+      if (!ref.current) return;
+      const dragIndex = dragItem.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      onMoveIngredient(categoryName, dragIndex, hoverIndex);
+      dragItem.index = hoverIndex;
+    },
+  });
+
+  dragPreview(drop(ref));
+
+  const isLowStock = item.stock < item.minStockLevel;
+  const needsReorder = item.stock <= item.reorderPoint;
+  const totalValue = (Number(item.stock) || 0) * (Number(item.costPerUnit) || 0);
+
+  return (
+    <tr
+      ref={ref}
+      className={`border-b border-border hover:bg-muted/30 transition-opacity ${isDragging ? "opacity-40" : "opacity-100"}`}
+    >
+      {isAdmin && (
+        <td className="py-2 px-3 w-8">
+          <div ref={drag as any} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+        </td>
+      )}
+      <td className="py-2 px-3 text-xs font-mono text-muted-foreground">{item.code}</td>
+      <td className="py-2 px-3">
+        <p className="text-sm font-medium">{item.name}</p>
+        {item.supplier && <p className="text-xs text-muted-foreground">{item.supplier}</p>}
+      </td>
+      <td className="py-2 px-3 text-right text-sm font-medium text-primary">
+        {item.stock} {item.unit}
+      </td>
+      <td className="py-2 px-3 text-right text-sm">
+        ₱{totalValue.toFixed(2)}
+      </td>
+      <td className="py-2 px-3">
+        {isLowStock ? (
+          <span className="flex items-center gap-1 text-red-600 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" /> Critical
+          </span>
+        ) : needsReorder ? (
+          <span className="text-orange-600 text-xs">Reorder</span>
+        ) : (
+          <span className="text-green-600 text-xs">Normal</span>
+        )}
+      </td>
+      <td className="py-2 px-3">
+        <div className="flex gap-1">
+          {canEdit && (
+            <button
+              onClick={() => onEditIngredient(item)}
+              className="p-1.5 hover:bg-blue-100 rounded text-blue-600"
+              title="Edit"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canAdjust && (
+            <button
+              onClick={() => onAdjustIngredient(item)}
+              className="p-1.5 hover:bg-accent rounded"
+              title="Adjust Stock"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => onDeleteIngredient(item)}
+              className="p-1.5 hover:bg-red-100 rounded text-red-600"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Mar 24, 2026 at 09:31 AM
+-- Generation Time: Mar 27, 2026 at 10:32 AM
 -- Server version: 10.3.39-MariaDB-0ubuntu0.20.04.2-log
 -- PHP Version: 8.4.17
 
@@ -66,9 +66,8 @@ CREATE TABLE `discounts` (
 --
 
 INSERT INTO `discounts` (`id`, `name`, `wholesale_min_units`, `discount_type`, `discount_value`, `is_active`, `created_at`, `updated_at`) VALUES
-(5, 'WHOLESALE FOR SIOMAI', 5, 'fixed_amount', 5.00, 1, '2026-03-09 09:20:04', '2026-03-11 07:15:41'),
+(5, 'WHOLESALE FOR SIOMAI', 5, 'fixed_amount', 5.00, 1, '2026-03-09 09:20:04', '2026-03-26 14:17:27'),
 (7, 'SABIT WHOLESALE', 5, 'fixed_amount', 5.00, 1, '2026-03-11 07:16:46', '2026-03-11 07:20:49'),
-(8, 'SHANGHAI WHOLESALE', 10, 'fixed_amount', 5.00, 1, '2026-03-11 07:22:11', '2026-03-11 07:23:13'),
 (9, 'CHEESEDOG & CHICKEN NUGGETS', 5, 'fixed_amount', 5.00, 1, '2026-03-11 07:24:45', '2026-03-11 11:19:12'),
 (10, 'SQUARE HAM', 5, 'fixed_amount', 10.00, 1, '2026-03-11 07:26:23', '2026-03-11 07:27:41');
 
@@ -103,7 +102,6 @@ INSERT INTO `discount_product_map` (`discount_id`, `product_id`) VALUES
 (7, 55),
 (7, 57),
 (7, 58),
-(8, 28),
 (9, 42),
 (9, 56),
 (10, 59);
@@ -286,57 +284,57 @@ CREATE TABLE `ingredients` (
 --
 
 INSERT INTO `ingredients` (`id`, `name`, `code`, `category_id`, `category`, `unit`, `stock`, `min_stock_level`, `reorder_point`, `cost_per_unit`, `supplier_id`, `expiry_date`, `created_at`, `updated_at`) VALUES
-(7, 'Molo White', 'ING-001', NULL, 'Wrapper', 'Pcs', 400.00, 500.00, 100.00, 17.00, 4, NULL, '2026-02-01 21:20:30', '2026-03-23 13:47:35'),
-(8, 'Molo Yellow', 'ING-002', NULL, 'Wrapper', 'Pcs', 180.00, 500.00, 100.00, 17.00, 4, NULL, '2026-02-01 21:21:12', '2026-03-23 13:47:52'),
-(9, 'CFAT', 'ING-003', NULL, 'Meat', 'Kg', 0.00, 80.00, 20.00, 140.00, 3, NULL, '2026-02-01 21:24:32', '2026-03-06 19:26:39'),
-(10, 'MDM', 'ING-004', NULL, 'Raw Materials', '500Kg', 0.00, 100.00, 100.00, 76.00, 3, NULL, '2026-02-01 21:29:31', '2026-03-18 23:25:24'),
-(11, 'Accord', 'ING-005', NULL, 'Spices', 'Kg', 39.00, 20.00, 5.00, 90.00, 8, NULL, '2026-02-03 18:19:50', '2026-03-23 13:49:00'),
-(12, 'TVP Fine', 'ING-006', NULL, 'Raw Materials', 'Kg', 5.00, 50.00, 10.00, 82.00, 3, NULL, '2026-02-03 18:24:19', '2026-03-23 13:53:24'),
-(13, 'Pine Apple Juice', 'ING-007', NULL, 'Seasonings', 'L', 0.00, 24.00, 5.00, 106.25, NULL, NULL, '2026-02-03 18:28:28', '2026-03-06 19:26:39'),
-(14, 'Praque Powder', 'ING-008', NULL, 'Spices', 'kg', 20.00, 20.00, 5.00, 25.00, 8, NULL, '2026-02-10 01:48:20', '2026-03-23 13:49:29'),
-(15, 'Ham Spice', 'ING-009', NULL, 'Spices', 'kg', 7.00, 5.00, 2.00, 170.00, 8, NULL, '2026-02-10 01:49:05', '2026-03-23 13:50:30'),
-(16, 'Ham Flavor', 'ING-010', NULL, 'Spices', 'kg', 4.00, 5.00, 2.00, 170.00, 8, NULL, '2026-02-10 01:49:40', '2026-03-23 13:50:46'),
-(17, 'Vitamin C', 'ING-011', NULL, 'Spices', 'kg', 3.00, 2.00, 1.00, 380.00, 8, NULL, '2026-02-10 01:50:09', '2026-03-23 13:51:30'),
-(18, 'Sodium', 'ING-012', NULL, 'Spices', 'kg', 5.00, 5.00, 2.00, 230.00, 8, NULL, '2026-02-10 01:50:45', '2026-03-23 13:50:06'),
-(19, 'Alexander', 'ING-013', NULL, 'Seasonings', 'L', 6.00, 8.00, 4.00, 69.33, 3, NULL, '2026-02-11 01:44:02', '2026-03-23 13:54:12'),
-(20, 'Knorr Liquid Seasoning', 'ING-014', NULL, 'Seasonings', 'L', 6.00, 5.00, 2.00, 258.58, 3, NULL, '2026-02-11 01:45:06', '2026-03-23 14:01:25'),
-(21, 'Tvp Gem', 'ING-015', NULL, 'Raw Materials', 'kg', 2.50, 20.00, 10.00, 82.00, 3, NULL, '2026-02-11 01:46:07', '2026-03-23 13:53:54'),
-(22, 'Asin', 'ING-016', NULL, 'Raw Materials', 'kg', 125.00, 40.00, 10.00, 7.50, 3, NULL, '2026-02-11 01:51:09', '2026-03-23 14:00:15'),
-(23, 'MSG-Vetsin', 'ING-017', NULL, 'Raw Materials', 'kg', 62.00, 25.00, 10.00, 48.00, 3, NULL, '2026-02-11 01:52:15', '2026-03-23 13:59:40'),
-(24, 'Sugar', 'ING-018', NULL, 'Raw Materials', 'kg', 2000.00, 250.00, 100.00, 53.00, NULL, NULL, '2026-02-11 02:07:09', '2026-03-23 13:57:55'),
-(25, 'Cornstarch', 'ING-019', NULL, 'Raw Materials', 'kg', 962.00, 200.00, 100.00, 36.00, NULL, NULL, '2026-02-11 02:07:59', '2026-03-23 13:58:54'),
-(26, 'Giling-fat', 'ING-020', NULL, 'Raw Materials', 'kg', 0.00, 50.00, 25.00, 135.00, 3, NULL, '2026-02-11 02:12:52', '2026-03-04 02:59:29'),
-(27, 'Carrots', 'ING-021', NULL, 'Raw Materials', 'kg', 0.00, 10.00, 5.00, 38.00, NULL, NULL, '2026-02-11 07:52:17', '2026-03-06 19:26:34'),
-(28, 'Onion', 'ING-022', NULL, 'Raw Materials', 'kg', 0.00, 10.00, 5.00, 50.00, NULL, NULL, '2026-02-11 07:52:51', '2026-03-06 19:26:34'),
-(29, 'Redbell Pepper', 'ING-023', NULL, 'Raw Materials', 'kg', 0.00, 2.00, 1.00, 150.00, NULL, NULL, '2026-02-11 07:53:44', '2026-03-06 19:26:34'),
-(30, 'Celery', 'ING-024', NULL, 'Raw Materials', 'kg', 0.00, 2.00, 1.00, 90.00, NULL, NULL, '2026-02-11 07:54:24', '2026-03-06 19:26:34'),
-(31, 'Garlic', 'ING-025', NULL, 'Raw Materials', 'kg', 0.00, 10.00, 5.00, 120.00, NULL, NULL, '2026-02-11 08:00:41', '2026-03-06 19:26:39'),
+(7, 'Molo White', 'ING-001', 22, 'Wrapper', 'Pcs', 400.00, 500.00, 100.00, 17.00, 4, NULL, '2026-02-01 21:20:30', '2026-03-23 13:47:35'),
+(8, 'Molo Yellow', 'ING-002', 22, 'Wrapper', 'Pcs', 180.00, 500.00, 100.00, 17.00, 4, NULL, '2026-02-01 21:21:12', '2026-03-23 13:47:52'),
+(9, 'CFAT', 'ING-003', 18, 'Meat', 'Kg', 0.00, 80.00, 20.00, 140.00, 3, NULL, '2026-02-01 21:24:32', '2026-03-06 19:26:39'),
+(10, 'MDM', 'ING-004', 18, 'Raw Materials', '500Kg', 0.00, 100.00, 100.00, 76.00, 3, NULL, '2026-02-01 21:29:31', '2026-03-18 23:25:24'),
+(11, 'Accord', 'ING-005', 20, 'Spices', 'Kg', 39.00, 20.00, 5.00, 90.00, 8, NULL, '2026-02-03 18:19:50', '2026-03-23 13:49:00'),
+(12, 'TVP Fine', 'ING-006', 18, 'Raw Materials', 'Kg', 5.00, 50.00, 10.00, 82.00, 3, NULL, '2026-02-03 18:24:19', '2026-03-23 13:53:24'),
+(13, 'Pine Apple Juice', 'ING-007', 21, 'Seasonings', 'L', 0.00, 24.00, 5.00, 106.25, NULL, NULL, '2026-02-03 18:28:28', '2026-03-06 19:26:39'),
+(14, 'Praque Powder', 'ING-008', 20, 'Spices', 'kg', 20.00, 20.00, 5.00, 25.00, 8, NULL, '2026-02-10 01:48:20', '2026-03-23 13:49:29'),
+(15, 'Ham Spice', 'ING-009', 20, 'Spices', 'kg', 7.00, 5.00, 2.00, 170.00, 8, NULL, '2026-02-10 01:49:05', '2026-03-23 13:50:30'),
+(16, 'Ham Flavor', 'ING-010', 20, 'Spices', 'kg', 4.00, 5.00, 2.00, 170.00, 8, NULL, '2026-02-10 01:49:40', '2026-03-23 13:50:46'),
+(17, 'Vitamin C', 'ING-011', 20, 'Spices', 'kg', 3.00, 2.00, 1.00, 380.00, 8, NULL, '2026-02-10 01:50:09', '2026-03-23 13:51:30'),
+(18, 'Sodium', 'ING-012', 20, 'Spices', 'kg', 5.00, 5.00, 2.00, 230.00, 8, NULL, '2026-02-10 01:50:45', '2026-03-23 13:50:06'),
+(19, 'Alexander', 'ING-013', 21, 'Seasonings', 'L', 6.00, 8.00, 4.00, 69.33, 3, NULL, '2026-02-11 01:44:02', '2026-03-23 13:54:12'),
+(20, 'Knorr Liquid Seasoning', 'ING-014', 21, 'Seasonings', 'L', 6.00, 5.00, 2.00, 258.58, 3, NULL, '2026-02-11 01:45:06', '2026-03-23 14:01:25'),
+(21, 'Tvp Gem', 'ING-015', 18, 'Raw Materials', 'kg', 2.50, 20.00, 10.00, 82.00, 3, NULL, '2026-02-11 01:46:07', '2026-03-23 13:53:54'),
+(22, 'Asin', 'ING-016', 18, 'Raw Materials', 'kg', 0.00, 15.00, 50.00, 7.50, 18, NULL, '2026-02-11 01:51:09', '2026-03-26 14:12:05'),
+(23, 'MSG-Vetsin', 'ING-017', 18, 'Raw Materials', 'kg', 62.00, 25.00, 10.00, 48.00, 3, NULL, '2026-02-11 01:52:15', '2026-03-23 13:59:40'),
+(24, 'Sugar', 'ING-018', 18, 'Raw Materials', 'kg', 2000.00, 250.00, 100.00, 53.00, NULL, NULL, '2026-02-11 02:07:09', '2026-03-23 13:57:55'),
+(25, 'Cornstarch', 'ING-019', 18, 'Raw Materials', 'kg', 962.00, 200.00, 100.00, 36.00, NULL, NULL, '2026-02-11 02:07:59', '2026-03-23 13:58:54'),
+(26, 'Giling-fat', 'ING-020', 18, 'Raw Materials', 'kg', 0.00, 50.00, 25.00, 135.00, 3, NULL, '2026-02-11 02:12:52', '2026-03-04 02:59:29'),
+(27, 'Carrots', 'ING-021', 18, 'Raw Materials', 'kg', 0.00, 10.00, 10.00, 38.00, 18, NULL, '2026-02-11 07:52:17', '2026-03-26 14:12:32'),
+(28, 'Onion', 'ING-022', 18, 'Raw Materials', 'kg', 0.00, 10.00, 5.00, 50.00, NULL, NULL, '2026-02-11 07:52:51', '2026-03-06 19:26:34'),
+(29, 'Redbell Pepper', 'ING-023', 18, 'Raw Materials', 'kg', 0.00, 2.00, 1.00, 150.00, NULL, NULL, '2026-02-11 07:53:44', '2026-03-06 19:26:34'),
+(30, 'Celery', 'ING-024', 18, 'Raw Materials', 'kg', 0.00, 2.00, 2.00, 90.00, 18, NULL, '2026-02-11 07:54:24', '2026-03-26 14:13:14'),
+(31, 'Garlic', 'ING-025', 18, 'Raw Materials', 'kg', 0.00, 10.00, 5.00, 120.00, NULL, NULL, '2026-02-11 08:00:41', '2026-03-06 19:26:39'),
 (32, 'Tali', 'ING-026', NULL, 'Raw Materials', 'pcs', 16.00, 60.00, 10.00, 80.00, 7, NULL, '2026-02-11 08:12:07', '2026-03-23 13:57:08'),
-(33, 'Lumpia Wrapper', 'ING-027', NULL, 'Wrapper', '2bags', 2.00, 7.00, 2.00, 380.00, 18, NULL, '2026-02-11 09:22:12', '2026-03-23 13:48:18'),
-(34, 'Hanks-isaw', 'ING-028', NULL, 'Raw Materials', '37', 18.00, 50.00, 10.00, 500.00, 6, NULL, '2026-02-11 09:24:29', '2026-03-23 13:53:05'),
-(35, 'Cheese', 'ING-029', NULL, 'Raw Materials', 'pcs', 1.00, 10.00, 2.00, 145.00, NULL, NULL, '2026-02-11 09:27:11', '2026-03-23 14:01:47'),
-(36, 'Multiblend', 'ING-030', NULL, 'Spices', 'kg', 5.00, 5.00, 2.00, 220.00, 3, NULL, '2026-02-11 09:28:43', '2026-03-23 13:51:48'),
-(37, 'Curry Powder', 'ING-031', NULL, 'Spices', 'kg', 0.50, 3.00, 1.00, 250.00, NULL, NULL, '2026-02-11 09:29:16', '2026-03-23 14:02:10'),
-(40, 'Gas', 'ING-034', NULL, 'Utilities', 'L', 1.00, 3.00, 1.00, 3425.00, 11, NULL, '2026-02-12 03:09:36', '2026-03-23 13:52:42'),
-(41, '6X8', 'ING-035', NULL, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:46:31', '2026-03-04 02:56:59'),
-(42, '6X10', 'ING-036', NULL, 'Packaging Materials', 'pcs', 1.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:47:00', '2026-03-23 13:44:41'),
-(43, 'PE 6X8', 'ING-037', NULL, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:48:14', '2026-03-04 03:02:02'),
-(44, 'PE X10', 'ING-038', NULL, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:52:45', '2026-03-04 03:02:10'),
-(45, '8X11', 'ING-039', NULL, 'Packaging Materials', 'pcs', 2.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:53:08', '2026-03-23 13:43:33'),
-(46, '10X14', 'ING-040', NULL, 'Packaging Materials', 'pcs', 3.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:53:48', '2026-03-23 13:44:03'),
-(47, '12X18', 'ING-041', NULL, 'Packaging Materials', 'pcs', 1.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:54:21', '2026-03-23 13:44:24'),
-(48, 'Medium', 'ING-042', NULL, 'Packaging Materials', 'pcs', 6.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:54:49', '2026-03-23 13:45:49'),
-(49, 'Large', 'ING-043', NULL, 'Packaging Materials', 'pcs', 8.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:55:11', '2026-03-23 13:46:09'),
-(50, 'Rollbag Big', 'ING-044', NULL, 'Packaging Materials', 'pcs', 4.00, 20.00, 4.00, 100.00, NULL, NULL, '2026-02-12 03:55:42', '2026-03-23 13:46:30'),
-(51, 'Rollbag Small', 'ING-045', NULL, 'Packaging Materials', 'pcs', 2.00, 20.00, 4.00, 100.00, NULL, NULL, '2026-02-12 03:57:02', '2026-03-23 13:46:44'),
-(52, 'Plastic Shanghai', 'ING-046', NULL, 'Packaging Materials', 'pcs', 1.00, 5.00, 1.00, 100.00, NULL, NULL, '2026-02-12 03:57:31', '2026-03-23 13:47:10'),
-(53, 'Plastic Skinless', 'ING-047', NULL, 'Packaging Materials', 'pcs', 4.00, 5.00, 1.00, 100.00, NULL, NULL, '2026-02-12 03:57:57', '2026-03-23 13:55:16'),
-(54, 'Strand Red', 'ING-048', NULL, 'Packaging Materials', 'pcs', 19.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 03:58:20', '2026-03-23 13:55:36'),
-(55, 'Strand White', 'ING-049', NULL, 'Packaging Materials', 'pcs', 6.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 03:59:32', '2026-03-23 13:55:55'),
-(56, 'Strand Clear', 'ING-050', NULL, 'Packaging Materials', 'pcs', 14.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 04:00:19', '2026-03-23 13:56:20'),
-(57, 'Strand Embo', 'ING-051', NULL, 'Packaging Materials', 'pcs', 37.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 04:01:44', '2026-03-23 13:56:31'),
-(58, 'Amiflex', 'ING-052', NULL, 'Packaging Materials', 'pcs', 1.00, 2.00, 1.00, 5000.00, 3, NULL, '2026-02-12 04:02:10', '2026-03-23 13:54:48'),
-(61, 'Water', 'ING-053', NULL, 'Raw Materials', 'L', 0.00, 500.00, 1000.00, 5.00, 18, NULL, '2026-03-12 09:32:31', '2026-03-19 17:04:33');
+(33, 'Lumpia Wrapper', 'ING-027', 22, 'Wrapper', '2bags', 2.00, 7.00, 2.00, 380.00, 18, NULL, '2026-02-11 09:22:12', '2026-03-23 13:48:18'),
+(34, 'Hanks-isaw', 'ING-028', 18, 'Raw Materials', '37', 18.00, 50.00, 10.00, 500.00, 6, NULL, '2026-02-11 09:24:29', '2026-03-23 13:53:05'),
+(35, 'Cheese', 'ING-029', 18, 'Raw Materials', 'pcs', 0.00, 3.00, 3.00, 145.00, 18, NULL, '2026-02-11 09:27:11', '2026-03-26 14:13:41'),
+(36, 'Multiblend', 'ING-030', 20, 'Spices', 'kg', 5.00, 5.00, 2.00, 220.00, 3, NULL, '2026-02-11 09:28:43', '2026-03-23 13:51:48'),
+(37, 'Curry Powder', 'ING-031', 20, 'Spices', 'kg', 0.50, 3.00, 1.00, 250.00, NULL, NULL, '2026-02-11 09:29:16', '2026-03-23 14:02:10'),
+(40, 'Gas', 'ING-034', 23, 'Utilities', 'L', 1.00, 3.00, 1.00, 3425.00, 11, NULL, '2026-02-12 03:09:36', '2026-03-23 13:52:42'),
+(41, '6X8', 'ING-035', 19, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:46:31', '2026-03-04 02:56:59'),
+(42, '6X10', 'ING-036', 19, 'Packaging Materials', 'pcs', 1.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:47:00', '2026-03-23 13:44:41'),
+(43, 'PE 6X8', 'ING-037', 19, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:48:14', '2026-03-04 03:02:02'),
+(44, 'PE X10', 'ING-038', 19, 'Packaging Materials', 'pcs', 0.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:52:45', '2026-03-04 03:02:10'),
+(45, '8X11', 'ING-039', 19, 'Packaging Materials', 'pcs', 2.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:53:08', '2026-03-23 13:43:33'),
+(46, '10X14', 'ING-040', 19, 'Packaging Materials', 'bags', 0.00, 2.00, 5.00, 100.00, 18, NULL, '2026-02-12 03:53:48', '2026-03-26 13:56:02'),
+(47, '12X18', 'ING-041', 19, 'Packaging Materials', 'pcs', 1.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:54:21', '2026-03-23 13:44:24'),
+(48, 'Medium', 'ING-042', 19, 'Packaging Materials', 'pcs', 6.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:54:49', '2026-03-23 13:45:49'),
+(49, 'Large', 'ING-043', 19, 'Packaging Materials', 'pcs', 8.00, 200.00, 100.00, 100.00, NULL, NULL, '2026-02-12 03:55:11', '2026-03-23 13:46:09'),
+(50, 'Rollbag Big', 'ING-044', 19, 'Packaging Materials', 'pcs', 4.00, 20.00, 4.00, 100.00, NULL, NULL, '2026-02-12 03:55:42', '2026-03-23 13:46:30'),
+(51, 'Rollbag Small', 'ING-045', 19, 'Packaging Materials', 'pcs', 2.00, 20.00, 4.00, 100.00, NULL, NULL, '2026-02-12 03:57:02', '2026-03-23 13:46:44'),
+(52, 'Plastic Shanghai', 'ING-046', 19, 'Packaging Materials', 'pcs', 1.00, 5.00, 1.00, 100.00, NULL, NULL, '2026-02-12 03:57:31', '2026-03-23 13:47:10'),
+(53, 'Plastic Skinless', 'ING-047', 19, 'Packaging Materials', 'pcs', 4.00, 5.00, 1.00, 100.00, NULL, NULL, '2026-02-12 03:57:57', '2026-03-23 13:55:16'),
+(54, 'Strand Red', 'ING-048', 19, 'Packaging Materials', 'pcs', 19.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 03:58:20', '2026-03-23 13:55:36'),
+(55, 'Strand White', 'ING-049', 19, 'Packaging Materials', 'pcs', 6.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 03:59:32', '2026-03-23 13:55:55'),
+(56, 'Strand Clear', 'ING-050', 19, 'Packaging Materials', 'pcs', 14.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 04:00:19', '2026-03-23 13:56:20'),
+(57, 'Strand Embo', 'ING-051', 19, 'Packaging Materials', 'pcs', 37.00, 10.00, 5.00, 200.00, NULL, NULL, '2026-02-12 04:01:44', '2026-03-23 13:56:31'),
+(58, 'Amiflex', 'ING-052', 19, 'Packaging Materials', 'pcs', 1.00, 2.00, 1.00, 5000.00, 3, NULL, '2026-02-12 04:02:10', '2026-03-23 13:54:48'),
+(61, 'Water', 'ING-053', 18, 'Raw Materials', 'L', 0.00, 500.00, 1000.00, 5.00, 18, NULL, '2026-03-12 09:32:31', '2026-03-19 17:04:33');
 
 -- --------------------------------------------------------
 
@@ -357,7 +355,12 @@ CREATE TABLE `ingredient_categories` (
 --
 
 INSERT INTO `ingredient_categories` (`id`, `name`, `description`, `created_at`, `updated_at`) VALUES
-(17, 'Raw Materials', '', '2026-03-12 09:28:43', '2026-03-12 09:28:43');
+(18, 'Raw Materials', 'Base meat and food raw materials', '2026-03-24 01:39:19', '2026-03-24 01:39:19'),
+(19, 'Packaging Materials', 'Plastic bags and packaging supplies', '2026-03-24 01:39:19', '2026-03-24 01:39:19'),
+(20, 'Spices', 'Spice and curing agents', '2026-03-24 01:39:19', '2026-03-24 01:39:19'),
+(21, 'Seasonings', 'Liquid and dry seasonings', '2026-03-24 01:39:19', '2026-03-24 01:39:19'),
+(22, 'Wrapper', 'Wrapper materials for products', '2026-03-24 01:39:19', '2026-03-24 01:39:19'),
+(23, 'Utilities', 'Utility supplies (e.g. gas)', '2026-03-24 01:39:19', '2026-03-24 01:39:19');
 
 -- --------------------------------------------------------
 
@@ -1352,7 +1355,11 @@ INSERT INTO `supplier_invoices` (`id`, `supplier_id`, `receipt_number`, `invoice
 (41, 3, '10860', '2026-03-23', 61233.00, 0.00, NULL, '2026-03-23 02:58:58', '2026-03-23 02:58:58'),
 (42, 8, '', '2026-03-23', 5220.00, 0.00, NULL, '2026-03-23 03:01:10', '2026-03-23 03:01:10'),
 (43, 18, '', '2026-03-23', 150700.00, 0.00, 'KUYA JOEL-CORNS & SUGAR', '2026-03-23 03:08:09', '2026-03-23 03:08:09'),
-(44, 4, '0506', '2026-03-23', 8500.00, 0.00, NULL, '2026-03-23 09:54:40', '2026-03-23 09:54:40');
+(44, 4, '0506', '2026-03-23', 8500.00, 0.00, NULL, '2026-03-23 09:54:40', '2026-03-23 09:54:40'),
+(45, 3, '10897', '2026-03-24', 10160.00, 0.00, NULL, '2026-03-24 10:00:31', '2026-03-24 10:00:31'),
+(46, 3, '10950', '2026-03-25', 38097.00, 0.00, NULL, '2026-03-25 05:58:39', '2026-03-25 05:58:39'),
+(47, 4, '0525', '2026-03-25', 6800.00, 0.00, NULL, '2026-03-25 10:12:44', '2026-03-25 10:12:44'),
+(48, 3, '10988', '2026-03-26', 52077.00, 0.00, NULL, '2026-03-26 10:18:55', '2026-03-26 10:18:55');
 
 -- --------------------------------------------------------
 
@@ -1838,7 +1845,33 @@ INSERT INTO `system_history` (`id`, `action`, `entity`, `entity_id`, `details`, 
 (463, 'Inventory Adjustment', 'Ingredient', '37', '{\"ingredient\":\"Curry Powder\",\"type\":\"add\",\"quantity\":0.5,\"previousStock\":0,\"newStock\":0.5,\"reason\":\"restock\",\"_performedBy\":\"System Administrator\"}', 1, '2026-03-23 14:02:10', '2026-03-23 14:02:10'),
 (464, 'Ingredient Updated', 'Ingredient', '37', '{\"name\":\"Curry Powder\",\"code\":\"ING-031\",\"unit\":\"kg\",\"stock\":0.5,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-23 14:02:10', '2026-03-23 14:02:10'),
 (465, 'Transaction Created', 'Transaction', '40', '{\"type\":\"Cash In\",\"amount\":4925,\"description\":\"JEANNALYN 03\\/23\\/26\",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 01:29:01', '2026-03-24 01:29:01'),
-(466, 'Transaction Created', 'Transaction', '41', '{\"type\":\"Cash In\",\"amount\":6044,\"description\":\"BELEN PAYMENT\",\"category\":\"DELIVERY PAYMENT\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 01:29:24', '2026-03-24 01:29:24');
+(466, 'Transaction Created', 'Transaction', '41', '{\"type\":\"Cash In\",\"amount\":6044,\"description\":\"BELEN PAYMENT\",\"category\":\"DELIVERY PAYMENT\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 01:29:24', '2026-03-24 01:29:24'),
+(467, 'Transaction Created', 'Transaction', '42', '{\"type\":\"Cash Out\",\"amount\":100,\"description\":\"STAINLESS BEND C\\/O GWAPO\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 03:10:55', '2026-03-24 03:10:55'),
+(468, 'Transaction Created', 'Transaction', '43', '{\"type\":\"Cash Out\",\"amount\":666,\"description\":\"PINEAPPLE AND CHEESE\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 03:11:20', '2026-03-24 03:11:20'),
+(469, 'Transaction Created', 'Transaction', '44', '{\"type\":\"Cash Out\",\"amount\":4000,\"description\":\"SALVADOR TABAYAG C.A\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 10:18:23', '2026-03-24 10:18:23'),
+(470, 'Transaction Created', 'Transaction', '45', '{\"type\":\"Cash In\",\"amount\":8000,\"description\":\"CUT OFF SALES JEANNALYN\",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-24 10:18:48', '2026-03-24 10:18:48'),
+(471, 'User Updated', 'User', '45', '{\"name\":\"Margaret\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-25 01:31:46', '2026-03-25 01:31:46'),
+(472, 'Transaction Created', 'Transaction', '46', '{\"type\":\"Cash In\",\"amount\":5420,\"description\":\"JEANNALYN 03\\/24\\/2026\",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 01:52:26', '2026-03-25 01:52:26'),
+(473, 'Transaction Created', 'Transaction', '47', '{\"type\":\"Cash Out\",\"amount\":300,\"description\":\"EXY HARDWARE-SKIM COAT\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 05:21:31', '2026-03-25 05:21:31'),
+(474, 'User Updated', 'User', '22', '{\"name\":\"Calen\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-25 05:52:16', '2026-03-25 05:52:16'),
+(475, 'User Updated', 'User', '36', '{\"name\":\"Sherryl\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-25 06:18:27', '2026-03-25 06:18:27'),
+(476, 'User Updated', 'User', '32', '{\"name\":\"Eden\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-25 06:42:47', '2026-03-25 06:42:47'),
+(477, 'User Updated', 'User', '45', '{\"name\":\"Margaret\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-25 08:33:51', '2026-03-25 08:33:51'),
+(478, 'Transaction Created', 'Transaction', '48', '{\"type\":\"Cash Out\",\"amount\":240,\"description\":\"LALAMOVE BAYAN-SM-OFFICE\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 10:15:54', '2026-03-25 10:15:54'),
+(479, 'Transaction Created', 'Transaction', '49', '{\"type\":\"Cash Out\",\"amount\":2280,\"description\":\"CD OPTIONS-RJ45 & MODEM\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 10:16:35', '2026-03-25 10:16:35'),
+(480, 'Transaction Created', 'Transaction', '50', '{\"type\":\"Cash In\",\"amount\":8000,\"description\":\"CUT OFF SALES AMPARO \",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 10:18:25', '2026-03-25 10:18:25'),
+(481, 'Transaction Created', 'Transaction', '51', '{\"type\":\"Cash Out\",\"amount\":800,\"description\":\"CASH OUT BY SIR LEONARD\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-25 10:22:32', '2026-03-25 10:22:32'),
+(482, 'User Updated', 'User', '45', '{\"name\":\"Margaret\",\"role\":\"EMPLOYEE\"}', NULL, '2026-03-26 06:17:45', '2026-03-26 06:17:45'),
+(483, 'Transaction Created', 'Transaction', '52', '{\"type\":\"Cash In\",\"amount\":3554,\"description\":\"JEANNALYN 03\\/25\\/26\",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-26 07:19:24', '2026-03-26 07:19:24'),
+(484, 'Transaction Created', 'Transaction', '53', '{\"type\":\"Cash In\",\"amount\":3684,\"description\":\"BELEN PAYMENT\",\"category\":\"DELIVERY PAYMENT\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-26 10:08:02', '2026-03-26 10:08:02'),
+(485, 'Transaction Created', 'Transaction', '54', '{\"type\":\"Cash In\",\"amount\":7000,\"description\":\"CUT OFF SALES JEANNALYN\",\"category\":\"AMPARO SALES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-26 10:08:30', '2026-03-26 10:08:30'),
+(486, 'Transaction Created', 'Transaction', '55', '{\"type\":\"Cash Out\",\"amount\":35,\"description\":\"STICKER PAPER\",\"category\":\"OTHER EXPENSES\",\"createdBy\":\"Margaret\"}', NULL, '2026-03-26 10:17:41', '2026-03-26 10:17:41'),
+(487, 'Ingredient Updated', 'Ingredient', '46', '{\"name\":\"10X14\",\"code\":\"ING-040\",\"unit\":\"pcs\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 13:55:03', '2026-03-26 13:55:03'),
+(488, 'Ingredient Updated', 'Ingredient', '46', '{\"name\":\"10X14\",\"code\":\"ING-040\",\"unit\":\"bags\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 13:56:02', '2026-03-26 13:56:02'),
+(489, 'Ingredient Updated', 'Ingredient', '22', '{\"name\":\"Asin\",\"code\":\"ING-016\",\"unit\":\"kg\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 14:12:05', '2026-03-26 14:12:05'),
+(490, 'Ingredient Updated', 'Ingredient', '27', '{\"name\":\"Carrots\",\"code\":\"ING-021\",\"unit\":\"kg\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 14:12:32', '2026-03-26 14:12:32'),
+(491, 'Ingredient Updated', 'Ingredient', '30', '{\"name\":\"Celery\",\"code\":\"ING-024\",\"unit\":\"kg\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 14:13:14', '2026-03-26 14:13:14'),
+(492, 'Ingredient Updated', 'Ingredient', '35', '{\"name\":\"Cheese\",\"code\":\"ING-029\",\"unit\":\"pcs\",\"stock\":0,\"_performedBy\":\"System Administrator\"}', 1, '2026-03-26 14:13:41', '2026-03-26 14:13:41');
 
 -- --------------------------------------------------------
 
@@ -1915,7 +1948,21 @@ INSERT INTO `transactions` (`id`, `type`, `amount`, `description`, `category`, `
 (38, 'Cash Out', 20.00, '20 PCS TOX', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-23 09:13:28', '2026-03-23 09:13:28', NULL, 'AM'),
 (39, 'Cash In', 7500.00, 'CUT OFF JEANNALYN 03/23/26', 'AMPARO SALES', NULL, 'Margaret', '2026-03-23 10:15:11', '2026-03-23 10:15:11', NULL, 'AM'),
 (40, 'Cash In', 4925.00, 'JEANNALYN 03/23/26', 'AMPARO SALES', NULL, 'Margaret', '2026-03-24 01:29:01', '2026-03-24 01:29:01', NULL, 'AM'),
-(41, 'Cash In', 6044.00, 'BELEN PAYMENT', 'DELIVERY PAYMENT', NULL, 'Margaret', '2026-03-24 01:29:24', '2026-03-24 01:29:24', NULL, 'AM');
+(41, 'Cash In', 6044.00, 'BELEN PAYMENT', 'DELIVERY PAYMENT', NULL, 'Margaret', '2026-03-24 01:29:24', '2026-03-24 01:29:24', NULL, 'AM'),
+(42, 'Cash Out', 100.00, 'STAINLESS BEND C/O GWAPO', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-24 03:10:55', '2026-03-24 03:10:55', NULL, 'AM'),
+(43, 'Cash Out', 666.00, 'PINEAPPLE AND CHEESE', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-24 03:11:20', '2026-03-24 03:11:20', NULL, 'AM'),
+(44, 'Cash Out', 4000.00, 'SALVADOR TABAYAG C.A', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-24 10:18:23', '2026-03-24 10:18:23', NULL, 'AM'),
+(45, 'Cash In', 8000.00, 'CUT OFF SALES JEANNALYN', 'AMPARO SALES', NULL, 'Margaret', '2026-03-24 10:18:48', '2026-03-24 10:18:48', NULL, 'AM'),
+(46, 'Cash In', 5420.00, 'JEANNALYN 03/24/2026', 'AMPARO SALES', NULL, 'Margaret', '2026-03-25 01:52:26', '2026-03-25 01:52:26', NULL, 'AM'),
+(47, 'Cash Out', 300.00, 'EXY HARDWARE-SKIM COAT', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-25 05:21:31', '2026-03-25 05:21:31', NULL, 'AM'),
+(48, 'Cash Out', 240.00, 'LALAMOVE BAYAN-SM-OFFICE', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-25 10:15:54', '2026-03-25 10:15:54', NULL, 'AM'),
+(49, 'Cash Out', 2280.00, 'CD OPTIONS-RJ45 & MODEM', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-25 10:16:35', '2026-03-25 10:16:35', NULL, 'AM'),
+(50, 'Cash In', 8000.00, 'CUT OFF SALES AMPARO ', 'AMPARO SALES', NULL, 'Margaret', '2026-03-25 10:18:25', '2026-03-25 10:18:25', NULL, 'AM'),
+(51, 'Cash Out', 800.00, 'CASH OUT BY SIR LEONARD', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-25 10:22:32', '2026-03-25 10:22:32', NULL, 'AM'),
+(52, 'Cash In', 3554.00, 'JEANNALYN 03/25/26', 'AMPARO SALES', NULL, 'Margaret', '2026-03-26 07:19:24', '2026-03-26 07:19:24', NULL, 'PM'),
+(53, 'Cash In', 3684.00, 'BELEN PAYMENT', 'DELIVERY PAYMENT', NULL, 'Margaret', '2026-03-26 10:08:02', '2026-03-26 10:08:02', NULL, 'PM'),
+(54, 'Cash In', 7000.00, 'CUT OFF SALES JEANNALYN', 'AMPARO SALES', NULL, 'Margaret', '2026-03-26 10:08:30', '2026-03-26 10:08:30', NULL, 'PM'),
+(55, 'Cash Out', 35.00, 'STICKER PAPER', 'OTHER EXPENSES', NULL, 'Margaret', '2026-03-26 10:17:41', '2026-03-26 10:17:41', NULL, 'PM');
 
 -- --------------------------------------------------------
 
@@ -1976,12 +2023,12 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `username`, `email`, `mobile`, `address`, `full_name`, `role`, `employee_role`, `store_id`, `permissions`, `can_login`, `password`, `remember_token`, `created_at`, `updated_at`, `employee_profile`, `shift`) VALUES
 (1, 'admin', 'admin@lztmeat.com', NULL, NULL, 'System Administrator', 'ADMIN', NULL, NULL, '\"[\\\"all\\\"]\"', 1, '$2y$12$YbfvgJJ1dnBSo5rHyHvDU.ndvorINxZBIC2ucyCbty0LwxJMG.0dS', NULL, '2026-01-30 10:56:01', '2026-01-30 10:56:01', NULL, NULL),
 (18, 'Noli', NULL, '09994072297', 'DUNGON STREET AMPARO SUBDIVISION CALOOCAN CITY', 'Noli', 'EMPLOYEE', NULL, 1, '[\"production\",\"production_pack\",\"production_cook\"]', 1, '$2y$12$SNWWcP8KKY15vCcekLHx8e98lWrYi6DhAlCOHJH9UGMOr6LDdQODW', NULL, '2026-03-02 08:56:38', '2026-03-16 15:28:03', '{\"dateOfBirth\":\"1975-11-28\",\"gender\":\"Male\",\"civilStatus\":\"Married\",\"nationality\":\"FILIPINO\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"33-5794729-5\",\"philhealthNumber\":\"19-052274417-8\",\"tinNumber\":\"914-533-632\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"CARMELA OGAHAYON\",\"emergencyContactRelationship\":\"WIFE\",\"emergencyContactPhone\":\"\",\"dateHired\":\"2025-11-01\",\"position\":\"PRODUCTION STAFF\",\"department\":\"SIOMAI\",\"education\":[]}', NULL),
-(22, 'Calen', NULL, '09514731424', '', 'Calen', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"reports\",\"sales\"]', 1, '$2y$12$cVGKYigqrLR5HLyCvMO.iuXT89FvzkILTJAty0YjHruqIKDnlkJPO', NULL, '2026-03-04 03:17:13', '2026-03-18 09:10:13', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'AM'),
-(32, 'Eden', NULL, '09514731424', '', 'Eden', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$GQAc5mxC.g7T/s7i1BgXLevWwarZnHpBvGCaOunZdnuLJGHwT2JI.', NULL, '2026-03-09 01:47:50', '2026-03-16 15:19:42', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
+(22, 'Calen', NULL, '09514731424', '', 'Calen', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"reports\",\"sales\"]', 1, '$2y$12$cVGKYigqrLR5HLyCvMO.iuXT89FvzkILTJAty0YjHruqIKDnlkJPO', NULL, '2026-03-04 03:17:13', '2026-03-25 05:52:16', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'AM'),
+(32, 'Eden', NULL, '09514731424', '', 'Eden', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$GQAc5mxC.g7T/s7i1BgXLevWwarZnHpBvGCaOunZdnuLJGHwT2JI.', NULL, '2026-03-09 01:47:50', '2026-03-25 06:42:47', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'PM'),
 (33, 'Jeannalyn', NULL, '09514731424', '', 'Jeannalyn', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$HMkmVk/1RQgtnv92QERW5uzSq3wfqG6ggl1l79GdzXyVTfZ6Oz0jK', NULL, '2026-03-09 01:50:25', '2026-03-16 15:21:43', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"Filipino\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
 (34, 'Maryrose', NULL, '09514731424', '', 'Maryrose', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$ltsr5vXZAGrN55277bTObOfTVPNA.OSU3U.zS6E4btsGzdi.A7o3q', NULL, '2026-03-09 01:54:55', '2026-03-15 05:35:38', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
 (35, 'Reyrieza', NULL, '09514731424', '', 'Reyrieza', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$Sk.9CLZKm1CXwbKwkmH6l.hfkRA8OffkQu70ykzFe2V3RfTIKFrNW', NULL, '2026-03-09 01:55:54', '2026-03-16 15:30:45', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
-(36, 'Sherryl', NULL, '09514731424', '', 'Sherryl', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$lLfr0hiImB78ty8wodV5suRnLgOGpvjFrY7zTsBUK0li5FxMyp6dO', NULL, '2026-03-09 01:57:04', '2026-03-16 15:31:07', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
+(36, 'Sherryl', NULL, '09514731424', '', 'Sherryl', 'EMPLOYEE', NULL, NULL, '[\"pos\",\"transfer\",\"sales\",\"reports\"]', 1, '$2y$12$lLfr0hiImB78ty8wodV5suRnLgOGpvjFrY7zTsBUK0li5FxMyp6dO', NULL, '2026-03-09 01:57:04', '2026-03-25 06:18:27', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'PM'),
 (38, 'Norilyn', NULL, '09608115448', '', 'Norilyn', 'EMPLOYEE', NULL, NULL, '[\"transfer\",\"production\",\"production_pack\",\"production_cook\"]', 1, '$2y$12$HpIs1oLn/FnT4o.8cxLS9ub3S.fXZJrEdeyVFnzGGL3gFWJc5k3y.', NULL, '2026-03-09 03:06:41', '2026-03-16 15:29:31', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
 (39, 'Rejean', NULL, '09608115448', '', 'Rejean', 'EMPLOYEE', NULL, NULL, '[\"transfer\",\"production\",\"production_pack\"]', 1, '$2y$12$TH5nIXzdYPy0ZTFzlMxL8OULSQohuHg80uJ061.MMnyj8tkOhazKC', NULL, '2026-03-09 03:07:07', '2026-03-16 15:45:26', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
 (40, 'Julian', NULL, '09608115448', '', 'Julian', 'EMPLOYEE', NULL, NULL, '[\"production\",\"production_pack\",\"production_cook\",\"transfer\"]', 1, '$2y$12$KhuyCEcASI54G.SaM78/Ue.NcfI3xKVvd0SeMSl35nDm3UMpmieIK', NULL, '2026-03-09 03:07:37', '2026-03-16 15:23:26', '{\"dateOfBirth\":\"\",\"gender\":\"Male\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
@@ -1989,7 +2036,7 @@ INSERT INTO `users` (`id`, `username`, `email`, `mobile`, `address`, `full_name`
 (42, 'Analyn', NULL, '09608115448', '', 'Analyn', 'EMPLOYEE', NULL, 6, '[\"transfer\",\"production\",\"production_pack\",\"production_cook\"]', 1, '$2y$12$8P1rA.zboXF0oNd/gJlEEOyMAcPyfTsbu15PVbKHf43l1jzq0XVGe', NULL, '2026-03-09 03:09:44', '2026-03-16 23:31:44', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL),
 (43, 'Bruce', NULL, '09514731424', '', 'Bruce', 'EMPLOYEE', NULL, NULL, '[\"inventory\",\"transfer\"]', 1, '$2y$12$VLE1kWE9GSpa9LaEc6oTmOglZyhSECZbpOrvtHiIuo8F85pmW/a9K', NULL, '2026-03-09 03:10:40', '2026-03-16 15:18:09', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'AM'),
 (44, 'Wilson', NULL, '09608115448', '', 'Wilson', 'EMPLOYEE', NULL, NULL, '[\"production\",\"production_cook\",\"ingredients\",\"transfer\",\"inventory\",\"admin_perm_inventory_add\",\"admin_perm_transfer_new\",\"admin_perm_ingredients_edit\"]', 1, '$2y$12$VRn5sRXstkOodrgzG3EX8.sfSDzKwvPrISzi8vJbGFSjDj/sLGf4K', NULL, '2026-03-09 03:11:57', '2026-03-19 15:07:36', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'AM'),
-(45, 'Margaret', NULL, '09264030439', 'Camarin Caloocan City', 'Margaret', 'EMPLOYEE', NULL, NULL, '[\"inventory\",\"sales\",\"reports\",\"stores\",\"supplier-invoices\",\"transactions\",\"history\",\"admin_perm_transactions_add\",\"admin_perm_transactions_cashout\",\"admin_perm_suppliers_add\",\"transfer\"]', 1, '$2y$12$B3QJt55bMTzxyZqkx73/deESextQ99JMzoJjDH1Jmh3NcgvbwVnQO', NULL, '2026-03-13 06:28:41', '2026-03-23 02:44:12', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"Single\",\"nationality\":\"FILIPINO\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'AM'),
+(45, 'Margaret', NULL, '09264030439', 'Camarin Caloocan City', 'Margaret', 'EMPLOYEE', NULL, NULL, '[\"inventory\",\"sales\",\"reports\",\"stores\",\"supplier-invoices\",\"transactions\",\"history\",\"admin_perm_transactions_add\",\"admin_perm_transactions_cashout\",\"admin_perm_suppliers_add\",\"transfer\"]', 1, '$2y$12$B3QJt55bMTzxyZqkx73/deESextQ99JMzoJjDH1Jmh3NcgvbwVnQO', NULL, '2026-03-13 06:28:41', '2026-03-26 06:17:45', '{\"dateOfBirth\":\"\",\"gender\":\"Female\",\"civilStatus\":\"Single\",\"nationality\":\"FILIPINO\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', 'PM'),
 (49, 'test', NULL, '09123456789', '', 'test', 'EMPLOYEE', NULL, NULL, '[\"production\"]', 1, '$2y$12$2ndH8bBLdD.5kp13v18gIeeKPiuG3cUfV/KLnMEKngkG997Xs08B.', NULL, '2026-03-16 15:49:52', '2026-03-17 13:27:40', '{\"dateOfBirth\":\"\",\"gender\":\"\",\"civilStatus\":\"\",\"nationality\":\"\",\"bloodType\":\"\",\"height\":\"\",\"weight\":\"\",\"sssNumber\":\"\",\"philhealthNumber\":\"\",\"tinNumber\":\"\",\"pagibigNumber\":\"\",\"emergencyContactName\":\"\",\"emergencyContactRelationship\":\"\",\"emergencyContactPhone\":\"\",\"dateHired\":\"\",\"position\":\"\",\"department\":\"\",\"education\":[]}', NULL);
 
 --
@@ -2332,7 +2379,7 @@ ALTER TABLE `ingredients`
 -- AUTO_INCREMENT for table `ingredient_categories`
 --
 ALTER TABLE `ingredient_categories`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `inventory`
@@ -2458,19 +2505,19 @@ ALTER TABLE `suppliers`
 -- AUTO_INCREMENT for table `supplier_invoices`
 --
 ALTER TABLE `supplier_invoices`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `system_history`
 --
 ALTER TABLE `system_history`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=467;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=493;
 
 --
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
 
 --
 -- AUTO_INCREMENT for table `transfers`

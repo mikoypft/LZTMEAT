@@ -327,6 +327,24 @@ export async function deleteIngredientCategory(id: string): Promise<void> {
   });
 }
 
+export async function reorderIngredientCategories(
+  order: { id: string; sortOrder: number }[],
+): Promise<void> {
+  await apiRequest<{ success: boolean }>("/ingredient-categories/reorder", {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
+}
+
+export async function reorderIngredients(
+  order: { id: string; sortOrder: number }[],
+): Promise<void> {
+  await apiRequest<{ success: boolean }>("/ingredients/reorder", {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
+}
+
 // Product Mix Categories API
 export async function getProductMixCategories(): Promise<Category[]> {
   const data = await apiRequest<{ categories: Category[] }>(
@@ -519,6 +537,7 @@ export interface Ingredient {
   name: string;
   code: string;
   category: string;
+  categoryId?: string | null;
   unit: string;
   stock: number;
   minStockLevel: number;
@@ -528,6 +547,7 @@ export interface Ingredient {
   supplierId?: string | number;
   lastUpdated: string;
   expiryDate?: string | null;
+  sortOrder?: number;
 }
 
 // ==================== STOCK ADJUSTMENT API ====================
