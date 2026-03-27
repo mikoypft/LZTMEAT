@@ -388,6 +388,8 @@ try {
     try { $pdo->exec("ALTER TABLE ingredient_categories ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
     // Add sort_order to ingredients if not exists
     try { $pdo->exec("ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
+    // Add sort_order to product_mix_category_default_ingredients if not exists
+    try { $pdo->exec("ALTER TABLE product_mix_category_default_ingredients ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
 
     // Seed missing raw materials - only insert if not already present by name
     try {
@@ -1648,7 +1650,7 @@ $routes = [
                 FROM product_mix_category_default_ingredients pmcdi
                 JOIN ingredients i ON pmcdi.ingredient_id = i.id
                 WHERE pmcdi.product_mix_category_id = ?
-                ORDER BY pmcdi.id
+                ORDER BY pmcdi.sort_order ASC, pmcdi.id ASC
             ');
             $stmt->execute([$categoryId]);
             $defaults = $stmt->fetchAll();
@@ -1664,6 +1666,7 @@ $routes = [
                         'ingredientUnit' => $d['ingredient_unit'],
                         'ingredientStock' => (float)$d['ingredient_stock'],
                         'quantity' => null,
+                        'sortOrder' => (int)$d['sort_order'],
                     ];
                 }, $defaults),
             ];
@@ -1693,17 +1696,18 @@ $routes = [
             $stmt = $pdo->prepare('DELETE FROM product_mix_category_default_ingredients WHERE product_mix_category_id = ?');
             $stmt->execute([$categoryId]);
             
-            // Insert new defaults
+            // Insert new defaults with sort_order
             $stmt = $pdo->prepare('
-                INSERT INTO product_mix_category_default_ingredients (product_mix_category_id, ingredient_id, quantity, created_at, updated_at)
-                VALUES (?, ?, NULL, NOW(), NOW())
+                INSERT INTO product_mix_category_default_ingredients (product_mix_category_id, ingredient_id, quantity, sort_order, created_at, updated_at)
+                VALUES (?, ?, NULL, ?, NOW(), NOW())
             ');
             
+            $sortOrder = 0;
             foreach ($ingredients as $ing) {
                 $ingredientId = $ing['ingredientId'] ?? null;
                 
                 if ($ingredientId) {
-                    $stmt->execute([$categoryId, $ingredientId]);
+                    $stmt->execute([$categoryId, $ingredientId, $sortOrder++]);
                 }
             }
             
@@ -1713,7 +1717,7 @@ $routes = [
                 FROM product_mix_category_default_ingredients pmcdi
                 JOIN ingredients i ON pmcdi.ingredient_id = i.id
                 WHERE pmcdi.product_mix_category_id = ?
-                ORDER BY pmcdi.id
+                ORDER BY pmcdi.sort_order ASC, pmcdi.id ASC
             ');
             $stmt->execute([$categoryId]);
             $defaults = $stmt->fetchAll();
@@ -1735,6 +1739,7 @@ $routes = [
                         'ingredientUnit' => $d['ingredient_unit'],
                         'ingredientStock' => (float)$d['ingredient_stock'],
                         'quantity' => null,
+                        'sortOrder' => (int)$d['sort_order'],
                     ];
                 }, $defaults),
             ];

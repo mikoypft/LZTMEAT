@@ -450,6 +450,18 @@ export async function deleteProductMixItem(itemId: string): Promise<void> {
   });
 }
 
+export interface DefaultIngredient {
+  id: string;
+  categoryId: string;
+  ingredientId: string;
+  ingredientName: string;
+  ingredientCode: string;
+  ingredientUnit: string;
+  ingredientStock: number;
+  quantity: number | null;
+  sortOrder?: number;
+}
+
 export async function getProductMixCategoryDefaultIngredients(
   categoryId: string,
 ): Promise<DefaultIngredient[]> {

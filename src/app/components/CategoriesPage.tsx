@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Trash2,
@@ -8,6 +8,7 @@ import {
   Package,
   Beef,
   Edit2,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -36,6 +37,9 @@ import {
   type Ingredient,
   type DefaultIngredient,
 } from "@/utils/api";
+import { useDrag, useDrop, DndProvider } from "react-dnd";
+import { MultiBackend } from "react-dnd-multi-backend";
+import { HTML5toTouch } from "rdndmb-html5-to-touch";
 
 export function CategoriesPage({
   userRole,
@@ -629,6 +633,92 @@ export function CategoriesPage({
   );
 }
 
+const DEFAULT_ING_DND_TYPE = "DEFAULT_INGREDIENT_ROW";
+
+function DraggableDefaultIngredientRow({
+  ing,
+  index,
+  allIngredients,
+  onMove,
+  onUpdate,
+  onRemove,
+}: {
+  ing: { ingredientId: string };
+  index: number;
+  allIngredients: Ingredient[];
+  onMove: (dragIdx: number, hoverIdx: number) => void;
+  onUpdate: (index: number, field: string, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ isDragging }, drag, dragPreview] = useDrag({
+    type: DEFAULT_ING_DND_TYPE,
+    item: { index },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
+  const [, drop] = useDrop<{ index: number }, void, {}>({    accept: DEFAULT_ING_DND_TYPE,
+    hover(dragItem, monitor) {
+      if (!ref.current) return;
+      const dragIndex = dragItem.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY =
+        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      onMove(dragIndex, hoverIndex);
+      dragItem.index = hoverIndex;
+    },
+  });
+
+  dragPreview(drop(ref));
+
+  return (
+    <div
+      ref={ref}
+      className={`flex gap-2 items-center transition-opacity ${
+        isDragging ? "opacity-40" : "opacity-100"
+      }`}
+    >
+      <div
+        ref={drag as any}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-purple-600 flex-shrink-0 touch-none"
+        title="Drag to reorder"
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+      <div className="flex-1">
+        <select
+          value={ing.ingredientId}
+          onChange={(e) => onUpdate(index, "ingredientId", e.target.value)}
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+        >
+          <option value="">Select Ingredient</option>
+          {allIngredients.map((ingredient) => (
+            <option key={ingredient.id} value={ingredient.id}>
+              {ingredient.name} ({ingredient.unit})
+            </option>
+          ))}
+        </select>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        className="p-2 hover:bg-red-100 text-red-600 rounded flex-shrink-0"
+        title="Remove"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 function AddCategoryModal({
   type,
   category,
@@ -777,6 +867,13 @@ function AddCategoryModal({
   ) => {
     const updated = [...defaultIngredients];
     updated[index] = { ...updated[index], [field]: value };
+    setDefaultIngredients(updated);
+  };
+
+  const moveDefaultIngredient = (dragIdx: number, hoverIdx: number) => {
+    const updated = [...defaultIngredients];
+    const [removed] = updated.splice(dragIdx, 1);
+    updated.splice(hoverIdx, 0, removed);
     setDefaultIngredients(updated);
   };
 
@@ -1086,40 +1183,21 @@ function AddCategoryModal({
                   No default ingredients set. Click "Add" to define ingredients.
                 </p>
               ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {defaultIngredients.map((ing, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <div className="flex-1">
-                        <select
-                          value={ing.ingredientId}
-                          onChange={(e) =>
-                            updateDefaultIngredient(
-                              index,
-                              "ingredientId",
-                              e.target.value,
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                        >
-                          <option value="">Select Ingredient</option>
-                          {allIngredients.map((ingredient) => (
-                            <option key={ingredient.id} value={ingredient.id}>
-                              {ingredient.name} ({ingredient.unit})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeIngredientRow(index)}
-                        className="p-2 hover:bg-red-100 text-red-600 rounded"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <DndProvider backend={MultiBackend} options={HTML5toTouch}>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {defaultIngredients.map((ing, index) => (
+                      <DraggableDefaultIngredientRow
+                        key={index}
+                        ing={ing}
+                        index={index}
+                        allIngredients={allIngredients}
+                        onMove={moveDefaultIngredient}
+                        onUpdate={updateDefaultIngredient}
+                        onRemove={removeIngredientRow}
+                      />
+                    ))}
+                  </div>
+                </DndProvider>
               )}
             </div>
           )}
