@@ -69,6 +69,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [reference, setReference] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [shiftFilter, setShiftFilter] = useState<"" | "AM" | "PM">("");
   const [cashOutConfirm, setCashOutConfirm] = useState<Transaction | null>(
     null,
   );
@@ -243,13 +244,22 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
   };
 
-  // Filter by date range
-  const filteredTransactions = transactions.filter((t) => {
-    const tDate = new Date(t.timestamp).toISOString().split("T")[0];
-    const matchesFrom = !dateFrom || tDate >= dateFrom;
-    const matchesTo = !dateTo || tDate <= dateTo;
-    return matchesFrom && matchesTo;
-  });
+  // Filter by date range and shift, then sort latest to oldest
+  const filteredTransactions = transactions
+    .filter((t) => {
+      const tDate = new Date(t.timestamp).toISOString().split("T")[0];
+      const matchesFrom = !dateFrom || tDate >= dateFrom;
+      const matchesTo = !dateTo || tDate <= dateTo;
+      const matchesShift =
+        !shiftFilter ||
+        (shiftFilter === "AM" && t.shift === "AM") ||
+        (shiftFilter === "PM" && t.shift === "PM");
+      return matchesFrom && matchesTo && matchesShift;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
 
   // Calculate totals
   const totalCashIn = filteredTransactions
@@ -352,7 +362,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Date Filter */}
+      {/* Date & Shift Filter */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700">From:</label>
@@ -372,15 +382,28 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
           />
         </div>
-        {(dateFrom || dateTo) && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Shift:</label>
+          <select
+            value={shiftFilter}
+            onChange={(e) => setShiftFilter(e.target.value as "" | "AM" | "PM")}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          >
+            <option value="">All Shifts</option>
+            <option value="AM">AM Shift</option>
+            <option value="PM">PM Shift</option>
+          </select>
+        </div>
+        {(dateFrom || dateTo || shiftFilter) && (
           <button
             onClick={() => {
               setDateFrom("");
               setDateTo("");
+              setShiftFilter("");
             }}
             className="text-sm text-red-600 hover:text-red-800 underline"
           >
-            Clear dates
+            Clear filters
           </button>
         )}
       </div>
@@ -438,165 +461,109 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                   </td>
                 </tr>
               ) : (
-                (() => {
-                  const amTx = filteredTransactions.filter(
-                    (t) => t.shift === "AM",
-                  );
-                  const pmTx = filteredTransactions.filter(
-                    (t) => t.shift === "PM",
-                  );
-                  const untagged = filteredTransactions.filter((t) => !t.shift);
-
-                  const renderRows = (items: Transaction[]) =>
-                    items.map((transaction) => (
-                      <tr key={transaction.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(transaction.timestamp).toLocaleString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
-                              transaction.type === "Cash In"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {transaction.type === "Cash In" ? (
-                              <TrendingUp className="w-3 h-3" />
-                            ) : (
-                              <TrendingDown className="w-3 h-3" />
-                            )}
-                            {transaction.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {transaction.category}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {transaction.description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {transaction.reference || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span
-                            className={`text-sm font-semibold ${
-                              transaction.type === "Cash In"
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {transaction.type === "Cash In" ? "+" : "-"}₱
-                            {transaction.amount.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                            })}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {transaction.createdBy}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Fixed two-slot layout: Edit left, Cash Out right */}
-                          <div className="flex items-center gap-2">
-                            {/* Left slot — Edit */}
-                            <div className="w-[72px]">
-                              {canEdit && (
-                                <button
-                                  onClick={() => openEditModal(transaction)}
-                                  className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  Edit
-                                </button>
-                              )}
-                            </div>
-                            {/* Right slot — Cash Out */}
-                            <div className="w-[90px]">
-                              {transaction.type === "Cash In" &&
-                                canCashOut &&
-                                (() => {
-                                  const alreadyCashedOut = transactions.some(
-                                    (t) =>
-                                      t.type === "Cash Out" &&
-                                      t.sourceTransactionId === transaction.id,
-                                  );
-                                  return alreadyCashedOut ? (
-                                    <span className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
-                                      <ArrowDownCircle className="w-3.5 h-3.5" />
-                                      Cashed Out
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() =>
-                                        setCashOutConfirm(transaction)
-                                      }
-                                      className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
-                                    >
-                                      <ArrowDownCircle className="w-3.5 h-3.5" />
-                                      Cash Out
-                                    </button>
-                                  );
-                                })()}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ));
-
-                  const renderGroupHeader = (
-                    label: string,
-                    count: number,
-                    colorClass: string,
-                  ) => (
-                    <tr key={`hdr-${label}`} className={colorClass}>
-                      <td
-                        colSpan={8}
-                        className="px-6 py-2 text-xs font-semibold uppercase tracking-wider"
+                filteredTransactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(transaction.timestamp).toLocaleString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          transaction.type === "Cash In"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
-                        {label}{" "}
-                        <span className="font-normal opacity-70">
-                          ({count})
-                        </span>
-                      </td>
-                    </tr>
-                  );
-
-                  return (
-                    <>
-                      {amTx.length > 0 &&
-                        renderGroupHeader(
-                          "AM Shift",
-                          amTx.length,
-                          "bg-blue-50 text-blue-700 border-b border-blue-100",
+                        {transaction.type === "Cash In" ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3" />
                         )}
-                      {renderRows(amTx)}
-                      {pmTx.length > 0 &&
-                        renderGroupHeader(
-                          "PM Shift",
-                          pmTx.length,
-                          "bg-orange-50 text-orange-700 border-b border-orange-100",
-                        )}
-                      {renderRows(pmTx)}
-                      {untagged.length > 0 &&
-                        (amTx.length > 0 || pmTx.length > 0) &&
-                        renderGroupHeader(
-                          "Unassigned",
-                          untagged.length,
-                          "bg-gray-50 text-gray-500 border-b border-gray-100",
-                        )}
-                      {renderRows(untagged)}
-                    </>
-                  );
-                })()
+                        {transaction.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {transaction.category}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {transaction.description}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {transaction.reference || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <span
+                        className={`text-sm font-semibold ${
+                          transaction.type === "Cash In"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {transaction.type === "Cash In" ? "+" : "-"}₱
+                        {transaction.amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {transaction.createdBy}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {/* Fixed two-slot layout: Edit left, Cash Out right */}
+                      <div className="flex items-center gap-2">
+                        {/* Left slot — Edit */}
+                        <div className="w-[72px]">
+                          {canEdit && (
+                            <button
+                              onClick={() => openEditModal(transaction)}
+                              className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                        {/* Right slot — Cash Out */}
+                        <div className="w-[90px]">
+                          {transaction.type === "Cash In" &&
+                            canCashOut &&
+                            (() => {
+                              const alreadyCashedOut = transactions.some(
+                                (t) =>
+                                  t.type === "Cash Out" &&
+                                  t.sourceTransactionId === transaction.id,
+                              );
+                              return alreadyCashedOut ? (
+                                <span className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg text-xs font-medium cursor-not-allowed">
+                                  <ArrowDownCircle className="w-3.5 h-3.5" />
+                                  Cashed Out
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    setCashOutConfirm(transaction)
+                                  }
+                                  className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  <ArrowDownCircle className="w-3.5 h-3.5" />
+                                  Cash Out
+                                </button>
+                              );
+                            })()}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
