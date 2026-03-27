@@ -36,7 +36,8 @@ import {
 } from "@/utils/api";
 import { toast } from "sonner";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
+import { MultiBackend } from "react-dnd-multi-backend";
+import { HTML5toTouch } from "rdndmb-html5-to-touch";
 
 interface UserData {
   id: string;
@@ -547,7 +548,7 @@ export function IngredientsInventoryPage({
         )}
 
         {/* Grouped Category Sections with Drag and Drop */}
-        <DndProvider backend={HTML5Backend}>
+        <DndProvider backend={MultiBackend} options={HTML5toTouch}>
           <div className="space-y-3">
             {orderedCategoryNames.map((catName, catIdx) => {
               const catIngredients = filteredIngredients.filter(
