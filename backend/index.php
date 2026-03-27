@@ -390,22 +390,31 @@ try {
     try { $pdo->exec("ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0"); } catch(Exception $e) {}
 
     // Seed missing raw materials - only insert if not already present by name
-    $missingIngredients = [
-        ['Isaw', 'Raw Materials', 18, 'kg'],
-        ['Monaco', 'Packaging Materials', 19, 'pcs'],
-        ['Oil', 'Raw Materials', 18, 'L'],
-    ];
-    foreach ($missingIngredients as $mi) {
-        $chk = $pdo->prepare('SELECT id FROM ingredients WHERE name = ?');
-        $chk->execute([$mi[0]]);
-        if (!$chk->fetch()) {
-            // Generate next code
-            $codeStmt = $pdo->query("SELECT MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)) as mx FROM ingredients WHERE code LIKE 'ING-%'");
-            $codeRow = $codeStmt->fetch();
-            $nextCode = 'ING-' . str_pad(($codeRow['mx'] ?? 0) + 1, 3, '0', STR_PAD_LEFT);
-            $ins = $pdo->prepare('INSERT INTO ingredients (name, code, category_id, category, unit, stock, min_stock_level, reorder_point, cost_per_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, NOW(), NOW())');
-            $ins->execute([$mi[0], $nextCode, $mi[2], $mi[1], $mi[3]]);
+    try {
+        $missingIngredients = [
+            ['Isaw', 'Raw Materials', 'kg'],
+            ['Monaco', 'Packaging Materials', 'pcs'],
+            ['Oil', 'Raw Materials', 'L'],
+        ];
+        foreach ($missingIngredients as $mi) {
+            $chk = $pdo->prepare('SELECT id FROM ingredients WHERE name = ?');
+            $chk->execute([$mi[0]]);
+            if (!$chk->fetch()) {
+                // Look up category_id by name (safer than hardcoded IDs)
+                $catStmt = $pdo->prepare('SELECT id FROM ingredient_categories WHERE name = ? LIMIT 1');
+                $catStmt->execute([$mi[1]]);
+                $catRow = $catStmt->fetch();
+                $catId = $catRow ? $catRow['id'] : null;
+                // Generate next code
+                $codeStmt = $pdo->query("SELECT MAX(CAST(SUBSTRING(code, 5) AS UNSIGNED)) as mx FROM ingredients WHERE code LIKE 'ING-%'");
+                $codeRow = $codeStmt->fetch();
+                $nextCode = 'ING-' . str_pad(($codeRow['mx'] ?? 0) + 1, 3, '0', STR_PAD_LEFT);
+                $ins = $pdo->prepare('INSERT INTO ingredients (name, code, category_id, category, unit, stock, min_stock_level, reorder_point, cost_per_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, NOW(), NOW())');
+                $ins->execute([$mi[0], $nextCode, $catId, $mi[1], $mi[2]]);
+            }
         }
+    } catch (Exception $seedErr) {
+        error_log('Ingredient seed error: ' . $seedErr->getMessage());
     }
 } catch (PDOException $e) {
     $dbConnected = false;
