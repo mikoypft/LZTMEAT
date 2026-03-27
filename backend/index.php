@@ -456,7 +456,7 @@ try {
         // Abbreviation key: Tubig=Water, Vetsin=MSG-Vetsin, Vit.C=Vitamin C, Fat=Giling-fat, B.O.=B.O., Bell p.=Redbell Pepper
         $mixDefaults = [
             'LONGGANISA MIX' => [
-                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Water',
+                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Tvp Gem', 'Water',
                 'Cornstarch', 'Sugar', 'Garlic', 'Alexander', 'Pine Apple Juice', 'Knorr Liquid Seasoning',
                 'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
             ],
@@ -466,12 +466,12 @@ try {
                 'Accord', 'Praque Powder', 'MSG-Vetsin', 'Vitamin C', 'Ham Spice', 'Ham Flavor', 'Multiblend',
             ],
             'GULAY MIX' => [
-                'MDM', 'B.O.', 'Carrots', 'Onion', 'Celery', 'Redbell Pepper', 'Garlic', 'TVP Fine', 'Water',
+                'MDM', 'B.O.', 'Carrots', 'Onion', 'Celery', 'Redbell Pepper', 'Garlic', 'TVP Fine', 'Tvp Gem', 'Water',
                 'Cornstarch', 'Sugar', 'Alexander', 'Knorr Liquid Seasoning',
                 'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
             ],
             'SKINLESS MIX' => [
-                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Water',
+                'MDM', 'Giling-fat', 'B.O.', 'TVP Fine', 'Tvp Gem', 'Water',
                 'Cornstarch', 'Sugar', 'Garlic', 'Alexander', 'Knorr Liquid Seasoning', 'Pine Apple Juice',
                 'Accord', 'Praque Powder', 'MSG-Vetsin', 'Sodium',
             ],
@@ -506,6 +506,32 @@ try {
         }
     } catch (Exception $seedMixErr) {
         error_log('Mix category default ingredient seed error: ' . $seedMixErr->getMessage());
+    }
+
+    // Patch: ensure Tvp Gem is present in every category that already has TVP Fine
+    try {
+        $tvpFineId = $getIngId('TVP Fine');
+        $tvpGemId  = $getIngId('Tvp Gem');
+        if ($tvpFineId && $tvpGemId) {
+            $catsStmt = $pdo->prepare('SELECT DISTINCT product_mix_category_id FROM product_mix_category_default_ingredients WHERE ingredient_id = ?');
+            $catsStmt->execute([$tvpFineId]);
+            $catIds = $catsStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $checkStmt  = $pdo->prepare('SELECT COUNT(*) FROM product_mix_category_default_ingredients WHERE product_mix_category_id = ? AND ingredient_id = ?');
+            $maxSoStmt  = $pdo->prepare('SELECT COALESCE(MAX(sort_order), -1) FROM product_mix_category_default_ingredients WHERE product_mix_category_id = ?');
+            $patchStmt  = $pdo->prepare('INSERT INTO product_mix_category_default_ingredients (product_mix_category_id, ingredient_id, quantity, sort_order, created_at, updated_at) VALUES (?, ?, NULL, ?, NOW(), NOW())');
+
+            foreach ($catIds as $catId) {
+                $checkStmt->execute([$catId, $tvpGemId]);
+                if ((int)$checkStmt->fetchColumn() === 0) {
+                    $maxSoStmt->execute([$catId]);
+                    $nextSo = (int)$maxSoStmt->fetchColumn() + 1;
+                    $patchStmt->execute([$catId, $tvpGemId, $nextSo]);
+                }
+            }
+        }
+    } catch (Exception $patchGemErr) {
+        error_log('Tvp Gem patch error: ' . $patchGemErr->getMessage());
     }
 
 } catch (PDOException $e) {
