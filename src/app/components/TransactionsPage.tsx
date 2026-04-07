@@ -244,9 +244,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
   };
 
-  // Filter by date range and shift, then sort latest to oldest
+  // Filter by date range and shift; hide quick cash-out records (those created via the
+  // "Cash Out" button on a Cash In row — identified by having a sourceTransactionId)
+  // then sort latest to oldest
   const filteredTransactions = transactions
     .filter((t) => {
+      if (t.sourceTransactionId) return false;
       const tDate = new Date(t.timestamp).toISOString().split("T")[0];
       const matchesFrom = !dateFrom || tDate >= dateFrom;
       const matchesTo = !dateTo || tDate <= dateTo;
