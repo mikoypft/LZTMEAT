@@ -244,32 +244,38 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     }
   };
 
-  // Filter by date range and shift; hide quick cash-out records (those created via the
-  // "Cash Out" button on a Cash In row — identified by having a sourceTransactionId)
-  // then sort latest to oldest
+  // Helper: check if a transaction matches the active date/shift filters
+  const matchesFilters = (t: Transaction) => {
+    const tDate = new Date(t.timestamp).toISOString().split("T")[0];
+    const matchesFrom = !dateFrom || tDate >= dateFrom;
+    const matchesTo = !dateTo || tDate <= dateTo;
+    const matchesShift =
+      !shiftFilter ||
+      (shiftFilter === "AM" && t.shift === "AM") ||
+      (shiftFilter === "PM" && t.shift === "PM");
+    return matchesFrom && matchesTo && matchesShift;
+  };
+
+  // Display list: hide quick cash-out records (those created via the "Cash Out" button
+  // on a Cash In row — identified by having a sourceTransactionId) to avoid showing
+  // duplicate-looking rows, then sort latest to oldest.
   const filteredTransactions = transactions
-    .filter((t) => {
-      if (t.sourceTransactionId) return false;
-      const tDate = new Date(t.timestamp).toISOString().split("T")[0];
-      const matchesFrom = !dateFrom || tDate >= dateFrom;
-      const matchesTo = !dateTo || tDate <= dateTo;
-      const matchesShift =
-        !shiftFilter ||
-        (shiftFilter === "AM" && t.shift === "AM") ||
-        (shiftFilter === "PM" && t.shift === "PM");
-      return matchesFrom && matchesTo && matchesShift;
-    })
+    .filter((t) => !t.sourceTransactionId && matchesFilters(t))
     .sort(
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 
-  // Calculate totals
-  const totalCashIn = filteredTransactions
+  // Totals must include ALL matching transactions — including quick-cash-out records
+  // (sourceTransactionId != null). Excluding them causes the system total to be lower
+  // than the actual cash-out amount recorded, which is why totals don't match the logbook.
+  const allFilteredForTotals = transactions.filter(matchesFilters);
+
+  const totalCashIn = allFilteredForTotals
     .filter((t) => t.type === "Cash In")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalCashOut = filteredTransactions
+  const totalCashOut = allFilteredForTotals
     .filter((t) => t.type === "Cash Out")
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -467,16 +473,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                 filteredTransactions.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(transaction.timestamp).toLocaleString(
-                        "en-US",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
+                      {new Date(transaction.timestamp).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -552,9 +555,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                                 </span>
                               ) : (
                                 <button
-                                  onClick={() =>
-                                    setCashOutConfirm(transaction)
-                                  }
+                                  onClick={() => setCashOutConfirm(transaction)}
                                   className="inline-flex items-center gap-1 w-full justify-center px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-medium transition-colors"
                                 >
                                   <ArrowDownCircle className="w-3.5 h-3.5" />
