@@ -9,7 +9,6 @@ import {
   FileText,
   ArrowDownCircle,
   Pencil,
-  Trash2,
 } from "lucide-react";
 import { API_BASE_URL, getTransactionCategories } from "../../utils/api";
 import { toast } from "sonner";
@@ -42,8 +41,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     isAdmin || !!user?.permissions?.includes("admin_perm_transactions_edit");
   const canCashOut =
     isAdmin || !!user?.permissions?.includes("admin_perm_transactions_cashout");
-  const canDelete =
-    isAdmin || !!user?.permissions?.includes("admin_perm_transactions_delete");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -77,10 +74,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
     null,
   );
   const [cashOutLoading, setCashOutLoading] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(
-    null,
-  );
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Edit state
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
@@ -248,38 +241,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
       toast.error("Error recording cash out");
     } finally {
       setCashOutLoading(false);
-    }
-  };
-
-  const handleDeleteTransaction = async () => {
-    if (!deleteConfirm) return;
-    setDeleteLoading(true);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/transactions/${deleteConfirm.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            ...(user?.id ? { "X-User-ID": String(user.id) } : {}),
-            ...(user?.fullName || user?.username
-              ? { "X-User-Name": user.fullName || user.username }
-              : {}),
-          },
-        },
-      );
-      if (response.ok) {
-        await fetchTransactions();
-        setDeleteConfirm(null);
-        toast.success("Transaction deleted");
-      } else {
-        toast.error("Failed to delete transaction");
-      }
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-      toast.error("Error deleting transaction");
-    } finally {
-      setDeleteLoading(false);
     }
   };
 
@@ -563,9 +524,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                       {transaction.createdBy}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {/* Fixed slot layout: Edit, Cash Out, Delete */}
+                      {/* Fixed two-slot layout: Edit left, Cash Out right */}
                       <div className="flex items-center gap-2">
-                        {/* Slot — Edit */}
+                        {/* Left slot — Edit */}
                         <div className="w-[72px]">
                           {canEdit && (
                             <button
@@ -577,7 +538,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                             </button>
                           )}
                         </div>
-                        {/* Slot — Cash Out */}
+                        {/* Right slot — Cash Out */}
                         <div className="w-[90px]">
                           {transaction.type === "Cash In" &&
                             canCashOut &&
@@ -602,18 +563,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                                 </button>
                               );
                             })()}
-                        </div>
-                        {/* Slot — Delete */}
-                        <div className="w-[36px]">
-                          {canDelete && (
-                            <button
-                              onClick={() => setDeleteConfirm(transaction)}
-                              title="Delete transaction"
-                              className="inline-flex items-center justify-center w-full p-1.5 bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -685,75 +634,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
               >
                 {cashOutLoading ? "Recording..." : "Confirm Cash Out"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={() => setDeleteConfirm(null)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-gray-900 mb-1">
-              Delete Transaction
-            </h2>
-            <p className="text-sm text-gray-500 mb-5">
-              This will remove the transaction from totals and the list. It
-              stays in the database for audit purposes and can be recovered
-              if needed.
-            </p>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Type</span>
-                <span className="font-medium text-gray-900">
-                  {deleteConfirm.type}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Category</span>
-                <span className="font-medium text-gray-900">
-                  {deleteConfirm.category}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Description</span>
-                <span className="font-medium text-gray-900 text-right max-w-[60%]">
-                  {deleteConfirm.description}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
-                <span className="text-gray-500 font-medium">Amount</span>
-                <span
-                  className={`font-bold ${deleteConfirm.type === "Cash In" ? "text-green-600" : "text-red-600"}`}
-                >
-                  ₱
-                  {deleteConfirm.amount.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleteLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteTransaction}
-                disabled={deleteLoading}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
-              >
-                {deleteLoading ? "Deleting..." : "Confirm Delete"}
               </button>
             </div>
           </div>
