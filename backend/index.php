@@ -5538,7 +5538,7 @@ $routes = [
 
     'GET /api/transactions' => function() use ($pdo) {
         try {
-            $stmt = $pdo->query('SELECT * FROM transactions ORDER BY created_at DESC LIMIT 500');
+            $stmt = $pdo->query('SELECT * FROM transactions ORDER BY created_at DESC');
             $transactions = $stmt->fetchAll();
 
             return [
