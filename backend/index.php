@@ -192,12 +192,6 @@ try {
         ");
         // Add shift column if it doesn't exist yet
         try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
-        // Soft-delete columns: deletions from the frontend no longer remove the row, so
-        // every transaction stays in the audit trail even after being "deleted".
-        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
-        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255) NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
-        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_by_ip VARCHAR(64) NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
-        try { $pdo->exec("ALTER TABLE transactions ADD INDEX idx_deleted_at (deleted_at)"); } catch(Exception $e) { /* ignore, likely already exists */ }
     } catch (Exception $tableErr) {
         error_log('transactions table creation: ' . $tableErr->getMessage());
     }
@@ -5566,7 +5560,7 @@ $routes = [
 
     'GET /api/transactions' => function() use ($pdo) {
         try {
-            $stmt = $pdo->query('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC');
+            $stmt = $pdo->query('SELECT * FROM transactions ORDER BY created_at DESC');
             $transactions = $stmt->fetchAll();
 
             return [
@@ -5661,7 +5655,7 @@ $routes = [
             }
 
             // Fetch existing row so we only overwrite supplied fields
-            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL');
+            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ?');
             $existing->execute([$id]);
             $row = $existing->fetch();
             if (!$row) {
@@ -5707,42 +5701,6 @@ $routes = [
         } catch (Exception $e) {
             http_response_code(500);
             return ['error' => 'Failed to update transaction: ' . $e->getMessage()];
-        }
-    },
-
-    'DELETE /api/transactions/{id}' => function() use ($pdo) {
-        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        $id = basename($uri);
-
-        try {
-            // Soft delete: the row is kept (marked deleted_at) instead of being removed,
-            // so it stays visible in the database/audit trail even though it's hidden
-            // from the app's list and excluded from cash-in/cash-out totals.
-            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL');
-            $existing->execute([$id]);
-            $row = $existing->fetch();
-            if (!$row) {
-                http_response_code(404);
-                return ['error' => 'Transaction not found'];
-            }
-
-            $deletedBy = $_SERVER['HTTP_X_USER_NAME'] ?? null;
-            $deletedByIp = getClientIp();
-
-            $stmt = $pdo->prepare('UPDATE transactions SET deleted_at = NOW(), deleted_by = ?, deleted_by_ip = ? WHERE id = ?');
-            $stmt->execute([$deletedBy, $deletedByIp, $id]);
-
-            logSystemHistory($pdo, 'Transaction Deleted', 'Transaction', $id, [
-                'type' => $row['type'],
-                'amount' => (float)$row['amount'],
-                'description' => $row['description'],
-                'category' => $row['category'],
-            ]);
-
-            return ['success' => true, 'message' => 'Transaction deleted'];
-        } catch (Exception $e) {
-            http_response_code(500);
-            return ['error' => 'Failed to delete transaction: ' . $e->getMessage()];
         }
     },
 
