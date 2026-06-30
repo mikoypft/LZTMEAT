@@ -354,7 +354,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
               <p
                 className={`text-3xl font-bold ${netBalance >= 0 ? "text-blue-900" : "text-orange-900"} mt-2`}
               >
-                ₱
+                {netBalance < 0 ? "-₱" : "₱"}
                 {Math.abs(netBalance).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                 })}
