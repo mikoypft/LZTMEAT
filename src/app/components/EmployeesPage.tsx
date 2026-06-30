@@ -85,6 +85,7 @@ const ADMIN_GRANULAR_PERMISSIONS = [
       { id: "admin_perm_transactions_add", label: "Add" },
       { id: "admin_perm_transactions_cashout", label: "Cash Out" },
       { id: "admin_perm_transactions_edit", label: "Edit" },
+      { id: "admin_perm_transactions_delete", label: "Delete" },
     ],
   },
   {

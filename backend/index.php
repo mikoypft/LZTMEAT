@@ -160,6 +160,10 @@ try {
                 INDEX idx_user_id (user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        // Track which IP/device performed each action, so shared logins (e.g. one
+        // "System Administrator" account used by multiple people) can still be told apart.
+        try { $pdo->exec("ALTER TABLE system_history ADD COLUMN IF NOT EXISTS ip_address VARCHAR(64) NULL AFTER user_id"); } catch(Exception $e) { /* ignore */ }
+        try { $pdo->exec("ALTER TABLE system_history ADD COLUMN IF NOT EXISTS user_agent VARCHAR(255) NULL AFTER ip_address"); } catch(Exception $e) { /* ignore */ }
     } catch (Exception $tableErr) {
         error_log('system_history table creation: ' . $tableErr->getMessage());
     }
@@ -188,6 +192,12 @@ try {
         ");
         // Add shift column if it doesn't exist yet
         try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS shift ENUM('AM','PM') NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+        // Soft-delete columns: deletions from the frontend no longer remove the row, so
+        // every transaction stays in the audit trail even after being "deleted".
+        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255) NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+        try { $pdo->exec("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS deleted_by_ip VARCHAR(64) NULL DEFAULT NULL"); } catch(Exception $e) { /* ignore */ }
+        try { $pdo->exec("ALTER TABLE transactions ADD INDEX idx_deleted_at (deleted_at)"); } catch(Exception $e) { /* ignore, likely already exists */ }
     } catch (Exception $tableErr) {
         error_log('transactions table creation: ' . $tableErr->getMessage());
     }
@@ -546,6 +556,20 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Get JSON body for POST/PUT requests
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
+// Resolve the caller's IP, preferring a proxy-forwarded address (Plesk often sits
+// behind a reverse proxy) over REMOTE_ADDR. Used to tell apart actions performed
+// under a shared login (e.g. one "System Administrator" account used by multiple people).
+function getClientIp() {
+    foreach (['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'] as $key) {
+        if (!empty($_SERVER[$key])) {
+            // X-Forwarded-For can be a comma-separated chain; the first entry is the original client
+            $value = trim(explode(',', $_SERVER[$key])[0]);
+            if ($value !== '') return substr($value, 0, 64);
+        }
+    }
+    return null;
+}
+
 // Log a system history entry (best-effort)
 function logSystemHistory($pdo, $action, $entity = null, $entityId = null, $details = null, $userId = null) {
     try {
@@ -559,13 +583,17 @@ function logSystemHistory($pdo, $action, $entity = null, $entityId = null, $deta
         if (is_array($details) && isset($_SERVER['HTTP_X_USER_NAME']) && $_SERVER['HTTP_X_USER_NAME'] !== '') {
             $details['_performedBy'] = $_SERVER['HTTP_X_USER_NAME'];
         }
-        $stmt = $pdo->prepare('INSERT INTO system_history (action, entity, entity_id, details, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
+        $ip = getClientIp();
+        $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
+        $stmt = $pdo->prepare('INSERT INTO system_history (action, entity, entity_id, details, user_id, ip_address, user_agent, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())');
         $stmt->execute([
             $action,
             $entity,
             $entityId,
             $details ? json_encode($details) : null,
             $userId,
+            $ip,
+            $userAgent,
         ]);
     } catch (Exception $e) {
         error_log('system_history insert failed: ' . $e->getMessage());
@@ -5538,7 +5566,7 @@ $routes = [
 
     'GET /api/transactions' => function() use ($pdo) {
         try {
-            $stmt = $pdo->query('SELECT * FROM transactions ORDER BY created_at DESC');
+            $stmt = $pdo->query('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC');
             $transactions = $stmt->fetchAll();
 
             return [
@@ -5633,7 +5661,7 @@ $routes = [
             }
 
             // Fetch existing row so we only overwrite supplied fields
-            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ?');
+            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL');
             $existing->execute([$id]);
             $row = $existing->fetch();
             if (!$row) {
@@ -5687,10 +5715,29 @@ $routes = [
         $id = basename($uri);
 
         try {
-            $stmt = $pdo->prepare('DELETE FROM transactions WHERE id = ?');
-            $stmt->execute([$id]);
+            // Soft delete: the row is kept (marked deleted_at) instead of being removed,
+            // so it stays visible in the database/audit trail even though it's hidden
+            // from the app's list and excluded from cash-in/cash-out totals.
+            $existing = $pdo->prepare('SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL');
+            $existing->execute([$id]);
+            $row = $existing->fetch();
+            if (!$row) {
+                http_response_code(404);
+                return ['error' => 'Transaction not found'];
+            }
 
-            logSystemHistory($pdo, 'Transaction Deleted', 'Transaction', $id, []);
+            $deletedBy = $_SERVER['HTTP_X_USER_NAME'] ?? null;
+            $deletedByIp = getClientIp();
+
+            $stmt = $pdo->prepare('UPDATE transactions SET deleted_at = NOW(), deleted_by = ?, deleted_by_ip = ? WHERE id = ?');
+            $stmt->execute([$deletedBy, $deletedByIp, $id]);
+
+            logSystemHistory($pdo, 'Transaction Deleted', 'Transaction', $id, [
+                'type' => $row['type'],
+                'amount' => (float)$row['amount'],
+                'description' => $row['description'],
+                'category' => $row['category'],
+            ]);
 
             return ['success' => true, 'message' => 'Transaction deleted'];
         } catch (Exception $e) {
