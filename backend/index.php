@@ -5620,6 +5620,25 @@ $routes = [
                 return ['error' => 'Amount must be greater than 0'];
             }
 
+            // Don't allow a Cash Out to push the balance negative. Balance is computed the
+            // same way the frontend totals are: everything since the latest balance reset
+            // (if any), regardless of any date/shift filters currently applied in the UI.
+            if ($type === 'Cash Out') {
+                $resetAt = $pdo->query('SELECT reset_at FROM balance_resets ORDER BY reset_at DESC LIMIT 1')->fetchColumn();
+                $balanceSql = "SELECT
+                    COALESCE(SUM(CASE WHEN type = 'Cash In' THEN amount ELSE 0 END), 0) -
+                    COALESCE(SUM(CASE WHEN type = 'Cash Out' THEN amount ELSE 0 END), 0)
+                    FROM transactions" . ($resetAt ? ' WHERE created_at > ?' : '');
+                $balanceStmt = $pdo->prepare($balanceSql);
+                $balanceStmt->execute($resetAt ? [$resetAt] : []);
+                $currentBalance = (float)$balanceStmt->fetchColumn();
+
+                if ($amount > $currentBalance) {
+                    http_response_code(400);
+                    return ['error' => 'Cash out exceeds available balance (₱' . number_format($currentBalance, 2) . ')'];
+                }
+            }
+
             $stmt = $pdo->prepare('
                 INSERT INTO transactions (type, amount, description, category, reference, created_by, source_transaction_id, shift, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())

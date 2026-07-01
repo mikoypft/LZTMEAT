@@ -184,6 +184,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
       return;
     }
 
+    if (type === "Cash Out" && numAmount > currentAvailableBalance) {
+      toast.error(
+        `Cash out exceeds available balance (₱${currentAvailableBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`,
+      );
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: "POST",
@@ -212,7 +219,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         setReference("");
         toast.success("Transaction added successfully");
       } else {
-        toast.error("Failed to add transaction");
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.error || "Failed to add transaction");
       }
     } catch (error) {
       console.error("Error adding transaction:", error);
@@ -272,6 +280,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   };
 
   const handleQuickCashOut = async (source: Transaction) => {
+    if (source.amount > currentAvailableBalance) {
+      toast.error(
+        `Cash out exceeds available balance (₱${currentAvailableBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })})`,
+      );
+      return;
+    }
     setCashOutLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
@@ -293,7 +307,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         setCashOutConfirm(null);
         toast.success("Cash out transaction recorded successfully");
       } else {
-        toast.error("Failed to record cash out");
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.error || "Failed to record cash out");
       }
     } catch (error) {
       console.error("Error recording quick cash out:", error);
@@ -351,6 +366,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const totalCashOut = allFilteredForTotals
     .filter((t) => t.type === "Cash Out")
     .reduce((sum, t) => sum + t.amount, 0);
+
+  // The real available balance to validate cash-outs against — ignores the date/shift
+  // display filters (only the balance reset matters), matching what the backend checks.
+  const currentAvailableBalance = transactions
+    .filter(
+      (t) => !resetAt || new Date(t.timestamp).getTime() > new Date(resetAt).getTime(),
+    )
+    .reduce(
+      (sum, t) => sum + (t.type === "Cash In" ? t.amount : -t.amount),
+      0,
+    );
 
   const netBalance = totalCashIn - totalCashOut;
 
