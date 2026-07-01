@@ -89,6 +89,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [resetAt, setResetAt] = useState<string | null>(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
 
   useEffect(() => {
     fetchTransactions();
@@ -116,6 +117,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   };
 
   const handleResetBalance = async () => {
+    if (!resetPassword) {
+      toast.error("Please enter the password");
+      return;
+    }
     setResetLoading(true);
     try {
       const response = await fetch(
@@ -123,14 +128,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ createdBy: user?.fullName || "Admin" }),
+          body: JSON.stringify({
+            createdBy: user?.fullName || "Admin",
+            password: resetPassword,
+          }),
         },
       );
       if (response.ok) {
         const data = await response.json();
         setResetAt(data.resetAt);
         setResetConfirmOpen(false);
+        setResetPassword("");
         toast.success("Balance reset to zero");
+      } else if (response.status === 403) {
+        toast.error("Incorrect password");
       } else {
         toast.error("Failed to reset balance");
       }
@@ -687,7 +698,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
       {resetConfirmOpen && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={() => !resetLoading && setResetConfirmOpen(false)}
+          onClick={() => {
+            if (resetLoading) return;
+            setResetConfirmOpen(false);
+            setResetPassword("");
+          }}
         >
           <div
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
@@ -702,9 +717,28 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
               history stays exactly as it is, and new transactions will keep
               adding up correctly from zero.
             </p>
+            <div className="mb-5">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Password
+              </label>
+              <input
+                type="password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !resetLoading) handleResetBalance();
+                }}
+                autoFocus
+                placeholder="Enter password to confirm"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setResetConfirmOpen(false)}
+                onClick={() => {
+                  setResetConfirmOpen(false);
+                  setResetPassword("");
+                }}
                 disabled={resetLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
@@ -712,7 +746,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
               </button>
               <button
                 onClick={handleResetBalance}
-                disabled={resetLoading}
+                disabled={resetLoading || !resetPassword}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
               >
                 {resetLoading ? "Resetting..." : "Confirm Reset"}

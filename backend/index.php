@@ -5746,6 +5746,13 @@ $routes = [
     // reset point. No transaction row is touched, edited, or deleted - the full history
     // remains visible; only the summary totals are recomputed from this point onward.
     'POST /api/transactions/balance-reset' => function() use ($pdo, $body) {
+        // Extra confirmation gate on top of the admin-only UI: this is a destructive-looking
+        // action for the client, so require a shared password server-side too (the frontend
+        // prompt alone can't stop a direct API call).
+        if (($body['password'] ?? '') !== 'Zer0B@lance') {
+            http_response_code(403);
+            return ['error' => 'Incorrect password'];
+        }
         try {
             $createdBy = $body['createdBy'] ?? ($_SERVER['HTTP_X_USER_NAME'] ?? null);
             $createdByIp = getClientIp();
