@@ -5767,8 +5767,10 @@ $routes = [
     'POST /api/transactions/balance-reset' => function() use ($pdo, $body) {
         // Extra confirmation gate on top of the admin-only UI: this is a destructive-looking
         // action for the client, so require a shared password server-side too (the frontend
-        // prompt alone can't stop a direct API call).
-        if (($body['password'] ?? '') !== 'Zer0B@lance') {
+        // prompt alone can't stop a direct API call). The password itself is never stored in
+        // source - only a bcrypt hash, configured via BALANCE_RESET_PASSWORD_HASH in .env.
+        $resetPasswordHash = $_ENV['BALANCE_RESET_PASSWORD_HASH'] ?? getenv('BALANCE_RESET_PASSWORD_HASH');
+        if (!$resetPasswordHash || !password_verify($body['password'] ?? '', $resetPasswordHash)) {
             http_response_code(403);
             return ['error' => 'Incorrect password'];
         }
