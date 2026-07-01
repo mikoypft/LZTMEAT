@@ -196,6 +196,25 @@ try {
         error_log('transactions table creation: ' . $tableErr->getMessage());
     }
 
+    // Auto-create balance_resets table. Lets an admin zero out the Cash In / Cash Out /
+    // Net Balance totals shown on the Transactions page without deleting or editing a
+    // single transaction row: totals are computed only from transactions after the latest
+    // reset_at, while every past transaction stays intact and visible in the history list.
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS balance_resets (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reset_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                created_by VARCHAR(255) NULL,
+                created_by_ip VARCHAR(64) NULL,
+                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_reset_at (reset_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $tableErr) {
+        error_log('balance_resets table creation: ' . $tableErr->getMessage());
+    }
+
     // Auto-create product_mix_inventory table for storing mixed products
     try {
         $pdo->exec("
@@ -5701,6 +5720,51 @@ $routes = [
         } catch (Exception $e) {
             http_response_code(500);
             return ['error' => 'Failed to update transaction: ' . $e->getMessage()];
+        }
+    },
+
+    // Returns the most recent balance reset point (if any), so the frontend can
+    // filter Cash In / Cash Out / Net Balance totals to only transactions after it.
+    'GET /api/transactions/balance-reset' => function() use ($pdo) {
+        try {
+            $stmt = $pdo->query('SELECT * FROM balance_resets ORDER BY reset_at DESC LIMIT 1');
+            $row = $stmt->fetch();
+            if (!$row) {
+                return ['resetAt' => null];
+            }
+            return [
+                'resetAt' => $row['reset_at'],
+                'createdBy' => $row['created_by'],
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to get balance reset: ' . $e->getMessage()];
+        }
+    },
+
+    // Zeroes the Cash In / Cash Out / Net Balance totals going forward by recording a new
+    // reset point. No transaction row is touched, edited, or deleted - the full history
+    // remains visible; only the summary totals are recomputed from this point onward.
+    'POST /api/transactions/balance-reset' => function() use ($pdo, $body) {
+        try {
+            $createdBy = $body['createdBy'] ?? ($_SERVER['HTTP_X_USER_NAME'] ?? null);
+            $createdByIp = getClientIp();
+
+            $stmt = $pdo->prepare('INSERT INTO balance_resets (reset_at, created_by, created_by_ip, created_at) VALUES (NOW(), ?, ?, NOW())');
+            $stmt->execute([$createdBy, $createdByIp]);
+
+            $id = (string)$pdo->lastInsertId();
+            $resetAt = $pdo->query('SELECT reset_at FROM balance_resets WHERE id = ' . (int)$id)->fetchColumn();
+
+            logSystemHistory($pdo, 'Balance Reset', 'Transaction', null, [
+                'resetAt' => $resetAt,
+                'createdBy' => $createdBy,
+            ]);
+
+            return ['success' => true, 'resetAt' => $resetAt];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['error' => 'Failed to reset balance: ' . $e->getMessage()];
         }
     },
 

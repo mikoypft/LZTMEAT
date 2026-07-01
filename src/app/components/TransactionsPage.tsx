@@ -84,8 +84,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
   const [editReference, setEditReference] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
+  // Balance reset: zeroes the Cash In / Cash Out / Net Balance totals shown below
+  // without touching any transaction row. Totals only count transactions after resetAt.
+  const [resetAt, setResetAt] = useState<string | null>(null);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
   useEffect(() => {
     fetchTransactions();
+    fetchBalanceReset();
     getTransactionCategories()
       .then((cats) => {
         if (cats.cashIn?.length) setCashInCategories(cats.cashIn);
@@ -93,6 +100,47 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
       })
       .catch(() => {});
   }, []);
+
+  const fetchBalanceReset = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/balance-reset`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setResetAt(data.resetAt || null);
+      }
+    } catch (error) {
+      console.error("Error fetching balance reset:", error);
+    }
+  };
+
+  const handleResetBalance = async () => {
+    setResetLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/balance-reset`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ createdBy: user?.fullName || "Admin" }),
+        },
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setResetAt(data.resetAt);
+        setResetConfirmOpen(false);
+        toast.success("Balance reset to zero");
+      } else {
+        toast.error("Failed to reset balance");
+      }
+    } catch (error) {
+      console.error("Error resetting balance:", error);
+      toast.error("Error resetting balance");
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -266,10 +314,24 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 
+  // filteredTransactions is sorted newest-first, so the divider goes right before the
+  // first row at/before the reset point (i.e. -1 means no reset, or nothing to divide).
+  const resetDividerIndex = resetAt
+    ? filteredTransactions.findIndex(
+        (t) => new Date(t.timestamp).getTime() <= new Date(resetAt).getTime(),
+      )
+    : -1;
+
   // Totals must include ALL matching transactions — including quick-cash-out records
   // (sourceTransactionId != null). Excluding them causes the system total to be lower
   // than the actual cash-out amount recorded, which is why totals don't match the logbook.
-  const allFilteredForTotals = transactions.filter(matchesFilters);
+  // Also excludes anything at/before the latest balance reset, so Cash In / Cash Out /
+  // Net Balance are all zeroed going forward without deleting the underlying rows.
+  const allFilteredForTotals = transactions
+    .filter(matchesFilters)
+    .filter(
+      (t) => !resetAt || new Date(t.timestamp).getTime() > new Date(resetAt).getTime(),
+    );
 
   const totalCashIn = allFilteredForTotals
     .filter((t) => t.type === "Cash In")
@@ -292,16 +354,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
             Manage cash in and cash out transactions
           </p>
         </div>
-        {canAdd && (
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add Transaction
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => setResetConfirmOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Reset Balance to 0
+            </button>
+          )}
+          {canAdd && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add Transaction
+            </button>
+          )}
+        </div>
       </div>
+
+      {resetAt && (
+        <p className="text-sm text-gray-500 mb-4">
+          Totals below reflect transactions since the balance was reset on{" "}
+          {new Date(resetAt).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+          . Full history remains visible in the table below.
+        </p>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -470,8 +556,30 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
+                filteredTransactions.map((transaction, index) => (
+                  <React.Fragment key={transaction.id}>
+                    {index === resetDividerIndex && (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="px-6 py-2 text-center text-xs font-medium text-gray-500 bg-gray-50"
+                        >
+                          — Balance reset on{" "}
+                          {new Date(resetAt as string).toLocaleString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}{" "}
+                          — totals above start from zero —
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(transaction.timestamp).toLocaleString("en-US", {
                         month: "short",
@@ -566,13 +674,53 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ user }) => {
                         </div>
                       </div>
                     </td>
-                  </tr>
+                    </tr>
+                  </React.Fragment>
                 ))
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Reset Balance Confirmation Modal */}
+      {resetConfirmOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => !resetLoading && setResetConfirmOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-1">
+              Reset Balance to 0?
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              This zeroes Total Cash In, Total Cash Out, and Net Balance
+              starting now. No transaction is deleted or changed — the full
+              history stays exactly as it is, and new transactions will keep
+              adding up correctly from zero.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setResetConfirmOpen(false)}
+                disabled={resetLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetBalance}
+                disabled={resetLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+              >
+                {resetLoading ? "Resetting..." : "Confirm Reset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Cash Out Confirmation Modal */}
       {cashOutConfirm && (
